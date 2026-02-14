@@ -24,6 +24,10 @@ Current modes:
 
 A markdown file (`built-with-eleventy.md`) tracks sites built with Eleventy. The sidebar shows a "Sites to Post" queue and a "Sites Posted" history. Clicking **Post** on a queued site populates the compose form in 11ty BWE mode. After posting, the site moves to the "Already Posted" section of the file with a timestamp and per-platform success/failure status.
 
+## Social Link Tagging
+
+When posting about a "Built with Eleventy" site, the app automatically fetches the site's HTML to discover the owner's Mastodon and Bluesky profiles. Discovered @-mentions are appended to the per-platform textareas. Detection strategies include JSON-LD `sameAs` arrays, `rel="me"` links, and URL pattern matching. The app checks the homepage, `/about/`, and `/en/` pages. Social links are fetched both when clicking **Post** on a queued site and when loading a saved BWE draft via **Use**.
+
 ## Setup
 
 1. Clone the repo and create a virtual environment:

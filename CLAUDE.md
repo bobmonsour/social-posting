@@ -26,7 +26,8 @@ social-posting/
 │   └── bluesky_client.py   # Bluesky AT Protocol via atproto
 ├── services/
 │   ├── media.py            # process_uploads, cleanup_uploads, compress_for_bluesky
-│   └── link_card.py        # Open Graph metadata fetching
+│   ├── link_card.py        # Open Graph metadata fetching
+│   └── social_links.py     # Extract Mastodon/Bluesky profiles from site HTML
 ├── templates/              # Jinja2 (base.html, compose.html, result.html)
 ├── static/
 │   ├── css/style.css       # Pico CSS overrides, warm color scheme, light/dark
@@ -36,7 +37,8 @@ social-posting/
 │   └── draft_images/       # Persisted images keyed by draft/failed UUID
 ├── uploads/                # Temporary upload dir (cleaned after posting)
 └── docs/
-    └── modes.md            # Requirements doc for modes feature
+    ├── modes.md            # Requirements doc for modes feature
+    └── tagging-site-owners.md  # Requirements doc for social link tagging
 ```
 
 ## Architecture
@@ -62,6 +64,22 @@ Mode behavior:
 - Switching between modes strips old prefix/suffix and applies new ones, preserving user text.
 - "Show Preview" button renders both platforms with highlighted @mentions, #hashtags, and URLs.
 - Modes are stored on drafts/history entries as `mode` and `platform_texts` fields (backward compatible — absent for non-mode posts).
+
+## Social Link Tagging
+
+When posting about a BWE site, the app fetches the site's HTML to discover the owner's Mastodon/Bluesky profiles and appends @-mentions to the per-platform textareas.
+
+**Backend** (`services/social_links.py`):
+- `extract_social_links(url)` returns `{"mastodon": "@user@instance", "bluesky": "@handle"}` (empty strings if not found).
+- Detection strategies (ported from `getsociallinks.js`): JSON-LD `sameAs` arrays, `<a rel="me">` links, URL pattern matching (`/@` / `/users/` for Mastodon, `bsky` hostname for Bluesky), CSS class/aria-label/title hints.
+- Checks homepage, `/about/`, `/en/` — stops early after `/about/` if links found.
+- URL-to-mention conversion: `https://instance.social/@user` → `@user@instance.social`; `https://bsky.app/profile/handle` → `@handle`.
+- Exposed via `POST /social-links` endpoint (same pattern as `/link-preview`).
+
+**Frontend** (`compose.js`):
+- `fetchAndAppendSocialLinks(siteUrl)` POSTs to `/social-links`, appends returned mentions to per-platform textareas (skips duplicates), updates char counters.
+- Called from BWE Post button handler (async after form population).
+- Called on page load when a BWE draft is loaded via Use (detects `bwe-site-url` hidden field + active `11ty-bwe` mode).
 
 ## Failed Posts
 
