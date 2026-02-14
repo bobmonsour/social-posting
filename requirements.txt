@@ -1,0 +1,7 @@
+flask
+python-dotenv
+Mastodon.py
+atproto
+requests
+beautifulsoup4
+Pillow

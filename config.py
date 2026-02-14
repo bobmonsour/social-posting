@@ -1,0 +1,23 @@
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+MASTODON_INSTANCE_URL = os.getenv("MASTODON_INSTANCE_URL", "").rstrip("/")
+MASTODON_ACCESS_TOKEN = os.getenv("MASTODON_ACCESS_TOKEN", "")
+
+BLUESKY_IDENTIFIER = os.getenv("BLUESKY_IDENTIFIER", "")
+BLUESKY_APP_PASSWORD = os.getenv("BLUESKY_APP_PASSWORD", "")
+
+UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
+MAX_IMAGES = 4
+ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
+BLUESKY_MAX_IMAGE_SIZE = 1_000_000  # 1MB
+
+
+def mastodon_configured():
+    return bool(MASTODON_INSTANCE_URL and MASTODON_ACCESS_TOKEN)
+
+
+def bluesky_configured():
+    return bool(BLUESKY_IDENTIFIER and BLUESKY_APP_PASSWORD)

@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-grid">
+
+<form id="compose-form" action="/post" method="post" enctype="multipart/form-data">
+    <input type="hidden" name="bwe_site_name" id="bwe-site-name" value="">
+    <input type="hidden" name="bwe_site_url" id="bwe-site-url" value="">
+
+    <!-- Platform checkboxes -->
+    <fieldset>
+        <legend>Platforms</legend>
+        <label>
+            <input type="checkbox" name="platforms" value="mastodon" id="cb-mastodon"
+                   {% if not mastodon_available %}disabled{% endif %}>
+            Mastodon (500 chars)
+            {% if not mastodon_available %}<small> — not configured</small>{% endif %}
+        </label>
+        <label>
+            <input type="checkbox" name="platforms" value="bluesky" id="cb-bluesky"
+                   {% if not bluesky_available %}disabled{% endif %}>
+            Bluesky (300 chars)
+            {% if not bluesky_available %}<small> — not configured</small>{% endif %}
+        </label>
+    </fieldset>
+
+    <!-- Mode selector -->
+    <fieldset id="mode-section">
+        <legend>Mode</legend>
+        <label>
+            <input type="radio" name="mode" value="" id="mode-none"
+                   {% if not draft or not draft.mode %}checked{% endif %}>
+            None
+        </label>
+        {% for key, m in modes.items() %}
+        <label>
+            <input type="radio" name="mode" value="{{ key }}" id="mode-{{ key }}"
+                   {% if draft and draft.mode == key %}checked{% endif %}>
+            {{ m.label }}
+        </label>
+        {% endfor %}
+    </fieldset>
+
+    <!-- Content Warnings -->
+    <fieldset id="cw-mastodon-section" class="platform-section" hidden>
+        <legend>Content Warning (Mastodon)</legend>
+        <label><input type="radio" name="cw_mastodon" value="" {% if not draft or not draft.cw_mastodon %}checked{% endif %}> None</label>
+        <label><input type="radio" name="cw_mastodon" value="Sexual" {% if draft and draft.cw_mastodon == 'Sexual' %}checked{% endif %}> Sexual</label>
+        <label><input type="radio" name="cw_mastodon" value="Nudity" {% if draft and draft.cw_mastodon == 'Nudity' %}checked{% endif %}> Nudity</label>
+        <label><input type="radio" name="cw_mastodon" value="Graphic Media" {% if draft and draft.cw_mastodon == 'Graphic Media' %}checked{% endif %}> Graphic Media</label>
+        <label><input type="radio" name="cw_mastodon" value="Porn" {% if draft and draft.cw_mastodon == 'Porn' %}checked{% endif %}> Porn</label>
+        <label><input type="radio" name="cw_mastodon" value="Political" {% if draft and draft.cw_mastodon == 'Political' %}checked{% endif %}> Political</label>
+    </fieldset>
+
+    <fieldset id="cw-bluesky-section" class="platform-section" hidden>
+        <legend>Content Label (Bluesky)</legend>
+        <label><input type="radio" name="cw_bluesky" value="" {% if not draft or not draft.cw_bluesky %}checked{% endif %}> None</label>
+        <label><input type="radio" name="cw_bluesky" value="sexual" {% if draft and draft.cw_bluesky == 'sexual' %}checked{% endif %}> Sexual</label>
+        <label><input type="radio" name="cw_bluesky" value="nudity" {% if draft and draft.cw_bluesky == 'nudity' %}checked{% endif %}> Nudity</label>
+        <label><input type="radio" name="cw_bluesky" value="graphic-media" {% if draft and draft.cw_bluesky == 'graphic-media' %}checked{% endif %}> Graphic Media</label>
+        <label><input type="radio" name="cw_bluesky" value="porn" {% if draft and draft.cw_bluesky == 'porn' %}checked{% endif %}> Porn</label>
+        <label><input type="radio" name="cw_bluesky" value="political" {% if draft and draft.cw_bluesky == 'political' %}checked{% endif %}> Political</label>
+    </fieldset>
+
+    <!-- Shared post text (hidden when mode active) -->
+    <fieldset id="shared-text-section">
+        <legend>Post</legend>
+        <textarea name="text" id="post-text" rows="6"
+                  placeholder="What's on your mind?">{{ draft.text if draft else '' }}</textarea>
+        <div id="char-counters" class="char-counters">
+            <span id="counter-mastodon" class="counter" hidden>Mastodon: <span class="count">0</span>/500</span>
+            <span id="counter-bluesky" class="counter" hidden>Bluesky: <span class="count">0</span>/300</span>
+        </div>
+    </fieldset>
+
+    <!-- Per-platform textareas (shown when mode active) -->
+    <fieldset id="platform-texts-section" hidden>
+        <legend>Post <small>(per platform)</small></legend>
+        <div class="platform-text-group">
+            <label class="platform-text-label" for="text-mastodon">Mastodon</label>
+            <textarea name="text_mastodon" id="text-mastodon" rows="5"
+                      placeholder="Mastodon text">{{ draft.platform_texts.mastodon if draft and draft.platform_texts else '' }}</textarea>
+            <div class="char-counters">
+                <span id="counter-mastodon-mode" class="counter">Mastodon: <span class="count">0</span>/500</span>
+            </div>
+        </div>
+        <div class="platform-text-group">
+            <label class="platform-text-label" for="text-bluesky">Bluesky</label>
+            <textarea name="text_bluesky" id="text-bluesky" rows="5"
+                      placeholder="Bluesky text">{{ draft.platform_texts.bluesky if draft and draft.platform_texts else '' }}</textarea>
+            <div class="char-counters">
+                <span id="counter-bluesky-mode" class="counter">Bluesky: <span class="count">0</span>/300</span>
+            </div>
+        </div>
+    </fieldset>
+
+    <!-- Preview (shown when mode active) -->
+    <fieldset id="preview-section" hidden>
+        <legend>Preview</legend>
+        <button type="button" id="btn-show-preview">Show Preview</button>
+        <div id="preview-panels" class="preview-panels" hidden>
+            <div class="preview-panel">
+                <div class="preview-panel-header">Mastodon</div>
+                <div class="preview-panel-body" id="preview-mastodon"></div>
+            </div>
+            <div class="preview-panel">
+                <div class="preview-panel-header">Bluesky</div>
+                <div class="preview-panel-body" id="preview-bluesky"></div>
+            </div>
+        </div>
+    </fieldset>
+
+    <!-- Link card (Bluesky only) -->
+    <fieldset id="link-card-section">
+        <legend>URL <small>(optional)</small></legend>
+        <div class="link-card-input">
+            <input type="url" name="link_url" id="link-url"
+                   placeholder="https://example.com/article"
+                   value="{{ draft.link_url or '' if draft else '' }}">
+            <button type="button" id="btn-preview-link">Preview</button>
+        </div>
+        <div id="link-preview" hidden>
+            <div class="link-preview-card">
+                <img id="link-preview-img" src="" alt="" hidden>
+                <div>
+                    <strong id="link-preview-title"></strong>
+                    <p id="link-preview-desc"></p>
+                </div>
+            </div>
+        </div>
+    </fieldset>
+
+    <!-- Images -->
+    <fieldset id="images-section">
+        <legend>Images <small>(max 4)</small></legend>
+        <input type="file" id="image-input" multiple
+               accept="image/png,image/jpeg,image/gif,image/webp" hidden>
+        <button type="button" id="btn-choose-images">Choose Images</button>
+        <div id="image-previews" class="image-previews"></div>
+        <input type="hidden" name="draft_image_data" id="draft-image-data">
+    </fieldset>
+
+    {% if draft and draft.images %}
+    <div id="draft-images-data" hidden>{{ draft.images | tojson }}</div>
+    <div id="draft-images-id" hidden>{{ draft.id }}</div>
+    {% endif %}
+
+    <div class="post-actions">
+        <button type="submit" id="btn-post" class="btn-action">Post</button>
+        <button type="button" id="btn-clear" class="btn-action btn-clear">Clear</button>
+        <label class="draft-toggle">
+            <input type="checkbox" name="is_draft" id="cb-draft" checked>
+            Draft
+        </label>
+    </div>
+</form>
+
+<!-- Modes config for JS -->
+<script id="modes-config" type="application/json">{{ modes | tojson }}</script>
+
+<div class="sidebar">
+<aside class="recent-posts">
+    <h2>Recent Posts</h2>
+    {% if recent_posts %}
+        {% for post in recent_posts %}
+        {% set is_failed = post.is_failed or (not post.is_draft and not post.platforms) %}
+        <div class="post-card {% if post.is_draft %}post-card--draft{% elif is_failed %}post-card--failed{% endif %}">
+            <div class="post-card-meta">
+                {% if post.is_draft %}
+                    <span class="badge draft">DRAFT</span>
+                    <a href="/draft/{{ post.id }}" class="btn-use-draft">Use</a>
+                    <form action="/draft/{{ post.id }}/delete" method="post" class="inline-form">
+                        <button type="submit" class="btn-del-draft">Del</button>
+                    </form>
+                {% elif is_failed %}
+                    <span class="badge error">FAILED</span>
+                    <a href="/retry/{{ post.id }}" class="btn-use-draft">Retry</a>
+                    <form action="/draft/{{ post.id }}/delete" method="post" class="inline-form">
+                        <button type="submit" class="btn-del-draft">Del</button>
+                    </form>
+                {% else %}
+                    {% for p in post.platforms %}
+                        <a href="{{ p.post_url }}" target="_blank" rel="noopener" class="badge success">{{ p.name }}</a>
+                    {% endfor %}
+                    <form action="/post/{{ post.id }}/delete" method="post" class="inline-form">
+                        <button type="submit" class="btn-del-draft">Del</button>
+                    </form>
+                {% endif %}
+                {% if post.mode %}
+                    <span class="badge mode">{{ post.mode }}</span>
+                {% endif %}
+            </div>
+            {% set display_text = post.text or (post.platform_texts or {}).values() | first | default('', true) %}
+            <p class="post-card-text">{{ display_text[:50] }}{% if display_text|length > 50 %}...{% endif %}</p>
+            <time class="post-card-time">{{ post.timestamp[:16].replace('T', ' ') }}</time>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p class="muted">No posts yet.</p>
+    {% endif %}
+</aside>
+
+<aside class="bwe-queue">
+    <h2>Sites to Post <small>({{ bwe_to_post | length }})</small></h2>
+    {% if bwe_to_post %}
+        {% for site in bwe_to_post %}
+        <p class="bwe-queue-item">
+            <a href="{{ site.url }}" target="_blank" rel="noopener">{{ site.name }}</a>
+            {% if site.draft_id %}
+            <a href="/draft/{{ site.draft_id }}" class="btn-use-draft">Use</a>
+            {% else %}
+            <button type="button" class="btn-bwe-post" data-name="{{ site.name }}" data-url="{{ site.url }}">Post</button>
+            {% endif %}
+        </p>
+        {% endfor %}
+    {% else %}
+        <p class="muted"><em>No sites to post</em></p>
+    {% endif %}
+</aside>
+
+<aside class="bwe-posted">
+    <h2>Sites Posted</h2>
+    {% if bwe_posted %}
+        {% for site in bwe_posted %}
+        <p class="bwe-posted-item">
+            <a href="{{ site.url }}" target="_blank" rel="noopener">{{ site.name }}</a>
+            <span class="bwe-posted-date">{{ site.date_display }}</span>
+        </p>
+        {% endfor %}
+    {% else %}
+        <p class="muted"><em>No sites posted yet</em></p>
+    {% endif %}
+</aside>
+</div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/compose.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,96 @@
+# Social Posting
+
+Personal social media cross-poster. Single Flask app that posts to Mastodon and Bluesky from one form.
+
+## Quick Start
+
+```bash
+cd social-posting
+source .venv/bin/activate
+python app.py  # runs on 127.0.0.1:5555
+```
+
+Launched via Raycast script at `~/Dropbox/Docs/Raycast/Scripts/bob-on-social.sh`.
+
+## Project Structure
+
+```
+social-posting/
+├── app.py                  # Flask routes, draft/post logic, history management
+├── config.py               # Env vars, upload limits, allowed extensions
+├── modes.py                # Mode registry (MODES dict, all_modes(), get_mode())
+├── platforms/
+│   ├── __init__.py         # get_platform() factory
+│   ├── base.py             # MediaAttachment, LinkCard, PostResult, PlatformClient ABC
+│   ├── mastodon_client.py  # Mastodon API via Mastodon.py
+│   └── bluesky_client.py   # Bluesky AT Protocol via atproto
+├── services/
+│   ├── media.py            # process_uploads, cleanup_uploads, compress_for_bluesky
+│   └── link_card.py        # Open Graph metadata fetching
+├── templates/              # Jinja2 (base.html, compose.html, result.html)
+├── static/
+│   ├── css/style.css       # Pico CSS overrides, warm color scheme, light/dark
+│   └── js/compose.js       # Form interactivity, modes, draft/image handling, validation
+├── posts/
+│   ├── history.json        # All posts, drafts, and failed posts (newest first)
+│   └── draft_images/       # Persisted images keyed by draft/failed UUID
+├── uploads/                # Temporary upload dir (cleaned after posting)
+└── docs/
+    └── modes.md            # Requirements doc for modes feature
+```
+
+## Architecture
+
+- **Platform abstraction**: `PlatformClient` ABC in `platforms/base.py`. Each platform implements `post()` and `validate_credentials()`. Factory in `__init__.py`.
+- **Media flow**: Upload to `uploads/` temp dir -> for drafts/failed, copy to `posts/draft_images/<id>/` -> for posting, pass `MediaAttachment` to platform client -> cleanup.
+- **History**: JSON file (`posts/history.json`). Entries prepended (newest first). Drafts have `is_draft: true`, failed posts have `is_failed: true` (or are detected as non-draft entries with empty `platforms` list). Both have an `images` array with filename/alt_text/mime_type metadata.
+- **Mutual exclusivity**: Images and link cards cannot coexist. Enforced in JS via disabled fieldsets.
+- **Modes system**: Extensible mode registry in `modes.py`. Each mode defines a label, auto-selected platforms, and per-platform prefixes/suffixes. Adding a new mode = adding a dict entry in `MODES`, no other changes needed.
+
+## Modes
+
+Modes switch the UI from a single shared textarea to per-platform textareas, each pre-populated with platform-specific hashtags and mentions. Configured in `modes.py`.
+
+Current modes:
+- **11ty**: Adds `#11ty @11ty@neighborhood.11ty.dev` (Mastodon) and `@11ty.dev` (Bluesky) as suffixes. Cursor at start.
+- **11ty BWE**: Same suffixes as 11ty, but with `Built with Eleventy: ` prefix. Cursor placed after the prefix.
+
+Mode behavior:
+- Selecting a mode auto-checks and locks both platform checkboxes.
+- Per-platform textareas appear with prefix+suffix pre-filled.
+- Text typed in one platform textarea is synced to the other (body only; prefix/suffix preserved per-platform).
+- Switching between modes strips old prefix/suffix and applies new ones, preserving user text.
+- "Show Preview" button renders both platforms with highlighted @mentions, #hashtags, and URLs.
+- Modes are stored on drafts/history entries as `mode` and `platform_texts` fields (backward compatible — absent for non-mode posts).
+
+## Failed Posts
+
+When a post fails on any platform:
+- The entry is saved to history with `is_failed: true` and images persisted for retry.
+- The sidebar shows a red **FAILED** badge with **Retry** (reloads into compose form) and **Del** buttons.
+- Legacy failed posts (pre-`is_failed` flag) are detected as non-draft entries with no successful platforms.
+
+## Key Conventions
+
+- All paths in `app.py` are `__file__`-relative via `_BASE_DIR` (not CWD-relative).
+- `config.py` uses `__file__`-relative path for `UPLOAD_FOLDER`.
+- Image file inputs: the `<input type="file">` in the template has **no `name` attribute** — files are submitted via a dynamically-created hidden input in the JS submit handler. This prevents an empty file part from misaligning alt text indices in `process_uploads`.
+- Alt text is required for all images (enforced client-side on submit).
+- Bluesky images auto-compressed to fit 1MB limit.
+- Character counting is grapheme-aware (`Intl.Segmenter`).
+- Content warnings use radio buttons for both platforms (None, Sexual, Nudity, Graphic Media, Porn, Political). Mastodon values are human-readable strings used as spoiler text; Bluesky values are API label identifiers.
+- Draft deletion route (`/draft/<id>/delete`) handles drafts, failed posts, and legacy failed entries.
+- Sidebar post cards show badges (DRAFT/FAILED/platform), action buttons, 50-char text preview, and timestamp.
+
+## Configuration
+
+Environment variables in `.env` (see `.env.example`):
+
+- `MASTODON_INSTANCE_URL` / `MASTODON_ACCESS_TOKEN` (token needs `write:statuses` and `write:media` scopes)
+- `BLUESKY_IDENTIFIER` / `BLUESKY_APP_PASSWORD`
+
+## Tech Stack
+
+- **Backend**: Flask, Mastodon.py, atproto, Pillow, BeautifulSoup4, python-dotenv
+- **Frontend**: Jinja2, Pico CSS (CDN), vanilla JS
+- **No database** — flat JSON file for history, filesystem for images

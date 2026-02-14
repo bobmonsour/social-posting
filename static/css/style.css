@@ -1,0 +1,672 @@
+/* ===== Typography ===== */
+
+:root {
+    --font-display: "Instrument Serif", Georgia, serif;
+    --font-body: "Space Grotesk", system-ui, sans-serif;
+}
+
+body {
+    font-family: var(--font-body);
+}
+
+h1, h2, h3 {
+    font-family: var(--font-display);
+}
+
+/* ===== Warm theme overrides ===== */
+
+/* Light mode — Semafor-inspired warm cream */
+:root[data-theme="light"], [data-theme="light"] {
+    --pico-background-color: #f8f5d7;
+    --pico-card-background-color: #fffef0;
+    --pico-card-sectioning-background-color: #f5f2ce;
+    --pico-muted-border-color: #d6d3b8;
+    --pico-color: #1f1d1a;
+    --pico-muted-color: #6b6960;
+    --pico-primary: #a0875e;
+    --pico-primary-hover: #8b7550;
+    --pico-primary-focus: rgba(160, 135, 94, 0.2);
+    --pico-primary-background: #a0875e;
+    --pico-primary-hover-background: #8b7550;
+    --pico-primary-inverse: #fff;
+    --pico-secondary: #8a8780;
+    --pico-secondary-hover: #6b6960;
+    --pico-form-element-background-color: #f5f2dc;
+    --pico-form-element-border-color: #d6d3b8;
+    --pico-form-element-focus-color: #a0875e;
+}
+
+/* Dark mode — warm dark brown */
+:root[data-theme="dark"], [data-theme="dark"] {
+    --pico-background-color: #1a1816;
+    --pico-card-background-color: #252220;
+    --pico-card-sectioning-background-color: #2a2725;
+    --pico-muted-border-color: #3d3935;
+    --pico-color: #e8e4dc;
+    --pico-muted-color: #9c9890;
+    --pico-primary: #d4b88a;
+    --pico-primary-hover: #e0c89e;
+    --pico-primary-focus: rgba(212, 184, 138, 0.2);
+    --pico-primary-background: #d4b88a;
+    --pico-primary-hover-background: #e0c89e;
+    --pico-primary-inverse: #1a1816;
+    --pico-secondary: #9c9890;
+    --pico-secondary-hover: #b0aca4;
+    --pico-form-element-background-color: #222020;
+    --pico-form-element-border-color: #3d3935;
+    --pico-form-element-focus-color: #d4b88a;
+}
+
+/* ===== Layout ===== */
+
+main.container {
+    max-width: 1100px;
+    padding-top: 2.5rem;
+}
+
+/* Site header with title + theme toggle */
+.site-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 2.5rem;
+    border-bottom: 4px solid var(--pico-color);
+    padding-bottom: 1rem;
+}
+
+.site-header h1 {
+    margin-bottom: 0;
+    font-size: 3.5rem;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    line-height: 1;
+}
+
+button.theme-toggle {
+    background: none;
+    border: 2px solid var(--pico-color);
+    border-radius: 50%;
+    width: 44px;
+    height: 44px;
+    cursor: pointer;
+    font-size: 1.4rem;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    color: var(--pico-color);
+    transition: border-color 0.2s, background-color 0.2s;
+    flex-shrink: 0;
+    align-self: center;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+[data-theme="light"] button.theme-toggle {
+    background: #1f1d1a;
+    border-color: #1f1d1a;
+    color: #f8f5d7;
+}
+
+[data-theme="dark"] button.theme-toggle {
+    background: #e8e4dc;
+    border-color: #e8e4dc;
+    color: #1a1816;
+}
+
+button.theme-toggle:hover {
+    border-color: var(--pico-primary);
+    background: var(--pico-primary);
+    color: var(--pico-primary-inverse);
+}
+
+/* Two-column page grid */
+.page-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem;
+}
+
+@media (max-width: 900px) {
+    .page-grid {
+        grid-template-columns: 1fr;
+    }
+    .site-header h1 {
+        font-size: 2.5rem;
+    }
+}
+
+/* ===== Fieldsets — bold section markers ===== */
+
+fieldset {
+    margin-bottom: 1.5rem;
+    border: none;
+    border-top: 2px solid var(--pico-muted-border-color);
+    padding-top: 0.75rem;
+}
+
+fieldset legend {
+    font-family: var(--font-body);
+    font-weight: 700;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--pico-muted-color);
+    padding: 0 0.5rem 0 0;
+}
+
+fieldset legend small {
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+/* ===== Form elements ===== */
+
+textarea, input[type="text"], input[type="url"] {
+    font-family: var(--font-body);
+    font-size: 1rem;
+    font-weight: 400;
+}
+
+textarea {
+    font-size: 1.1rem;
+    line-height: 1.5;
+}
+
+label {
+    font-family: var(--font-body);
+    font-weight: 500;
+}
+
+button, [type="submit"] {
+    font-family: var(--font-body);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.85rem;
+}
+
+/* ===== Character counters ===== */
+.char-counters {
+    display: flex;
+    gap: 1.5rem;
+    margin-top: 0.25rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--pico-muted-color);
+}
+
+.counter.over-limit .count {
+    color: #c62828;
+    font-weight: 700;
+}
+
+/* ===== Link card input row ===== */
+.link-card-input {
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-start;
+}
+
+.link-card-input input {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+.link-card-input button {
+    flex-shrink: 0;
+    width: auto;
+    margin-bottom: 0;
+}
+
+/* ===== Link preview card ===== */
+.link-preview-card {
+    display: flex;
+    gap: 1rem;
+    padding: 0.75rem;
+    border: 2px solid var(--pico-muted-border-color);
+    border-radius: var(--pico-border-radius);
+    margin-top: 0.75rem;
+    background: var(--pico-card-background-color);
+}
+
+.link-preview-card img {
+    width: 120px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.link-preview-card strong {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-family: var(--font-body);
+    font-weight: 700;
+}
+
+.link-preview-card p {
+    font-size: 0.85rem;
+    color: var(--pico-muted-color);
+    margin-bottom: 0;
+}
+
+/* ===== Image previews ===== */
+.image-previews {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-top: 0.75rem;
+}
+
+.image-preview-item {
+    position: relative;
+    width: 280px;
+}
+
+.image-preview-item img {
+    width: 280px;
+    height: 140px;
+    object-fit: cover;
+    border-radius: 4px;
+    display: block;
+}
+
+.image-preview-item input[type="text"] {
+    font-size: 1.1rem;
+    padding: 0.25rem 0.4rem;
+    margin-top: 0.35rem;
+    margin-bottom: 0;
+    width: 100%;
+}
+
+.image-preview-item .btn-remove {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: none;
+    background: #c62828;
+    color: white;
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+/* ===== Badges ===== */
+.badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-left: 0.5rem;
+    text-decoration: none;
+}
+
+.badge.success {
+    background: #2e7d32;
+    color: white;
+}
+
+.badge.error {
+    background: #c62828;
+    color: white;
+}
+
+.badge.draft {
+    background: #f9a825;
+    color: #333;
+}
+
+.badge.mode {
+    background: #5c6bc0;
+    color: white;
+}
+
+.error-text {
+    color: #c62828;
+    font-weight: 600;
+}
+
+/* ===== Disabled state ===== */
+fieldset[disabled] {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+/* ===== Mode radio buttons inline ===== */
+#mode-section label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-right: 1rem;
+}
+
+#mode-section input[type="radio"] {
+    margin: 0;
+}
+
+/* ===== Per-platform text groups ===== */
+.platform-text-group {
+    margin-bottom: 1.25rem;
+}
+
+.platform-text-label {
+    display: block;
+    font-weight: 700;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--pico-muted-color);
+    margin-bottom: 0.35rem;
+}
+
+/* ===== Preview panels ===== */
+#btn-show-preview {
+    width: auto;
+    display: inline-block;
+    margin-bottom: 0.75rem;
+}
+
+.preview-panels {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.preview-panel {
+    border: 2px solid var(--pico-muted-border-color);
+    border-radius: var(--pico-border-radius);
+    background: var(--pico-card-background-color);
+    overflow: hidden;
+}
+
+.preview-panel-header {
+    font-weight: 700;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--pico-muted-color);
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--pico-muted-border-color);
+    background: var(--pico-card-sectioning-background-color);
+}
+
+.preview-panel-body {
+    padding: 0.75rem;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    word-break: break-word;
+}
+
+.highlight-mention {
+    color: var(--pico-primary);
+    font-weight: 600;
+}
+
+.highlight-hashtag {
+    color: var(--pico-primary);
+    font-weight: 600;
+}
+
+.highlight-url {
+    color: var(--pico-primary);
+    text-decoration: underline;
+}
+
+/* ===== CW radio buttons inline ===== */
+#cw-mastodon-section label,
+#cw-bluesky-section label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-right: 1rem;
+}
+
+#cw-mastodon-section input[type="radio"],
+#cw-bluesky-section input[type="radio"] {
+    margin: 0;
+}
+
+/* ===== Choose images button ===== */
+#btn-choose-images {
+    width: auto;
+    display: inline-block;
+}
+
+/* ===== Post button row with draft checkbox ===== */
+.post-actions {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-top: 0.5rem;
+    padding-top: 1rem;
+    border-top: 2px solid var(--pico-muted-border-color);
+}
+
+.post-actions .btn-action {
+    margin-bottom: 0;
+    width: auto;
+    padding: 0.4rem 1.2rem;
+    font-size: 0.85rem;
+}
+
+.post-actions .btn-clear {
+    background: var(--pico-secondary-background);
+    border-color: var(--pico-secondary-background);
+}
+
+.draft-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    cursor: pointer;
+    white-space: nowrap;
+    margin-bottom: 0;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.draft-toggle input[type="checkbox"] {
+    margin: 0;
+}
+
+/* ===== Recent posts sidebar ===== */
+.recent-posts h2 {
+    font-size: 1.75rem;
+    font-weight: 400;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--pico-muted-border-color);
+}
+
+.recent-posts .muted {
+    color: var(--pico-muted-color);
+    font-size: 0.9rem;
+}
+
+.post-card {
+    border: 2px solid var(--pico-muted-border-color);
+    border-radius: var(--pico-border-radius);
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
+    background: var(--pico-card-background-color);
+}
+
+.post-card--draft {
+    border-left: 4px solid #f9a825;
+}
+
+.post-card--failed {
+    border-left: 4px solid #c62828;
+}
+
+.post-card-text {
+    font-size: 0.75rem;
+    font-style: italic;
+    color: var(--pico-muted-color);
+    margin-bottom: 0;
+    margin-top: 0.3rem;
+    margin-left: 0.5rem;
+    line-height: 1.45;
+    word-break: break-word;
+}
+
+.post-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.75rem;
+}
+
+.post-card-time {
+    display: block;
+    color: var(--pico-muted-color);
+    font-size: 0.75rem;
+    margin-left: 0.5rem;
+    margin-top: 0.15rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.btn-use-draft {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.1rem 0.5rem;
+    border-radius: 4px;
+    background: var(--pico-primary-background);
+    color: var(--pico-primary-inverse);
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.btn-use-draft:hover {
+    opacity: 0.85;
+}
+
+.inline-form {
+    display: inline;
+    margin: 0;
+    padding: 0;
+}
+
+.btn-del-draft {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.1rem 0.5rem;
+    border-radius: 4px;
+    background: #c62828;
+    color: white;
+    border: none;
+    cursor: pointer;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.btn-del-draft:hover {
+    opacity: 0.85;
+}
+
+/* ===== BWE queue sidebar ===== */
+.bwe-queue h2 {
+    font-size: 1.75rem;
+    font-weight: 400;
+    margin-top: 2rem;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--pico-muted-border-color);
+}
+
+.bwe-queue .muted {
+    color: var(--pico-muted-color);
+    font-size: 0.9rem;
+}
+
+.bwe-queue-item {
+    font-size: 0.85rem;
+    margin-bottom: 0.25rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+
+.btn-bwe-post {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.1rem 0.5rem;
+    border-radius: 4px;
+    background: var(--pico-primary-background);
+    color: var(--pico-primary-inverse);
+    border: none;
+    cursor: pointer;
+    line-height: 1.4;
+    flex-shrink: 0;
+}
+
+.btn-bwe-post:hover {
+    opacity: 0.85;
+}
+
+/* ===== BWE posted sidebar ===== */
+.bwe-posted h2 {
+    font-size: 1.75rem;
+    font-weight: 400;
+    margin-top: 2rem;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--pico-muted-border-color);
+}
+
+.bwe-posted .muted {
+    color: var(--pico-muted-color);
+    font-size: 0.9rem;
+}
+
+.bwe-posted-item {
+    font-size: 0.85rem;
+    margin-bottom: 0.25rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+
+.bwe-posted-date {
+    color: var(--pico-muted-color);
+    font-size: 0.75rem;
+    flex-shrink: 0;
+}
+
+/* ===== Results page ===== */
+h2 {
+    font-family: var(--font-display);
+    font-weight: 400;
+}
+
+article header strong {
+    font-family: var(--font-body);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Bob on Social{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script>
+        // Apply saved theme immediately to avoid flash
+        (function() {
+            var saved = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', saved);
+        })();
+    </script>
+</head>
+<body>
+    <main class="container">
+        <header class="site-header">
+            <h1>Bob on Social</h1>
+            <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode">
+                <span class="theme-icon" id="theme-icon"></span>
+            </button>
+        </header>
+        {% block content %}{% endblock %}
+    </main>
+    <script>
+        (function() {
+            var toggle = document.getElementById('theme-toggle');
+            var icon = document.getElementById('theme-icon');
+            function getTheme() {
+                return document.documentElement.getAttribute('data-theme') || 'light';
+            }
+            function setIcon() {
+                icon.textContent = getTheme() === 'dark' ? '\u2600' : '\u263E';
+            }
+            setIcon();
+            toggle.addEventListener('click', function() {
+                var next = getTheme() === 'light' ? 'dark' : 'light';
+                document.documentElement.setAttribute('data-theme', next);
+                localStorage.setItem('theme', next);
+                setIcon();
+            });
+        })();
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>
