@@ -15,7 +15,9 @@
       "WebFetch(domain:medium.com)",
       "WebFetch(domain:gist.github.com)",
       "WebFetch(domain:pypi.org)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   }
 }
