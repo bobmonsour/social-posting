@@ -12,6 +12,7 @@ from platforms import get_platform
 from platforms.base import LinkCard, MediaAttachment
 from services.media import process_uploads, cleanup_uploads, compress_for_bluesky, get_mime_type
 from services.link_card import fetch_og_metadata
+from services.social_links import extract_social_links
 from services.bwe_list import get_bwe_lists, mark_bwe_posted
 
 app = Flask(__name__)
@@ -502,6 +503,16 @@ def link_preview():
         "description": card.description,
         "image_url": card.image_url,
     })
+
+
+@app.route("/social-links", methods=["POST"])
+def social_links():
+    data = request.get_json()
+    url = data.get("url", "").strip() if data else ""
+    if not url:
+        return jsonify({"error": "No URL"}), 400
+    links = extract_social_links(url)
+    return jsonify(links)
 
 
 if __name__ == "__main__":

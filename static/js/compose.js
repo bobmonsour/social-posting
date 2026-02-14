@@ -625,6 +625,31 @@ document.addEventListener("DOMContentLoaded", () => {
         updateMutualExclusivity();
     });
 
+    // --- Fetch social links and append @-mentions to per-platform textareas ---
+    async function fetchAndAppendSocialLinks(siteUrl) {
+        try {
+            const resp = await fetch("/social-links", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ url: siteUrl }),
+            });
+            if (!resp.ok) return;
+            const data = await resp.json();
+
+            for (const [platform, el] of [["mastodon", textMastodon], ["bluesky", textBluesky]]) {
+                const mention = data[platform];
+                if (!mention) continue;
+                // Only append if mention isn't already in the textarea
+                if (el.value.includes(mention)) continue;
+                // Append mention after existing content with a space
+                el.value = el.value.trimEnd() + " " + mention;
+            }
+            updateModeCharCounters();
+        } catch (err) {
+            console.error("Social links fetch failed:", err);
+        }
+    }
+
     // --- BWE Post buttons: populate form from sidebar ---
     document.querySelectorAll(".btn-bwe-post").forEach(btn => {
         btn.addEventListener("click", () => {
@@ -667,6 +692,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // Scroll to top of form
             form.scrollIntoView({ behavior: "smooth" });
+
+            // Fetch social links and append @-mentions (async, non-blocking)
+            fetchAndAppendSocialLinks(url);
         });
     });
 
@@ -675,5 +703,11 @@ document.addEventListener("DOMContentLoaded", () => {
     if (draftImages.length > 0) {
         renderImagePreviews();
         updateMutualExclusivity();
+    }
+
+    // Fetch social links on page load for Use/draft BWE entries
+    const bweSiteUrlField = document.getElementById("bwe-site-url");
+    if (bweSiteUrlField && bweSiteUrlField.value.trim() && activeMode === "11ty-bwe") {
+        fetchAndAppendSocialLinks(bweSiteUrlField.value.trim());
     }
 });
