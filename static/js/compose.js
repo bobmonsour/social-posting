@@ -710,4 +710,61 @@ document.addEventListener("DOMContentLoaded", () => {
     if (bweSiteUrlField && bweSiteUrlField.value.trim() && activeMode === "11ty-bwe") {
         fetchAndAppendSocialLinks(bweSiteUrlField.value.trim());
     }
+
+    // Create / Delete Blog Post buttons
+    const btnCreatePost = document.getElementById("btn-create-post");
+    const btnDeletePost = document.getElementById("btn-delete-post");
+
+    if (btnCreatePost) {
+        btnCreatePost.addEventListener("click", async () => {
+            const issueNumber = btnCreatePost.dataset.issue;
+            const today = new Date().toISOString().split("T")[0];
+            btnCreatePost.disabled = true;
+            btnCreatePost.textContent = "Creating...";
+            try {
+                const resp = await fetch("/create-blog-post", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ issue_number: issueNumber, date: today }),
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    btnCreatePost.hidden = true;
+                    btnCreatePost.textContent = "Create Post";
+                    btnCreatePost.disabled = false;
+                    if (btnDeletePost) btnDeletePost.hidden = false;
+                } else {
+                    btnCreatePost.textContent = data.error || "Error";
+                    setTimeout(() => { btnCreatePost.textContent = "Create Post"; btnCreatePost.disabled = false; }, 3000);
+                }
+            } catch {
+                btnCreatePost.textContent = "Error";
+                setTimeout(() => { btnCreatePost.textContent = "Create Post"; btnCreatePost.disabled = false; }, 3000);
+            }
+        });
+    }
+
+    if (btnDeletePost) {
+        btnDeletePost.addEventListener("click", async () => {
+            const issueNumber = btnDeletePost.dataset.issue;
+            btnDeletePost.disabled = true;
+            try {
+                const resp = await fetch("/delete-blog-post", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ issue_number: issueNumber }),
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    btnDeletePost.hidden = true;
+                    btnDeletePost.disabled = false;
+                    if (btnCreatePost) btnCreatePost.hidden = false;
+                } else {
+                    btnDeletePost.disabled = false;
+                }
+            } catch {
+                btnDeletePost.disabled = false;
+            }
+        });
+    }
 });

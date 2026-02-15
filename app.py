@@ -15,9 +15,20 @@ from services.link_card import fetch_og_metadata
 from services.social_links import extract_social_links
 from services.bwe_list import get_bwe_lists, mark_bwe_posted, delete_bwe_posted
 from services.issue_counts import get_latest_issue_counts
+from services.blog_post import create_blog_post, blog_post_exists, delete_blog_post
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16MB upload limit
+
+
+@app.template_filter("friendly_time")
+def friendly_time(iso_timestamp):
+    """Convert ISO timestamp to 'Feb 14, 2026 15:43' format."""
+    try:
+        dt = datetime.fromisoformat(iso_timestamp)
+        return dt.strftime("%b %-d, %Y %H:%M")
+    except (ValueError, TypeError):
+        return iso_timestamp[:16].replace("T", " ") if iso_timestamp else ""
 
 
 @app.context_processor
@@ -90,6 +101,8 @@ def compose():
     bwe_to_post, bwe_posted = get_bwe_lists()
     recent = load_recent_posts()
     _annotate_bwe_with_drafts(bwe_to_post, recent)
+    issue_counts = get_latest_issue_counts()
+    post_exists = blog_post_exists(issue_counts["issue_number"]) if issue_counts else False
     return render_template(
         "compose.html",
         mastodon_available=config.mastodon_configured(),
@@ -98,7 +111,8 @@ def compose():
         modes=all_modes(),
         bwe_to_post=bwe_to_post,
         bwe_posted=bwe_posted,
-        issue_counts=get_latest_issue_counts(),
+        issue_counts=issue_counts,
+        blog_post_exists=post_exists,
     )
 
 
@@ -527,6 +541,27 @@ def social_links():
         return jsonify({"error": "No URL"}), 400
     links = extract_social_links(url)
     return jsonify(links)
+
+
+@app.route("/create-blog-post", methods=["POST"])
+def create_blog_post_route():
+    data = request.get_json()
+    issue_number = data.get("issue_number") if data else None
+    publication_date = data.get("date") if data else None
+    if not issue_number:
+        return jsonify({"success": False, "error": "No issue number"}), 400
+    result = create_blog_post(issue_number, publication_date)
+    return jsonify(result)
+
+
+@app.route("/delete-blog-post", methods=["POST"])
+def delete_blog_post_route():
+    data = request.get_json()
+    issue_number = data.get("issue_number") if data else None
+    if not issue_number:
+        return jsonify({"success": False, "error": "No issue number"}), 400
+    result = delete_blog_post(issue_number)
+    return jsonify(result)
 
 
 @app.route("/bwe-posted/delete", methods=["POST"])

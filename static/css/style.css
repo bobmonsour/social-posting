@@ -687,12 +687,46 @@ label:has(#cb-bluesky) {
 }
 
 /* ===== Latest issue counts ===== */
+.latest-issue-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+}
+
 .latest-issue h2 {
     font-size: 1.75rem;
     font-weight: 400;
     margin-bottom: 0.5rem;
     padding-bottom: 0.5rem;
     border-bottom: 2px solid var(--pico-muted-border-color);
+    flex: 1;
+}
+
+.btn-create-post {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.1rem 0.5rem;
+    border-radius: 4px;
+    background: var(--pico-primary-background);
+    color: var(--pico-primary-inverse);
+    border: none;
+    cursor: pointer;
+    line-height: 1.4;
+    flex-shrink: 0;
+    width: auto;
+    margin: 0;
+    margin-left: 0.75rem;
+}
+
+.btn-create-post:hover {
+    opacity: 0.85;
+}
+
+.btn-create-post:disabled {
+    opacity: 0.6;
+    cursor: default;
 }
 
 .issue-counts {
