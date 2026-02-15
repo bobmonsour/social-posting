@@ -15,7 +15,7 @@ from services.link_card import fetch_og_metadata
 from services.social_links import extract_social_links
 from services.bwe_list import get_bwe_lists, mark_bwe_posted, delete_bwe_posted
 from services.issue_counts import get_latest_issue_counts
-from services.blog_post import create_blog_post, blog_post_exists, delete_blog_post
+from services.blog_post import create_blog_post, blog_post_exists, delete_blog_post, edit_blog_post
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16MB upload limit
@@ -561,6 +561,16 @@ def delete_blog_post_route():
     if not issue_number:
         return jsonify({"success": False, "error": "No issue number"}), 400
     result = delete_blog_post(issue_number)
+    return jsonify(result)
+
+
+@app.route("/edit-blog-post", methods=["POST"])
+def edit_blog_post_route():
+    data = request.get_json()
+    issue_number = data.get("issue_number") if data else None
+    if not issue_number:
+        return jsonify({"success": False, "error": "No issue number"}), 400
+    result = edit_blog_post(issue_number)
     return jsonify(result)
 
 

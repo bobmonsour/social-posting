@@ -594,6 +594,25 @@ label:has(#cb-bluesky) {
     opacity: 0.85;
 }
 
+.btn-edit-post {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.1rem 0.5rem;
+    border-radius: 4px;
+    background: var(--pico-primary-background);
+    color: var(--pico-primary-inverse);
+    border: none;
+    cursor: pointer;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.btn-edit-post:hover {
+    opacity: 0.85;
+}
+
 /* ===== BWE queue sidebar ===== */
 .bwe-queue h2 {
     font-size: 1.75rem;
@@ -691,14 +710,14 @@ label:has(#cb-bluesky) {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--pico-muted-border-color);
 }
 
 .latest-issue h2 {
     font-size: 1.75rem;
     font-weight: 400;
     margin-bottom: 0.5rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 2px solid var(--pico-muted-border-color);
     flex: 1;
 }
 

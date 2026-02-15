@@ -76,6 +76,21 @@ def blog_post_exists(issue_number):
     return os.path.exists(file_path)
 
 
+def edit_blog_post(issue_number):
+    """Open the blog post file in VS Code."""
+    padded = str(int(issue_number)).zfill(2)
+    file_name = f"11ty-bundle-{padded}.md"
+    year = str(date.today().year)
+    file_path = os.path.join(_BLOG_BASE_PATH, year, file_name)
+    if os.path.exists(file_path):
+        try:
+            subprocess.Popen(["code", file_path])
+            return {"success": True}
+        except OSError:
+            return {"success": False, "error": "Could not open VS Code"}
+    return {"success": False, "error": f"File not found: {file_name}"}
+
+
 def delete_blog_post(issue_number):
     """Delete the blog post file for the given issue number."""
     padded = str(int(issue_number)).zfill(2)

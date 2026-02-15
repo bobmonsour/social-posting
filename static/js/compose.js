@@ -711,9 +711,10 @@ document.addEventListener("DOMContentLoaded", () => {
         fetchAndAppendSocialLinks(bweSiteUrlField.value.trim());
     }
 
-    // Create / Delete Blog Post buttons
+    // Create / Delete / Edit Blog Post buttons
     const btnCreatePost = document.getElementById("btn-create-post");
     const btnDeletePost = document.getElementById("btn-delete-post");
+    const btnEditPost = document.getElementById("btn-edit-post");
 
     if (btnCreatePost) {
         btnCreatePost.addEventListener("click", async () => {
@@ -733,6 +734,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     btnCreatePost.textContent = "Create Post";
                     btnCreatePost.disabled = false;
                     if (btnDeletePost) btnDeletePost.hidden = false;
+                    if (btnEditPost) btnEditPost.hidden = false;
                 } else {
                     btnCreatePost.textContent = data.error || "Error";
                     setTimeout(() => { btnCreatePost.textContent = "Create Post"; btnCreatePost.disabled = false; }, 3000);
@@ -747,6 +749,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (btnDeletePost) {
         btnDeletePost.addEventListener("click", async () => {
             const issueNumber = btnDeletePost.dataset.issue;
+            const padded = String(issueNumber).padStart(2, "0");
+            if (!confirm(`Are you sure you want to delete 11ty-bundle-${padded}.md file?`)) return;
             btnDeletePost.disabled = true;
             try {
                 const resp = await fetch("/delete-blog-post", {
@@ -758,6 +762,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (data.success) {
                     btnDeletePost.hidden = true;
                     btnDeletePost.disabled = false;
+                    if (btnEditPost) btnEditPost.hidden = true;
                     if (btnCreatePost) btnCreatePost.hidden = false;
                 } else {
                     btnDeletePost.disabled = false;
@@ -765,6 +770,19 @@ document.addEventListener("DOMContentLoaded", () => {
             } catch {
                 btnDeletePost.disabled = false;
             }
+        });
+    }
+
+    if (btnEditPost) {
+        btnEditPost.addEventListener("click", async () => {
+            const issueNumber = btnEditPost.dataset.issue;
+            try {
+                await fetch("/edit-blog-post", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ issue_number: issueNumber }),
+                });
+            } catch { /* ignore */ }
         });
     }
 });

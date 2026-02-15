@@ -170,6 +170,9 @@
             <button type="button" class="btn-del-draft" id="btn-delete-post"
                     data-issue="{{ issue_counts.issue_number }}"
                     {% if not blog_post_exists %}hidden{% endif %}>Del</button>
+            <button type="button" class="btn-edit-post" id="btn-edit-post"
+                    data-issue="{{ issue_counts.issue_number }}"
+                    {% if not blog_post_exists %}hidden{% endif %}>Edit Post</button>
         </span>
     </div>
     <div class="issue-counts">
@@ -256,7 +259,7 @@
         </div>
         {% endfor %}
     {% else %}
-        <p class="muted"><em>No sites posted yet</em></p>
+        <p class="muted"><em>No recent sites posted</em></p>
     {% endif %}
 </aside>
 </div>
