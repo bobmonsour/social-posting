@@ -159,6 +159,17 @@
 <script id="modes-config" type="application/json">{{ modes | tojson }}</script>
 
 <div class="sidebar">
+{% if issue_counts %}
+<aside class="latest-issue">
+    <h2>Latest Issue: <span>{{ issue_counts.issue_number }}</span></h2>
+    <div class="issue-counts">
+        <span>Blog Posts: <span class="issue-count-num">{{ issue_counts.blog_posts }}</span></span>
+        <span>Sites: <span class="issue-count-num">{{ issue_counts.sites }}</span></span>
+        <span>Releases: <span class="issue-count-num">{{ issue_counts.releases }}</span></span>
+        <span>Starters: <span class="issue-count-num">{{ issue_counts.starters }}</span></span>
+    </div>
+</aside>
+{% endif %}
 <aside class="recent-posts">
     <h2>Recent Posts</h2>
     {% if recent_posts %}
@@ -221,11 +232,18 @@
 <aside class="bwe-posted">
     <h2>Sites Posted</h2>
     {% if bwe_posted %}
-        {% for site in bwe_posted %}
-        <p class="bwe-posted-item">
+        {% for site in bwe_posted[:10] %}
+        <div class="bwe-posted-item">
             <a href="{{ site.url }}" target="_blank" rel="noopener">{{ site.name }}</a>
-            <span class="bwe-posted-date">{{ site.date_display }}</span>
-        </p>
+            <div class="bwe-posted-item-actions">
+                <form action="/bwe-posted/delete" method="post" class="inline-form">
+                    <input type="hidden" name="name" value="{{ site.name }}">
+                    <input type="hidden" name="url" value="{{ site.url }}">
+                    <button type="submit" class="btn-del-draft">Del</button>
+                </form>
+                <span class="bwe-posted-date">{{ site.date_display }}</span>
+            </div>
+        </div>
         {% endfor %}
     {% else %}
         <p class="muted"><em>No sites posted yet</em></p>

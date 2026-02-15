@@ -13,10 +13,23 @@ from platforms.base import LinkCard, MediaAttachment
 from services.media import process_uploads, cleanup_uploads, compress_for_bluesky, get_mime_type
 from services.link_card import fetch_og_metadata
 from services.social_links import extract_social_links
-from services.bwe_list import get_bwe_lists, mark_bwe_posted
+from services.bwe_list import get_bwe_lists, mark_bwe_posted, delete_bwe_posted
+from services.issue_counts import get_latest_issue_counts
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16MB upload limit
+
+
+@app.context_processor
+def cache_busting():
+    """Provide CSS cache-busting timestamp to templates."""
+    css_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            "static", "css", "style.css")
+    try:
+        mtime = int(os.path.getmtime(css_path))
+    except OSError:
+        mtime = 0
+    return {"css_version": mtime}
 
 _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 HISTORY_FILE = os.path.join(_BASE_DIR, "posts", "history.json")
@@ -85,6 +98,7 @@ def compose():
         modes=all_modes(),
         bwe_to_post=bwe_to_post,
         bwe_posted=bwe_posted,
+        issue_counts=get_latest_issue_counts(),
     )
 
 
@@ -513,6 +527,15 @@ def social_links():
         return jsonify({"error": "No URL"}), 400
     links = extract_social_links(url)
     return jsonify(links)
+
+
+@app.route("/bwe-posted/delete", methods=["POST"])
+def delete_bwe_posted_entry():
+    name = request.form.get("name", "").strip()
+    url = request.form.get("url", "").strip()
+    if name and url:
+        delete_bwe_posted(name, url)
+    return redirect(url_for("compose"))
 
 
 if __name__ == "__main__":
