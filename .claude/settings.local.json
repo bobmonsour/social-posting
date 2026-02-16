@@ -19,7 +19,13 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(brew install:*)",
+      "Bash(/usr/local/bin/python3.12:*)",
+      "Bash(pip install:*)",
+      "Bash(curl:*)",
+      "Bash(ls:*)",
+      "Bash(python3:*)"
     ]
   }
 }
