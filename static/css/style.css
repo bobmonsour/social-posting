@@ -760,7 +760,6 @@ label:has(#cb-bluesky) {
 
 .issue-count-num {
     color: var(--pico-primary);
-    font-family: var(--font-display);
     font-size: 1.35rem;
     font-weight: 400;
 }

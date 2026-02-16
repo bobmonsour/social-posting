@@ -176,10 +176,10 @@
         </span>
     </div>
     <div class="issue-counts">
-        <span>Blog Posts: <span class="issue-count-num">{{ issue_counts.blog_posts }}</span></span>
-        <span>Sites: <span class="issue-count-num">{{ issue_counts.sites }}</span></span>
-        <span>Releases: <span class="issue-count-num">{{ issue_counts.releases }}</span></span>
-        <span>Starters: <span class="issue-count-num">{{ issue_counts.starters }}</span></span>
+        <span>Blog Posts:&nbsp; <span class="issue-count-num">{{ issue_counts.blog_posts }}</span></span>
+        <span>Sites:&nbsp; <span class="issue-count-num">{{ issue_counts.sites }}</span></span>
+        <span>Releases:&nbsp; <span class="issue-count-num">{{ issue_counts.releases }}</span></span>
+        <span>Starters:&nbsp; <span class="issue-count-num">{{ issue_counts.starters }}</span></span>
     </div>
 </aside>
 {% endif %}
@@ -220,7 +220,7 @@
         </div>
         {% endfor %}
     {% else %}
-        <p class="muted">No posts yet.</p>
+        <p class="muted">None</p>
     {% endif %}
 </aside>
 
@@ -238,7 +238,7 @@
         </p>
         {% endfor %}
     {% else %}
-        <p class="muted"><em>No sites to post</em></p>
+        <p class="muted">None</p>
     {% endif %}
 </aside>
 
@@ -259,7 +259,7 @@
         </div>
         {% endfor %}
     {% else %}
-        <p class="muted"><em>No recent sites posted</em></p>
+        <p class="muted">None</p>
     {% endif %}
 </aside>
 </div>
