@@ -1,6 +1,6 @@
-# Social Posting
+# Socially Bundled
 
-Personal social media cross-poster. Single Flask app that posts to Mastodon and Bluesky from one form.
+Personal social media cross-poster and bundledb editor. Single Flask app that posts to Mastodon and Bluesky from one form and manages the 11ty Bundle database.
 
 ## Quick Start
 
