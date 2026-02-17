@@ -82,7 +82,7 @@ Include Fuse.js via CDN for fuzzy search.
 | Date | Date | Date | description |
 | formattedDate | formattedDate | formattedDate | screenshotpath |
 | description | favicon | | |
-| Author | rssLink | | |
+| Author | | | |
 | slugifiedAuthor | | | |
 | AuthorSite | | | |
 | AuthorSiteDescription | | | |

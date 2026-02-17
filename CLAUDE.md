@@ -88,6 +88,19 @@ When a post fails on any platform:
 - The sidebar shows a red **FAILED** badge with **Retry** (reloads into compose form) and **Del** buttons.
 - Legacy failed posts (pre-`is_failed` flag) are detected as non-draft entries with no successful platforms.
 
+## Bundledb Editor
+
+The `/editor` page provides search and edit for `bundledb.json` items. Type is selected via radio buttons, then fuzzy search (Fuse.js) over type-specific keys. Selecting an item opens a form with fields ordered per `FIELD_ORDER` in `editor.js`. Saves go to `POST /editor/save`, which creates a backup on first save per session.
+
+**Author-field propagation** (`editor.js` + `app.py`):
+- When saving a blog post edit, `buildPropagation()` compares original item (snapshotted as `originalItem` when the form opens) against edited values.
+- Checks `PROPAGATABLE_FIELDS` (AuthorSiteDescription, rssLink, favicon) and `PROPAGATABLE_SOCIAL` (mastodon, bluesky, youtube, github, linkedin) for empty→non-empty transitions.
+- If any newly-filled fields exist, scans `allData` for other blog posts by the same `Author` that also lack those fields.
+- Shows a `confirm()` dialog with field names and affected post count.
+- If confirmed, sends `propagate: [{index, field, value}, ...]` array in the save payload.
+- Backend iterates `propagate` entries, handles both top-level fields and `socialLinks.*` sub-fields, writes once.
+- Response includes `propagated` count; client syncs changes into local `allData` and shows status message.
+
 ## Key Conventions
 
 - All paths in `app.py` are `__file__`-relative via `_BASE_DIR` (not CWD-relative).

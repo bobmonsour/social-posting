@@ -28,6 +28,12 @@ A markdown file (`built-with-eleventy.md`) tracks sites built with Eleventy. The
 
 When posting about a "Built with Eleventy" site, the app automatically fetches the site's HTML to discover the owner's Mastodon and Bluesky profiles. Discovered @-mentions are appended to the per-platform textareas. Detection strategies include JSON-LD `sameAs` arrays, `rel="me"` links, and URL pattern matching. The app checks the homepage, `/about/`, and `/en/` pages. Social links are fetched both when clicking **Post** on a queued site and when loading a saved BWE draft via **Use**.
 
+## Bundledb Editor
+
+The app includes an editor page (`/editor`) for the bundledb.json database that powers 11tybundle.dev. Search by item type (blog post, site, release, starter) with fuzzy matching, then edit any item's properties in a form.
+
+**Author-field propagation**: When editing a blog post, if you fill in a previously-empty author-level field (AuthorSiteDescription, rssLink, favicon, or any socialLinks sub-field), the editor checks whether other blog posts by the same author are also missing that field. If so, it prompts you to update them all at once in a single save.
+
 ## Setup
 
 1. Clone the repo and create a virtual environment:

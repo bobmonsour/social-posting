@@ -35,3 +35,13 @@ The search should be a fuzzy search, not requiring an exact match.
 ### Edit
 
 An item in the search results should be selectable and when selected, the editor page should display a form with input fields corresponding to the properties of the selected item. The input fields should be pre-populated with the current values of the item's properties. I should be able to edit the values in the input fields and save the changes back to the bundledb.json file, or to cancel the search.
+
+### An enhancement to the edit feature to fill in missing data
+
+For blog post entries, in the case where any one of the following properties is missing and it gets added when editing a blog post, and there are other blog posts by the same author, the editor should prompt the user, asking if the other blog posts by the same author should be updated with the same value for that property.
+
+These properties are:
+- authorSiteDescription
+- rssLink
+- favicon
+- any one of the various socialLinks

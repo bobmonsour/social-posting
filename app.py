@@ -625,10 +625,29 @@ def editor_save():
         shutil.copy2(BUNDLEDB_PATH, backup_path)
 
     data[index] = item
+
+    # Handle author-level field propagation
+    propagate = payload.get("propagate", [])
+    propagated = 0
+    for entry in propagate:
+        p_index = entry.get("index")
+        p_field = entry.get("field", "")
+        p_value = entry.get("value", "")
+        if p_index is None or p_index < 0 or p_index >= len(data):
+            continue
+        if p_field.startswith("socialLinks."):
+            subkey = p_field.split(".", 1)[1]
+            if "socialLinks" not in data[p_index]:
+                data[p_index]["socialLinks"] = {}
+            data[p_index]["socialLinks"][subkey] = p_value
+        else:
+            data[p_index][p_field] = p_value
+        propagated += 1
+
     with open(BUNDLEDB_PATH, "w") as f:
         json.dump(data, f, indent=2)
 
-    return jsonify({"success": True, "backup_created": True})
+    return jsonify({"success": True, "backup_created": True, "propagated": propagated})
 
 
 if __name__ == "__main__":

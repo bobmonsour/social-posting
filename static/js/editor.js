@@ -6,6 +6,11 @@
   let currentType = null;
   let currentIndex = null; // index into allData
   let backupCreated = false;
+  let originalItem = null; // snapshot before editing
+
+  // Fields eligible for author-level propagation (empty→non-empty triggers prompt)
+  const PROPAGATABLE_FIELDS = ["AuthorSiteDescription", "rssLink", "favicon"];
+  const PROPAGATABLE_SOCIAL = ["mastodon", "bluesky", "youtube", "github", "linkedin"];
 
   // Field order per type
   const FIELD_ORDER = {
@@ -178,6 +183,7 @@
 
   function showEditForm(item, index) {
     currentIndex = index;
+    originalItem = JSON.parse(JSON.stringify(item));
     const fields = FIELD_ORDER[currentType] || Object.keys(item);
 
     editFormTitle.textContent = "Edit: " + (item.Title || "(no title)");
@@ -293,30 +299,125 @@
     return item;
   }
 
+  function buildPropagation(item) {
+    // Only for blog posts with an author and a stored original
+    if (currentType !== "blog post" || !originalItem || !item.Author) return [];
+
+    // Find fields that went from empty to non-empty
+    const newlyFilled = [];
+    PROPAGATABLE_FIELDS.forEach((f) => {
+      const oldVal = (originalItem[f] || "").trim();
+      const newVal = (item[f] || "").trim();
+      if (!oldVal && newVal) newlyFilled.push({ field: f, value: newVal });
+    });
+    const origSocial = originalItem.socialLinks || {};
+    const newSocial = item.socialLinks || {};
+    PROPAGATABLE_SOCIAL.forEach((key) => {
+      const oldVal = (origSocial[key] || "").trim();
+      const newVal = (newSocial[key] || "").trim();
+      if (!oldVal && newVal) newlyFilled.push({ field: "socialLinks." + key, value: newVal });
+    });
+
+    if (newlyFilled.length === 0) return [];
+
+    // Find other blog posts by same author that are missing these fields
+    const author = item.Author;
+    const propagate = [];
+    for (let i = 0; i < allData.length; i++) {
+      if (i === currentIndex) continue;
+      if (allData[i].Type !== "blog post" || allData[i].Author !== author) continue;
+      newlyFilled.forEach(({ field, value }) => {
+        let existing;
+        if (field.startsWith("socialLinks.")) {
+          const sub = field.split(".")[1];
+          existing = ((allData[i].socialLinks || {})[sub] || "").trim();
+        } else {
+          existing = (allData[i][field] || "").trim();
+        }
+        if (!existing) {
+          propagate.push({ index: i, field, value });
+        }
+      });
+    }
+
+    return propagate;
+  }
+
+  function describeNewlyFilled(item) {
+    const labels = [];
+    PROPAGATABLE_FIELDS.forEach((f) => {
+      const oldVal = (originalItem[f] || "").trim();
+      const newVal = (item[f] || "").trim();
+      if (!oldVal && newVal) labels.push(f);
+    });
+    const origSocial = originalItem.socialLinks || {};
+    const newSocial = item.socialLinks || {};
+    PROPAGATABLE_SOCIAL.forEach((key) => {
+      const oldVal = (origSocial[key] || "").trim();
+      const newVal = (newSocial[key] || "").trim();
+      if (!oldVal && newVal) labels.push("socialLinks." + key);
+    });
+    return labels;
+  }
+
   function saveItem() {
     if (currentIndex === null) return;
     const item = collectFormValues();
 
+    // Check for author-level propagation
+    const propagate = buildPropagation(item);
+    let doPropagate = false;
+    if (propagate.length > 0) {
+      const fields = describeNewlyFilled(item);
+      const otherCount = new Set(propagate.map((p) => p.index)).size;
+      const msg =
+        "You added " + fields.join(", ") + ".\n" +
+        otherCount + " other post" + (otherCount === 1 ? "" : "s") +
+        " by " + item.Author + " " +
+        (otherCount === 1 ? "is" : "are") +
+        " missing " + (fields.length === 1 ? "this field" : "some of these fields") +
+        ". Update them too?";
+      doPropagate = confirm(msg);
+    }
+
     btnSave.disabled = true;
     btnSave.textContent = "Saving...";
+
+    const payload = {
+      index: currentIndex,
+      item: item,
+      backup_created: backupCreated
+    };
+    if (doPropagate) payload.propagate = propagate;
 
     fetch("/editor/save", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        index: currentIndex,
-        item: item,
-        backup_created: backupCreated
-      })
+      body: JSON.stringify(payload)
     })
       .then((r) => r.json())
       .then((data) => {
         if (data.success) {
           backupCreated = data.backup_created;
           allData[currentIndex] = item;
+          // Sync propagated changes into local allData
+          if (doPropagate && propagate.length > 0) {
+            propagate.forEach(({ index: idx, field, value }) => {
+              if (field.startsWith("socialLinks.")) {
+                const sub = field.split(".")[1];
+                if (!allData[idx].socialLinks) allData[idx].socialLinks = {};
+                allData[idx].socialLinks[sub] = value;
+              } else {
+                allData[idx][field] = value;
+              }
+            });
+          }
           hideEditForm();
           initFuse();
-          showStatus("Saved successfully." + (!backupCreated ? "" : ""), false);
+          const propCount = data.propagated || 0;
+          let msg = "Saved successfully.";
+          if (propCount > 0) msg += " Updated " + propCount + " other post" + (propCount === 1 ? "" : "s") + ".";
+          showStatus(msg, false);
           // Restore search/recent view
           if (searchInput.value.trim()) {
             runSearch(searchInput.value.trim());
