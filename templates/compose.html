@@ -1,9 +1,5 @@
 {% extends "base.html" %}
 
-{% block header_actions %}
-<a href="/editor" class="btn-nav">Edit bundledb</a>
-{% endblock %}
-
 {% block content %}
 <div class="page-grid">
 
@@ -168,7 +164,8 @@
     <div class="latest-issue-header">
         <h2>Next Issue: <span>{{ issue_counts.issue_number }}</span></h2>
         <span class="latest-issue-actions">
-            <button type="button" class="btn-create-post" id="btn-create-post"
+            <a href="/editor" class="btn-nav">Edit bundledb</a>
+            <button type="button" class="btn-nav btn-create-post" id="btn-create-post"
                     data-issue="{{ issue_counts.issue_number }}"
                     {% if blog_post_exists %}hidden{% endif %}>Create Post</button>
             <button type="button" class="btn-del-draft" id="btn-delete-post"

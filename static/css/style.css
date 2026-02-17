@@ -722,17 +722,7 @@ label:has(#cb-bluesky) {
 }
 
 .btn-create-post {
-    font-size: 0.7rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    padding: 0.1rem 0.5rem;
-    border-radius: 4px;
-    background: var(--pico-primary-background);
-    color: var(--pico-primary-inverse);
     border: none;
-    cursor: pointer;
-    line-height: 1.4;
     flex-shrink: 0;
     width: auto;
     margin: 0;
@@ -797,6 +787,8 @@ article header strong {
     text-decoration: none;
     cursor: pointer;
     white-space: nowrap;
+    line-height: 1;
+    display: inline-block;
 }
 
 .btn-nav:hover {
