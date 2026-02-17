@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Editor — bundledb.json{% endblock %}
+
+{% block header_actions %}
+<a href="/" class="btn-nav">Compose Social Post</a>
+{% endblock %}
+
+{% block content %}
+<div class="editor-container">
+
+    <!-- Type selector -->
+    <fieldset id="type-selector">
+        <legend>Type</legend>
+        <label><input type="radio" name="item-type" value="blog post"> Blog Post</label>
+        <label><input type="radio" name="item-type" value="site"> Site</label>
+        <label><input type="radio" name="item-type" value="release"> Release</label>
+        <label><input type="radio" name="item-type" value="starter"> Starter</label>
+    </fieldset>
+
+    <!-- Search -->
+    <fieldset id="search-section" style="display:none;">
+        <legend>Search</legend>
+        <input type="text" id="search-input" placeholder="Search by title...">
+    </fieldset>
+
+    <!-- Recent items -->
+    <div id="recent-items" class="item-list" style="display:none;">
+        <h3 class="list-heading">Recent</h3>
+        <div id="recent-items-list"></div>
+    </div>
+
+    <!-- Search results -->
+    <div id="search-results" class="item-list" style="display:none;">
+        <h3 class="list-heading">Results</h3>
+        <div id="search-results-list"></div>
+    </div>
+
+    <!-- Edit form -->
+    <div id="edit-form-container" style="display:none;">
+        <fieldset>
+            <legend id="edit-form-title">Edit Item</legend>
+            <div id="edit-form-fields"></div>
+            <div class="edit-actions">
+                <button type="button" id="btn-save" class="btn-action">Save</button>
+                <button type="button" id="btn-cancel" class="btn-action btn-secondary">Cancel</button>
+            </div>
+        </fieldset>
+    </div>
+
+    <!-- Status message -->
+    <div id="status-message" style="display:none;"></div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0"></script>
+<script src="{{ url_for('static', filename='js/editor.js') }}"></script>
+{% endblock %}

@@ -21,9 +21,12 @@
     <main class="container">
         <header class="site-header">
             <h1>Bob on Social</h1>
-            <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode">
-                <span class="theme-icon" id="theme-icon"></span>
-            </button>
+            <div class="header-actions">
+                {% block header_actions %}{% endblock %}
+                <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode">
+                    <span class="theme-icon" id="theme-icon"></span>
+                </button>
+            </div>
         </header>
         {% block content %}{% endblock %}
     </main>

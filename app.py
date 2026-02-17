@@ -46,6 +46,9 @@ _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 HISTORY_FILE = os.path.join(_BASE_DIR, "posts", "history.json")
 DRAFT_IMAGES_DIR = os.path.join(_BASE_DIR, "posts", "draft_images")
 
+BUNDLEDB_PATH = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundledb/bundledb.json"
+BUNDLEDB_BACKUP_DIR = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundledb/bundledb-backups"
+
 
 def _read_history():
     if not os.path.exists(HISTORY_FILE):
@@ -581,6 +584,51 @@ def delete_bwe_posted_entry():
     if name and url:
         delete_bwe_posted(name, url)
     return redirect(url_for("compose"))
+
+
+@app.route("/editor")
+def editor():
+    return render_template("editor.html")
+
+
+@app.route("/editor/data")
+def editor_data():
+    with open(BUNDLEDB_PATH, "r") as f:
+        data = json.load(f)
+    return jsonify(data)
+
+
+@app.route("/editor/save", methods=["POST"])
+def editor_save():
+    payload = request.get_json()
+    if not payload:
+        return jsonify({"success": False, "error": "No data provided"}), 400
+
+    index = payload.get("index")
+    item = payload.get("item")
+    backup_created = payload.get("backup_created", False)
+
+    if index is None or item is None:
+        return jsonify({"success": False, "error": "Missing index or item"}), 400
+
+    with open(BUNDLEDB_PATH, "r") as f:
+        data = json.load(f)
+
+    if index < 0 or index >= len(data):
+        return jsonify({"success": False, "error": "Index out of range"}), 400
+
+    # Create backup if this is the first save in the session
+    if not backup_created:
+        os.makedirs(BUNDLEDB_BACKUP_DIR, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y-%m-%d--%H%M%S")
+        backup_path = os.path.join(BUNDLEDB_BACKUP_DIR, f"bundledb-{timestamp}.json")
+        shutil.copy2(BUNDLEDB_PATH, backup_path)
+
+    data[index] = item
+    with open(BUNDLEDB_PATH, "w") as f:
+        json.dump(data, f, indent=2)
+
+    return jsonify({"success": True, "backup_created": True})
 
 
 if __name__ == "__main__":

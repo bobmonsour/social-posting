@@ -776,3 +776,155 @@ article header strong {
     text-transform: uppercase;
     letter-spacing: 0.04em;
 }
+
+/* ===== Header actions ===== */
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.btn-nav {
+    font-family: var(--font-body);
+    font-weight: 700;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 0.3rem 0.8rem;
+    border-radius: 4px;
+    background: var(--pico-primary-background);
+    color: var(--pico-primary-inverse);
+    text-decoration: none;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.btn-nav:hover {
+    background: var(--pico-primary-hover-background);
+    color: var(--pico-primary-inverse);
+}
+
+/* ===== Editor page ===== */
+.editor-container {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+#type-selector label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-right: 1rem;
+    font-weight: 400;
+}
+
+#type-selector input[type="radio"] {
+    margin: 0;
+}
+
+#search-input {
+    margin-bottom: 0.75rem;
+}
+
+.list-heading {
+    font-family: var(--font-body);
+    font-weight: 700;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--pico-muted-color);
+    margin-bottom: 0.5rem;
+}
+
+.item-card {
+    border: 2px solid var(--pico-muted-border-color);
+    border-radius: var(--pico-border-radius);
+    padding: 0.6rem 0.75rem;
+    margin-bottom: 0.5rem;
+    background: var(--pico-card-background-color);
+    cursor: pointer;
+    transition: border-color 0.15s;
+}
+
+.item-card:hover {
+    border-color: var(--pico-primary);
+}
+
+.item-card-title {
+    font-weight: 600;
+    font-size: 0.95rem;
+    line-height: 1.3;
+}
+
+.item-card-subtitle {
+    font-size: 0.8rem;
+    color: var(--pico-muted-color);
+    margin-top: 0.15rem;
+}
+
+/* Edit form fields */
+.form-field {
+    margin-bottom: 0.75rem;
+}
+
+.form-field label {
+    display: block;
+    font-weight: 700;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--pico-muted-color);
+    margin-bottom: 0.2rem;
+}
+
+.form-field input,
+.form-field textarea {
+    width: 100%;
+    margin-bottom: 0;
+}
+
+.nested-fieldset {
+    border: 1px solid var(--pico-muted-border-color);
+    border-radius: var(--pico-border-radius);
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.nested-fieldset legend {
+    font-size: 0.7rem;
+}
+
+.edit-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 2px solid var(--pico-muted-border-color);
+}
+
+.edit-actions .btn-action {
+    width: auto;
+    padding: 0.4rem 1.2rem;
+    font-size: 0.85rem;
+    margin-bottom: 0;
+}
+
+.edit-actions .btn-secondary {
+    background: var(--pico-secondary);
+    border-color: var(--pico-secondary);
+}
+
+/* Status messages */
+.status-success {
+    color: #2e7d32;
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-top: 0.75rem;
+}
+
+.status-error {
+    color: #c62828;
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-top: 0.75rem;
+}
