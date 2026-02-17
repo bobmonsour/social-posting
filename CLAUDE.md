@@ -27,7 +27,10 @@ social-posting/
 ├── services/
 │   ├── media.py            # process_uploads, cleanup_uploads, compress_for_bluesky
 │   ├── link_card.py        # Open Graph metadata fetching
-│   └── social_links.py     # Extract Mastodon/Bluesky profiles from site HTML
+│   ├── social_links.py     # Extract Mastodon/Bluesky profiles from site HTML
+│   └── favicon.py          # Multi-strategy favicon fetching (existing/Google API/HTML extraction)
+├── scripts/
+│   └── capture-screenshot.js  # Puppeteer full-page screenshot capture
 ├── templates/              # Jinja2 (base.html, compose.html, result.html)
 ├── static/
 │   ├── css/style.css       # Pico CSS overrides, warm color scheme, light/dark
@@ -90,9 +93,45 @@ When a post fails on any platform:
 
 ## Bundledb Editor
 
-The `/editor` page provides search and edit for `bundledb.json` items. Type is selected via radio buttons, then fuzzy search (Fuse.js) over type-specific keys. Selecting an item opens a form with fields ordered per `FIELD_ORDER` in `editor.js`. Saves go to `POST /editor/save`, which creates a backup on first save per session.
+The `/editor` page provides search and edit for `bundledb.json` items, plus a create mode for adding new entries. Mode (Edit/Create) is selected via radio buttons at the top, then type is selected. In edit mode, fuzzy search (Fuse.js) over type-specific keys finds items. In create mode, selecting a type opens a blank form with auto-populated fields. Fields are ordered per `FIELD_ORDER` in `editor.js`. Saves go to `POST /editor/save`, which creates a backup on first save per session.
 
-**Author-field propagation** (`editor.js` + `app.py`):
+**Edit/Create modes** (`editor.js` + `editor.html`):
+- Mode radio buttons (Edit/Create) at top of editor. Edit mode is the default.
+- Create mode hides search/recent items and shows a blank form for the selected type.
+- New items are auto-populated with `Date` (ISO), `formattedDate` (human-readable), `Issue` (current max from data), and `Type`.
+- Create saves append to the end of the `bundledb.json` array (edit saves update in place).
+
+**Skip checkbox** (edit mode only):
+- A "Skip (exclude from site generation)" checkbox appears at the top of the edit form.
+- When checked, adds `Skip: true` to the saved item.
+
+**Author autocomplete** (blog post create):
+- Author field uses a `<datalist>` populated from all unique authors in the database.
+- Tab-completion auto-fills when there's exactly one fuzzy match.
+- Selecting an author auto-fills empty fields (AuthorSite, AuthorSiteDescription, favicon, rssLink, socialLinks) from the most recent post by that author.
+
+**Categories checkbox grid** (blog posts):
+- Categories rendered as a checkbox grid instead of a comma-separated text input.
+- Includes an "Add new category" input + button for dynamically adding categories.
+- Pre-checks categories that exist on the current item.
+
+**Favicon & screenshot fetching** (site creates):
+- A "Fetch Favicon & Screenshot" button appears after the Link field in site create forms.
+- Fires `POST /editor/favicon` and `POST /editor/screenshot` in parallel.
+- Favicon service (`services/favicon.py`): tries existing file → Google API (`s2/favicons`) → HTML extraction (prioritizing SVG, large PNG, apple-touch-icon). Non-SVG/ICO images resized to 64x64 PNG via Pillow. Saves to `dbtools/lib/favicons/` and copies to `_site/img/favicons/`.
+- Screenshot script (`scripts/capture-screenshot.js`): Puppeteer captures full-page JPEG at 1920x1080 with `networkidle0` + 3s delay. Saves to `dbtools/screenshots/` and `content/screenshots/`. Returns JSON with filename and path.
+- `POST /editor/screenshot` runs the script via `subprocess.run()` with 60s timeout.
+- `GET /editor/screenshot-preview/<filename>` serves captured screenshots for inline preview.
+
+**Site create side-effects**:
+- On save, site creates automatically call `add_bwe_to_post(title, link)` to append the site to the BWE "TO BE POSTED" list.
+- A new entry is prepended to `showcase-data.json` with title, description, link, date, formattedDate, favicon, and screenshotpath.
+
+**Custom field labels**:
+- `Link` shows as "GitHub repo link" for release/starter types.
+- `Demo` shows as "Link to demo site" for starter type.
+
+**Author-field propagation** (edit mode, `editor.js` + `app.py`):
 - When saving a blog post edit, `buildPropagation()` compares original item (snapshotted as `originalItem` when the form opens) against edited values.
 - Checks `PROPAGATABLE_FIELDS` (AuthorSiteDescription, rssLink, favicon) and `PROPAGATABLE_SOCIAL` (mastodon, bluesky, youtube, github, linkedin) for empty→non-empty transitions.
 - If any newly-filled fields exist, scans `allData` for other blog posts by the same `Author` that also lack those fields.
@@ -123,5 +162,6 @@ Environment variables in `.env` (see `.env.example`):
 ## Tech Stack
 
 - **Backend**: Flask, Mastodon.py, atproto, Pillow, BeautifulSoup4, python-dotenv
-- **Frontend**: Jinja2, Pico CSS (CDN), vanilla JS
+- **Frontend**: Jinja2, Pico CSS (CDN), vanilla JS, Fuse.js (CDN, editor search)
+- **Tooling**: Node.js + Puppeteer (screenshot capture)
 - **No database** — flat JSON file for history, filesystem for images
