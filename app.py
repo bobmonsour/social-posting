@@ -1,6 +1,7 @@
 import json
 import os
 import shutil
+import subprocess
 import uuid
 from datetime import datetime, timezone
 
@@ -13,7 +14,7 @@ from platforms.base import LinkCard, MediaAttachment
 from services.media import process_uploads, cleanup_uploads, compress_for_bluesky, get_mime_type
 from services.link_card import fetch_og_metadata
 from services.social_links import extract_social_links
-from services.bwe_list import get_bwe_lists, mark_bwe_posted, delete_bwe_posted
+from services.bwe_list import get_bwe_lists, mark_bwe_posted, delete_bwe_posted, add_bwe_to_post
 from services.issue_counts import get_latest_issue_counts
 from services.blog_post import create_blog_post, blog_post_exists, delete_blog_post, edit_blog_post
 
@@ -48,6 +49,10 @@ DRAFT_IMAGES_DIR = os.path.join(_BASE_DIR, "posts", "draft_images")
 
 BUNDLEDB_PATH = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundledb/bundledb.json"
 BUNDLEDB_BACKUP_DIR = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundledb/bundledb-backups"
+SHOWCASE_PATH = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundledb/showcase-data.json"
+DBTOOLS_DIR = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/dbtools"
+SCREENSHOT_DIR = os.path.join(DBTOOLS_DIR, "screenshots")
+SCREENSHOT_SCRIPT = os.path.join(_BASE_DIR, "scripts", "capture-screenshot.js")
 
 
 def _read_history():
@@ -604,18 +609,15 @@ def editor_save():
     if not payload:
         return jsonify({"success": False, "error": "No data provided"}), 400
 
-    index = payload.get("index")
     item = payload.get("item")
+    is_create = payload.get("create", False)
     backup_created = payload.get("backup_created", False)
 
-    if index is None or item is None:
-        return jsonify({"success": False, "error": "Missing index or item"}), 400
+    if item is None:
+        return jsonify({"success": False, "error": "Missing item"}), 400
 
     with open(BUNDLEDB_PATH, "r") as f:
         data = json.load(f)
-
-    if index < 0 or index >= len(data):
-        return jsonify({"success": False, "error": "Index out of range"}), 400
 
     # Create backup if this is the first save in the session
     if not backup_created:
@@ -624,30 +626,115 @@ def editor_save():
         backup_path = os.path.join(BUNDLEDB_BACKUP_DIR, f"bundledb-{timestamp}.json")
         shutil.copy2(BUNDLEDB_PATH, backup_path)
 
-    data[index] = item
+    result = {"success": True, "backup_created": True, "propagated": 0}
 
-    # Handle author-level field propagation
-    propagate = payload.get("propagate", [])
-    propagated = 0
-    for entry in propagate:
-        p_index = entry.get("index")
-        p_field = entry.get("field", "")
-        p_value = entry.get("value", "")
-        if p_index is None or p_index < 0 or p_index >= len(data):
-            continue
-        if p_field.startswith("socialLinks."):
-            subkey = p_field.split(".", 1)[1]
-            if "socialLinks" not in data[p_index]:
-                data[p_index]["socialLinks"] = {}
-            data[p_index]["socialLinks"][subkey] = p_value
-        else:
-            data[p_index][p_field] = p_value
-        propagated += 1
+    if is_create:
+        data.append(item)
+        result["new_index"] = len(data) - 1
+
+        # For site type: add to BWE list and showcase-data.json
+        if item.get("Type") == "site":
+            title = item.get("Title", "")
+            link = item.get("Link", "")
+            if title and link:
+                try:
+                    add_bwe_to_post(title, link)
+                    result["bwe_added"] = True
+                except Exception:
+                    pass
+
+                try:
+                    showcase_entry = {
+                        "title": title,
+                        "description": item.get("description", ""),
+                        "link": link,
+                        "date": item.get("Date", ""),
+                        "formattedDate": item.get("formattedDate", ""),
+                        "favicon": item.get("favicon", ""),
+                        "screenshotpath": item.get("screenshotpath", ""),
+                    }
+                    with open(SHOWCASE_PATH, "r") as f:
+                        showcase_data = json.load(f)
+                    showcase_data.insert(0, showcase_entry)
+                    with open(SHOWCASE_PATH, "w") as f:
+                        json.dump(showcase_data, f, indent=2)
+                    result["showcase_added"] = True
+                except Exception:
+                    pass
+    else:
+        index = payload.get("index")
+        if index is None:
+            return jsonify({"success": False, "error": "Missing index"}), 400
+        if index < 0 or index >= len(data):
+            return jsonify({"success": False, "error": "Index out of range"}), 400
+
+        data[index] = item
+
+        # Handle author-level field propagation
+        propagate = payload.get("propagate", [])
+        propagated = 0
+        for entry in propagate:
+            p_index = entry.get("index")
+            p_field = entry.get("field", "")
+            p_value = entry.get("value", "")
+            if p_index is None or p_index < 0 or p_index >= len(data):
+                continue
+            if p_field.startswith("socialLinks."):
+                subkey = p_field.split(".", 1)[1]
+                if "socialLinks" not in data[p_index]:
+                    data[p_index]["socialLinks"] = {}
+                data[p_index]["socialLinks"][subkey] = p_value
+            else:
+                data[p_index][p_field] = p_value
+            propagated += 1
+        result["propagated"] = propagated
 
     with open(BUNDLEDB_PATH, "w") as f:
         json.dump(data, f, indent=2)
 
-    return jsonify({"success": True, "backup_created": True, "propagated": propagated})
+    return jsonify(result)
+
+
+@app.route("/editor/favicon", methods=["POST"])
+def editor_favicon():
+    data = request.get_json()
+    url = data.get("url", "").strip() if data else ""
+    if not url:
+        return jsonify({"success": False, "error": "No URL provided"}), 400
+
+    from services.favicon import fetch_favicon
+    result = fetch_favicon(url)
+    if result:
+        return jsonify({"success": True, "favicon": result})
+    return jsonify({"success": False, "error": "Could not fetch favicon"})
+
+
+@app.route("/editor/screenshot", methods=["POST"])
+def editor_screenshot():
+    data = request.get_json()
+    url = data.get("url", "").strip() if data else ""
+    if not url:
+        return jsonify({"success": False, "error": "No URL provided"}), 400
+
+    try:
+        result = subprocess.run(
+            ["node", SCREENSHOT_SCRIPT, url],
+            cwd=DBTOOLS_DIR,
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+        output = json.loads(result.stdout.strip())
+        return jsonify(output)
+    except subprocess.TimeoutExpired:
+        return jsonify({"success": False, "error": "Screenshot timed out"})
+    except (json.JSONDecodeError, Exception) as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
+@app.route("/editor/screenshot-preview/<filename>")
+def editor_screenshot_preview(filename):
+    return send_from_directory(SCREENSHOT_DIR, filename)
 
 
 if __name__ == "__main__":

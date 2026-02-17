@@ -810,6 +810,18 @@ article header strong {
     margin: 0 auto;
 }
 
+#mode-selector label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-right: 1rem;
+    font-weight: 400;
+}
+
+#mode-selector input[type="radio"] {
+    margin: 0;
+}
+
 #type-selector label {
     display: inline-flex;
     align-items: center;
@@ -927,4 +939,89 @@ article header strong {
     font-weight: 600;
     font-size: 0.9rem;
     margin-top: 0.75rem;
+}
+
+/* Skip checkbox */
+.form-field-skip {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    padding: 0.5rem 0.75rem;
+    border: 2px solid var(--pico-muted-border-color);
+    border-radius: var(--pico-border-radius);
+    background: var(--pico-card-sectioning-background-color);
+}
+
+.form-field-skip label {
+    font-weight: 700;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--pico-muted-color);
+    margin-bottom: 0;
+    cursor: pointer;
+}
+
+.form-field-skip input[type="checkbox"] {
+    margin: 0;
+}
+
+/* Categories checkboxes */
+.categories-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 0.25rem 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.category-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-weight: 400;
+    font-size: 0.9rem;
+    cursor: pointer;
+    margin-bottom: 0;
+}
+
+.category-checkbox input[type="checkbox"] {
+    margin: 0;
+}
+
+.category-add-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin-top: 0.25rem;
+}
+
+.category-add-row input {
+    flex: 1;
+    margin-bottom: 0;
+    font-size: 0.9rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.category-add-row .btn-action {
+    width: auto;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.75rem;
+    margin-bottom: 0;
+}
+
+/* Screenshot preview */
+.screenshot-preview {
+    max-width: 100%;
+    border-radius: var(--pico-border-radius);
+    margin-top: 0.75rem;
+    border: 2px solid var(--pico-muted-border-color);
+}
+
+/* Fetch button */
+.btn-fetch-data {
+    width: auto;
+    display: inline-block;
+    margin-top: 0.5rem;
+    margin-bottom: 0.75rem;
 }
