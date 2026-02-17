@@ -798,7 +798,7 @@ article header strong {
 
 /* ===== Editor page ===== */
 .editor-container {
-    max-width: 900px;
+    max-width: 80%;
     margin: 0 auto;
 }
 
