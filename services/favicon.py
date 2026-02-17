@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup
 from PIL import Image
 from io import BytesIO
 
-FAVICON_STORAGE_DIR = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/dbtools/lib/favicons"
+FAVICON_STORAGE_DIR = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/dbtools/favicons"
 SITE_OUTPUT_DIR = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundle.dev/_site/img/favicons"
 FAVICON_DB_PREFIX = "/img/favicons"
 TARGET_SIZE = 64
