@@ -609,7 +609,13 @@
     input.type = "text";
     input.id = "field-" + field;
     input.name = field;
-    input.value = item[field] != null ? String(item[field]) : "";
+    const raw = item[field] != null ? String(item[field]) : "";
+    if (field === "Date" && raw.includes("T")) {
+      input.value = raw.slice(0, 10);
+      input.dataset.fullDate = raw;
+    } else {
+      input.value = raw;
+    }
     row.appendChild(label);
     row.appendChild(input);
     editFormFields.appendChild(row);
@@ -640,7 +646,11 @@
         item.Categories = Array.from(checked).map((cb) => cb.value);
       } else {
         const el = document.getElementById("field-" + field);
-        item[field] = el ? el.value : "";
+        if (field === "Date" && el && el.dataset.fullDate) {
+          item[field] = el.dataset.fullDate;
+        } else {
+          item[field] = el ? el.value : "";
+        }
       }
     });
 
