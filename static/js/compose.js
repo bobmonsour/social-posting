@@ -731,17 +731,17 @@ document.addEventListener("DOMContentLoaded", () => {
                 const data = await resp.json();
                 if (data.success) {
                     btnCreatePost.hidden = true;
-                    btnCreatePost.textContent = "Create Post";
+                    btnCreatePost.textContent = "New Bundle Issue";
                     btnCreatePost.disabled = false;
                     if (btnDeletePost) btnDeletePost.hidden = false;
                     if (btnEditPost) btnEditPost.hidden = false;
                 } else {
                     btnCreatePost.textContent = data.error || "Error";
-                    setTimeout(() => { btnCreatePost.textContent = "Create Post"; btnCreatePost.disabled = false; }, 3000);
+                    setTimeout(() => { btnCreatePost.textContent = "New Bundle Issue"; btnCreatePost.disabled = false; }, 3000);
                 }
             } catch {
                 btnCreatePost.textContent = "Error";
-                setTimeout(() => { btnCreatePost.textContent = "Create Post"; btnCreatePost.disabled = false; }, 3000);
+                setTimeout(() => { btnCreatePost.textContent = "New Bundle Issue"; btnCreatePost.disabled = false; }, 3000);
             }
         });
     }
