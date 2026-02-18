@@ -65,7 +65,7 @@ Current modes:
 Mode behavior:
 - Selecting a mode auto-checks and locks both platform checkboxes.
 - Per-platform textareas appear with prefix+suffix pre-filled.
-- Text typed in one platform textarea is synced to the other (body only; prefix/suffix preserved per-platform).
+- Text typed in one platform textarea is synced to the other (body only; prefix/suffix preserved per-platform), except in 11ty BWE mode where textareas are independently editable after initial population.
 - Switching between modes strips old prefix/suffix and applies new ones, preserving user text.
 - "Show Preview" button renders both platforms with highlighted @mentions, #hashtags, and URLs.
 - Modes are stored on drafts/history entries as `mode` and `platform_texts` fields (backward compatible — absent for non-mode posts).
