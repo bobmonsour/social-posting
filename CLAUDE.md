@@ -28,7 +28,9 @@ social-posting/
 │   ├── media.py            # process_uploads, cleanup_uploads, compress_for_bluesky
 │   ├── link_card.py        # Open Graph metadata fetching
 │   ├── social_links.py     # Extract Mastodon/Bluesky profiles from site HTML
-│   └── favicon.py          # Multi-strategy favicon fetching (existing/Google API/HTML extraction)
+│   ├── favicon.py          # Multi-strategy favicon fetching (existing/Google API/HTML extraction)
+│   ├── description.py      # Multi-source meta description extraction (mirrors getdescription.js)
+│   └── rss_link.py         # RSS/Atom feed URL discovery (mirrors getrsslink.js)
 ├── scripts/
 │   └── capture-screenshot.js  # Puppeteer full-page screenshot capture
 ├── templates/              # Jinja2 (base.html, compose.html, result.html)
@@ -93,39 +95,77 @@ When a post fails on any platform:
 
 ## Bundledb Editor
 
-The `/editor` page provides search and edit for `bundledb.json` items, plus a create mode for adding new entries. Mode (Edit/Create) is selected via radio buttons at the top, then type is selected. In edit mode, fuzzy search (Fuse.js) over type-specific keys finds items. In create mode, selecting a type opens a blank form with auto-populated fields. Fields are ordered per `FIELD_ORDER` in `editor.js`. Saves go to `POST /editor/save`, which creates a backup on first save per session.
+The `/editor` page provides search and edit for `bundledb.json` items, plus a create mode for adding new entries. The editor page has a "Back to Social Posting" button, "Editing bundledb" header, and right-justified "Run Latest" and "Deploy" buttons in the header bar. Mode (Edit/Create) is selected via radio buttons at the top, then type is selected. Switching between modes clears the type selection. In edit mode, fuzzy search (Fuse.js) over type-specific keys finds items. In create mode, selecting a type opens a blank form with auto-populated fields and cursor in the Title field. Fields are ordered per `FIELD_ORDER` in `editor.js` with manual-entry fields first, followed by fetch buttons, then auto-generated fields. Saves go to `POST /editor/save`, which creates a backup on first save per session.
 
 **Edit/Create modes** (`editor.js` + `editor.html`):
 - Mode radio buttons (Edit/Create) at top of editor. Edit mode is the default.
+- Switching between Edit and Create clears the type selection and hides all form elements.
 - Create mode hides search/recent items and shows a blank form for the selected type.
 - New items are auto-populated with `Date` (ISO), `formattedDate` (human-readable), `Issue` (current max from data), and `Type`.
+- On create, cursor is auto-focused on the Title field.
 - Create saves append to the end of the `bundledb.json` array (edit saves update in place).
+
+**Field order by type** (`FIELD_ORDER` in `editor.js`):
+- **Blog post**: Issue, Type, Title, Link, Date, Author, Categories, [Fetch Description button], formattedDate, slugifiedAuthor, slugifiedTitle, description, AuthorSite, [Fetch/Refresh Author Info button], AuthorSiteDescription, socialLinks, favicon, rssLink.
+- **Site**: Issue, Type, Title, Link, Date, formattedDate, [Fetch/Refresh Description, Favicon & Screenshot button], description, favicon, screenshotpath.
+- **Release**: Issue, Type, Title, Link, Date, formattedDate, [Fetch/Refresh Description button], description.
+- **Starter**: Issue, Type, Title, Link, Demo, [Fetch/Refresh Description & Screenshot button], description, screenshotpath.
 
 **Skip checkbox** (edit mode only):
 - A "Skip (exclude from site generation)" checkbox appears at the top of the edit form.
 - When checked, adds `Skip: true` to the saved item.
 
+**Description extraction** (`services/description.py`):
+- `extract_description(url)` fetches a page and extracts the description using a multi-source fallback chain mirroring `dbtools/lib/getdescription.js`: meta description → Open Graph → Twitter Card → Dublin Core → Schema.org microdata → JSON-LD.
+- Sanitizes output (removes HTML tags, control characters, zero-width characters; escapes ampersands/quotes; converts markdown links to HTML; truncates to 300 chars).
+- YouTube URLs return "YouTube video" without fetching.
+- Exposed via `POST /editor/description`.
+
+**Fetch buttons** (per-type, create and edit):
+- **Blog posts**: "Fetch Description" button after Categories (hidden if description already populated in edit mode). Fetches blog post description from the Link URL.
+- **Sites**: "Fetch Description, Favicon & Screenshot" button after Date. Fetches all three in parallel from the Link URL. Shows "Refresh..." when all fields are already populated.
+- **Releases**: "Fetch Description" button after Date. Shows "Refresh Description" when description is already populated.
+- **Starters**: "Fetch Description & Screenshot" button after Demo. Fetches both from the Demo URL (not the GitHub link). Shows "Refresh..." when both fields are populated.
+- All fetch buttons use a `lastFetchedUrl` guard to prevent redundant fetches; clicking the button resets this to allow re-fetching.
+
 **Author autocomplete** (blog post create):
 - Author field uses a `<datalist>` populated from all unique authors in the database.
 - Tab-completion auto-fills when there's exactly one fuzzy match.
-- Selecting an author auto-fills empty fields (AuthorSite, AuthorSiteDescription, favicon, rssLink, socialLinks) from the most recent post by that author.
+- Selecting an existing author auto-fills empty fields (AuthorSite, AuthorSiteDescription, favicon, rssLink, socialLinks) from the most recent post by that author, and renames the author info button to "Refresh Author Info".
+
+**Author info fetching** (blog posts, create and edit):
+- AuthorSite auto-populates with the origin of the blog post Link URL when empty (e.g., `https://example.com/blog/post` → `https://example.com`). Editable since the author's site may differ.
+- "Fetch Author Info" button appears after AuthorSite for new authors (not in database).
+- "Refresh Author Info" button appears for existing authors (after autocomplete populates fields).
+- Both buttons call `POST /editor/author-info` with the AuthorSite URL, which fetches in parallel: AuthorSiteDescription (via description service), socialLinks (via social_links service), favicon (via favicon service), rssLink (via rss_link service).
+- Only fills empty fields (won't overwrite existing values).
+
+**RSS link discovery** (`services/rss_link.py`):
+- `extract_rss_link(url)` mirrors `dbtools/lib/getrsslink.js`: extracts origin, looks for `<link type="application/rss+xml">` or `<link type="application/atom+xml">` in the HTML head, then probes common feed paths (`/feed.xml`, `/rss.xml`, `/index.xml`, etc.).
+- Validates probed paths by checking response content looks like a feed (not an HTML error page).
 
 **Categories checkbox grid** (blog posts):
 - Categories rendered as a checkbox grid instead of a comma-separated text input.
 - Includes an "Add new category" input + button for dynamically adding categories.
 - Pre-checks categories that exist on the current item.
 
-**Favicon & screenshot fetching** (site creates):
-- A "Fetch Favicon & Screenshot" button appears after the Link field in site create forms.
-- Fires `POST /editor/favicon` and `POST /editor/screenshot` in parallel.
-- Favicon service (`services/favicon.py`): tries existing file → Google API (`s2/favicons`) → HTML extraction (prioritizing SVG, large PNG, apple-touch-icon). Non-SVG/ICO images resized to 64x64 PNG via Pillow. Saves to `dbtools/favicons/` and copies to `_site/img/favicons/`.
-- Screenshot script (`scripts/capture-screenshot.js`): Puppeteer captures full-page JPEG at 1920x1080 with `networkidle0` + 3s delay. Saves to `dbtools/screenshots/` and `content/screenshots/`. Returns JSON with filename and path.
-- `POST /editor/screenshot` runs the script via `subprocess.run()` with 60s timeout.
+**Favicon fetching** (`services/favicon.py`):
+- Tries existing file → Google API (`s2/favicons`) → HTML extraction (prioritizing SVG, large PNG, apple-touch-icon). Non-SVG/ICO images resized to 64x64 PNG via Pillow. Saves to `dbtools/favicons/` and copies to `_site/img/favicons/`.
+- Exposed via `POST /editor/favicon`.
+
+**Screenshot capture** (`scripts/capture-screenshot.js`):
+- Puppeteer captures full-page JPEG at 1920x1080 with `networkidle0` + 3s delay. Saves to `dbtools/screenshots/` and `content/screenshots/`. Returns JSON with filename and path.
+- `POST /editor/screenshot` runs the script via `subprocess.run()` with 60s timeout and `NODE_PATH` set to `dbtools/node_modules/` (required because the script lives in `social-posting/scripts/` but Puppeteer is installed in `dbtools/`).
 - `GET /editor/screenshot-preview/<filename>` serves captured screenshots for inline preview.
 
-**Site create side-effects**:
-- On save, site creates automatically call `add_bwe_to_post(title, link)` to append the site to the BWE "TO BE POSTED" list.
-- A new entry is prepended to `showcase-data.json` with title, description, link, date, formattedDate, favicon, and screenshotpath.
+**Screenshot data separation**:
+- `screenshotpath` is stored only in `showcase-data.json`, not in `bundledb.json`.
+- When loading editor data (`GET /editor/data`), site entries have `screenshotpath` merged from `showcase-data.json` (matched by link).
+- On save (create or edit), `screenshotpath` is stripped from the item before writing to `bundledb.json` and written only to `showcase-data.json`.
+
+**Site save side-effects**:
+- On create, site saves call `add_bwe_to_post(title, link)` to append the site to the BWE "TO BE POSTED" list, and prepend an entry to `showcase-data.json` with title, description, link, date, formattedDate, favicon, and screenshotpath.
+- On edit, site saves sync the matching `showcase-data.json` entry (matched by link) with current title, description, favicon, screenshotpath, date, and formattedDate.
 
 **Custom field labels**:
 - `Link` shows as "GitHub repo link" for release/starter types.
@@ -139,6 +179,21 @@ The `/editor` page provides search and edit for `bundledb.json` items, plus a cr
 - If confirmed, sends `propagate: [{index, field, value}, ...]` array in the save payload.
 - Backend iterates `propagate` entries, handles both top-level fields and `socialLinks.*` sub-fields, writes once.
 - Response includes `propagated` count; client syncs changes into local `allData` and shows status message.
+
+**Build & deploy workflows** (`editor.js` + `app.py`):
+- The edit form has three save buttons: **Save** (save only), **Save & Run Latest** (save + end-session scripts + local server), **Save & Deploy** (save + production deploy).
+- The editor header has two standalone buttons: **Run Latest** and **Deploy** (same workflows without saving).
+- All workflow results display in a modal overlay (`deploy-modal` in `editor.html`, styled via `.deploy-modal-overlay`/`.deploy-modal` in `style.css`).
+- JS logic is shared via `runLatestFlow()` and `runDeployFlow()` functions in `editor.js`.
+
+**Run Latest flow** (3 endpoints):
+- `POST /editor/end-session` runs three dbtools scripts in parallel via `ThreadPoolExecutor`: `lib/genissuerecords.js`, `generate-insights.js` (pipes `"1\n"` to stdin for auto-select), `generate-latest-data.js`. All run with `cwd=DBTOOLS_DIR` and `NODE_PATH` set.
+- `POST /editor/run-latest` starts `npm run latest` in the `11tybundle.dev` project (`ELEVENTY_PROJECT_DIR`) via `Popen`, watches stdout for `"Server at"` to detect readiness (30s timeout), then drains stdout in a daemon thread.
+- Modal shows script results, then "Starting local server...", then "View Local Site" button which opens `localhost:8080`.
+
+**Deploy flow** (1 endpoint):
+- `POST /editor/deploy` runs `npm run deploy` in `ELEVENTY_PROJECT_DIR` via `subprocess.run()` with 120s timeout, captures full stdout+stderr.
+- Modal shows deploy output, then "View 11tybundle.dev" button which opens `https://11tybundle.dev`.
 
 ## Key Conventions
 
