@@ -14,15 +14,15 @@ A personal social media cross-poster. Post to Mastodon and Bluesky from a single
 
 ## Modes
 
-Modes pre-fill per-platform textareas with hashtags, mentions, and prefixes tailored to a topic. Text typed in one platform's textarea syncs to the other.
+Modes pre-fill per-platform textareas with hashtags, mentions, and prefixes tailored to a topic.
 
 Current modes:
-- **11ty** -- Adds `#11ty` and platform-specific `@11ty` mentions as suffixes
-- **11ty BWE** -- "Built with Eleventy:" prefix with the same suffixes
+- **11ty** -- Adds `#11ty` and platform-specific `@11ty` mentions as suffixes. Text syncs between platform textareas.
+- **11ty BWE** -- "Built with Eleventy:" prefix with the same suffixes. Textareas are independently editable after initial population.
 
 ## Built with Eleventy List
 
-A markdown file (`built-with-eleventy.md`) tracks sites built with Eleventy. The sidebar shows a "Sites to Post" queue and a "Sites Posted" history. Clicking **Post** on a queued site populates the compose form in 11ty BWE mode. After posting, the site moves to the "Already Posted" section of the file with a timestamp and per-platform success/failure status.
+A markdown file (`built-with-eleventy.md`) tracks sites built with Eleventy. The sidebar shows a "Sites to Post" queue and a "Sites Posted" history. Clicking **Post** on a queued site populates the compose form in 11ty BWE mode. After posting, the site moves to the "Already Posted" section of the file with a timestamp and per-platform success/failure status. Each queued site also has a **Del** button (with confirmation modal) to remove it from the list without posting.
 
 ## Social Link Tagging
 
@@ -30,9 +30,15 @@ When posting about a "Built with Eleventy" site, the app automatically fetches t
 
 ## Bundledb Editor
 
-The app includes an editor page (`/editor`) for the bundledb.json database that powers 11tybundle.dev. Search by item type (blog post, site, release, starter) with fuzzy matching, then edit any item's properties in a form.
+The app includes an editor page (`/editor`) for the bundledb.json database that powers 11tybundle.dev. Edit and create entries across four types (blog post, site, release, starter) with fuzzy search, auto-populated fields, and per-type fetch buttons for descriptions, favicons, screenshots, and author info.
 
-**Author-field propagation**: When editing a blog post, if you fill in a previously-empty author-level field (AuthorSiteDescription, rssLink, favicon, or any socialLinks sub-field), the editor checks whether other blog posts by the same author are also missing that field. If so, it prompts you to update them all at once in a single save.
+Key editor features:
+- **Create mode**: Add new entries with auto-populated date, issue number, and type. Title and Author fields auto-compute slugified versions on blur (matching `@sindresorhus/slugify`). Author autocomplete from existing database entries.
+- **Duplicate link detection**: On Link field blur and on save, checks for existing entries with the same URL (normalizes `www.`/non-`www.` as identical).
+- **View JSON**: Preview the JSON entry before saving (for sites, also shows the showcase-data entry).
+- **Delete entry**: Remove entries with a confirmation modal. Bulk-delete test entries (titles containing "bobdemo99").
+- **Author-field propagation**: When editing a blog post, if you fill in a previously-empty author-level field (AuthorSiteDescription, rssLink, favicon, or any socialLinks sub-field), the editor checks whether other blog posts by the same author are also missing that field. If so, it prompts you to update them all at once in a single save.
+- **Build & deploy**: Save and run the local 11ty dev server, or deploy directly to production, from buttons in the editor.
 
 ## Setup
 
