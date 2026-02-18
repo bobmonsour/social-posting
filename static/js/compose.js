@@ -32,6 +32,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const previewMastodon = document.getElementById("preview-mastodon");
     const previewBluesky = document.getElementById("preview-bluesky");
     const modeRadios = document.querySelectorAll('input[name="mode"]');
+    const cbMirror = document.getElementById("cb-mirror");
+    const mirrorLabel = document.getElementById("mirror-label");
 
     // Load modes config from embedded JSON
     let modesConfig = {};
@@ -163,7 +165,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     textMastodon.addEventListener("input", () => {
-        if (!activeMode || activeMode === "11ty-bwe") return;
+        if (!activeMode || !cbMirror.checked) return;
         const mode = modesConfig[activeMode];
         if (!mode) return;
         const prefixes = mode.prefixes || {};
@@ -173,7 +175,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     textBluesky.addEventListener("input", () => {
-        if (!activeMode || activeMode === "11ty-bwe") return;
+        if (!activeMode || !cbMirror.checked) return;
         const mode = modesConfig[activeMode];
         if (!mode) return;
         const prefixes = mode.prefixes || {};
@@ -184,21 +186,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // --- Mode activation/deactivation ---
     function applyModeToTextarea(el, oldMode, newMode, platform) {
-        const oldPrefixes = oldMode ? (oldMode.prefixes || {}) : {};
-        const oldPre = oldPrefixes[platform] || "";
-        const oldSuf = oldMode ? (oldMode.suffixes[platform] || "") : "";
         const newPrefixes = newMode.prefixes || {};
         const newPre = newPrefixes[platform] || "";
         const newSuf = newMode.suffixes[platform] || "";
 
-        if (!el.value.trim()) {
-            // Empty textarea — just pre-fill
-            el.value = newPre + newSuf;
-        } else {
-            // Extract body from old mode's prefix/suffix, apply new ones
-            const body = getBody(el.value, oldPre, oldSuf);
-            el.value = newPre + body + newSuf;
-        }
+        // Always start fresh with the new mode's prefix/suffix
+        el.value = newPre + newSuf;
         el.setSelectionRange(newPre.length, newPre.length);
     }
 
@@ -233,6 +226,8 @@ document.addEventListener("DOMContentLoaded", () => {
         sharedTextSection.hidden = true;
         platformTextsSection.hidden = false;
         previewSection.hidden = false;
+        mirrorLabel.hidden = false;
+        cbMirror.checked = false;
 
         // Apply prefix/suffix — strips old mode's, applies new mode's
         if (!skipTextareas) {
@@ -256,11 +251,18 @@ document.addEventListener("DOMContentLoaded", () => {
             savedPlatformState = null;
         }
 
+        // Clear all textareas for a fresh start
+        textarea.value = "";
+        textMastodon.value = "";
+        textBluesky.value = "";
+
         // Show shared textarea, hide per-platform
         sharedTextSection.hidden = false;
         platformTextsSection.hidden = true;
         previewSection.hidden = true;
         previewPanels.hidden = true;
+        mirrorLabel.hidden = true;
+        cbMirror.checked = false;
 
         updatePlatformSections();
     }

@@ -368,6 +368,16 @@ label:has(#cb-bluesky) {
 }
 
 /* ===== Per-platform text groups ===== */
+#mirror-label {
+    font-size: 0.85rem;
+    margin-bottom: 0.75rem;
+    display: block;
+}
+
+#mirror-label input[type="checkbox"] {
+    margin-right: 0.35rem;
+}
+
 .platform-text-group {
     margin-bottom: 1.25rem;
 }
