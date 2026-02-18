@@ -105,6 +105,15 @@
   const btnSaveEnd = document.getElementById("btn-save-end");
   const btnSaveDeploy = document.getElementById("btn-save-deploy");
   const btnCancel = document.getElementById("btn-cancel");
+  const btnViewJson = document.getElementById("btn-view-json");
+  const jsonPreviewPanel = document.getElementById("json-preview-panel");
+  const deleteConfirmModal = document.getElementById("delete-confirm-modal");
+  const deleteConfirmMessage = document.getElementById("delete-confirm-message");
+  const deleteConfirmOk = document.getElementById("delete-confirm-ok");
+  const deleteConfirmCancel = document.getElementById("delete-confirm-cancel");
+  const dupLinkModal = document.getElementById("duplicate-link-modal");
+  const dupLinkMessage = document.getElementById("duplicate-link-message");
+  const dupLinkOk = document.getElementById("duplicate-link-ok");
   const statusMessage = document.getElementById("status-message");
   const deployModal = document.getElementById("deploy-modal");
   const deployModalTitle = document.getElementById("deploy-modal-title");
@@ -347,6 +356,81 @@
     }
   });
 
+  // View JSON handler (create mode only)
+  btnViewJson.addEventListener("click", () => {
+    const item = collectFormValues();
+    let html = "<h4>bundledb.json entry</h4>";
+
+    // For sites, strip screenshotpath from bundledb preview (it goes to showcase-data)
+    const bundleItem = Object.assign({}, item);
+    let screenshotpath = "";
+    if (currentType === "site") {
+      screenshotpath = bundleItem.screenshotpath || "";
+      delete bundleItem.screenshotpath;
+    }
+    html += "<pre>" + escapeHtml(JSON.stringify(bundleItem, null, 2)) + "</pre>";
+
+    if (currentType === "site") {
+      html += "<h4>showcase-data.json entry</h4>";
+      const showcaseEntry = {
+        title: item.Title || "",
+        description: item.description || "",
+        link: item.Link || "",
+        date: item.Date || "",
+        formattedDate: item.formattedDate || "",
+        favicon: item.favicon || "",
+        screenshotpath: screenshotpath,
+      };
+      html += "<pre>" + escapeHtml(JSON.stringify(showcaseEntry, null, 2)) + "</pre>";
+    }
+
+    jsonPreviewPanel.innerHTML = html;
+    jsonPreviewPanel.style.display = "";
+  });
+
+  function escapeHtml(text) {
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  // Duplicate link detection
+  // Delete confirmation modal
+  deleteConfirmCancel.addEventListener("click", () => {
+    deleteConfirmModal.style.display = "none";
+  });
+
+  dupLinkOk.addEventListener("click", () => {
+    dupLinkModal.style.display = "none";
+  });
+
+  function normalizeLink(url) {
+    let s = url.trim().toLowerCase().replace(/\/+$/, "");
+    // Ensure protocol so www. stripping works consistently
+    if (!/^https?:\/\//.test(s)) s = "https://" + s;
+    return s.replace(/^(https?:\/\/)www\./, "$1");
+  }
+
+  function findDuplicateLink(link) {
+    if (!link) return null;
+    const normalized = normalizeLink(link);
+    for (const entry of allData) {
+      const existing = normalizeLink(entry.Link || "");
+      if (existing && existing === normalized) {
+        return entry;
+      }
+    }
+    return null;
+  }
+
+  function showDuplicateLinkWarning(link, existing) {
+    const type = existing.Type || "entry";
+    const title = existing.Title || "(untitled)";
+    dupLinkMessage.textContent =
+      "This link already exists as a " + type + ': "' + title + '".';
+    dupLinkModal.style.display = "";
+  }
+
   function getItemsOfType(type) {
     const items = [];
     for (let i = 0; i < allData.length; i++) {
@@ -509,10 +593,13 @@
     recentItems.style.display = "none";
     searchResults.style.display = "none";
 
-    // Skip checkbox (edit mode only)
+    // Skip checkbox + Delete button (edit mode only)
     if (!isCreate) {
       const skipRow = document.createElement("div");
       skipRow.className = "form-field-skip";
+
+      const skipLeft = document.createElement("div");
+      skipLeft.className = "skip-left";
       const skipCb = document.createElement("input");
       skipCb.type = "checkbox";
       skipCb.id = "field-Skip";
@@ -520,8 +607,53 @@
       const skipLabel = document.createElement("label");
       skipLabel.textContent = "Skip (exclude from site generation)";
       skipLabel.setAttribute("for", "field-Skip");
-      skipRow.appendChild(skipCb);
-      skipRow.appendChild(skipLabel);
+      skipLeft.appendChild(skipCb);
+      skipLeft.appendChild(skipLabel);
+
+      const deleteBtn = document.createElement("button");
+      deleteBtn.type = "button";
+      deleteBtn.className = "btn-action btn-delete-entry";
+      deleteBtn.textContent = "DELETE ENTRY";
+      deleteBtn.addEventListener("click", () => {
+        const entryType = (currentType || "entry").toUpperCase();
+        const entryTitle = item.Title || "(untitled)";
+        deleteConfirmMessage.textContent =
+          'ARE YOU SURE YOU WANT TO DELETE THE ' + entryType + ' NAMED "' + entryTitle + '"?';
+        deleteConfirmOk.onclick = () => {
+          deleteConfirmModal.style.display = "none";
+          deleteEntry(currentIndex);
+        };
+        deleteConfirmModal.style.display = "";
+        deleteConfirmCancel.focus();
+      });
+
+      const btnGroup = document.createElement("div");
+      btnGroup.className = "skip-right";
+      btnGroup.appendChild(deleteBtn);
+
+      const testCount = allData.filter((e) =>
+        (e.Title || "").toLowerCase().includes("bobdemo99")
+      ).length;
+      if (testCount > 0) {
+        const deleteTestBtn = document.createElement("button");
+        deleteTestBtn.type = "button";
+        deleteTestBtn.className = "btn-action btn-delete-entry";
+        deleteTestBtn.textContent = "DELETE ALL TEST ENTRIES";
+        deleteTestBtn.addEventListener("click", () => {
+          deleteConfirmMessage.textContent =
+            "ARE YOU SURE YOU WANT TO DELETE ALL " + testCount + " TEST ENTRIES?";
+          deleteConfirmOk.onclick = () => {
+            deleteConfirmModal.style.display = "none";
+            deleteAllTestEntries();
+          };
+          deleteConfirmModal.style.display = "";
+          deleteConfirmCancel.focus();
+        });
+        btnGroup.appendChild(deleteTestBtn);
+      }
+
+      skipRow.appendChild(skipLeft);
+      skipRow.appendChild(btnGroup);
       editFormFields.appendChild(skipRow);
     }
 
@@ -624,6 +756,22 @@
         });
       }
     }
+
+    // Check for duplicate Link on blur (create mode only)
+    if (isCreate) {
+      const linkField = document.getElementById("field-Link");
+      if (linkField) {
+        linkField.addEventListener("blur", () => {
+          const dup = findDuplicateLink(linkField.value);
+          if (dup) showDuplicateLinkWarning(linkField.value, dup);
+        });
+      }
+    }
+
+    // Show View JSON button only in create mode; reset panel
+    btnViewJson.style.display = isCreate ? "" : "none";
+    jsonPreviewPanel.style.display = "none";
+    jsonPreviewPanel.innerHTML = "";
 
     editFormContainer.style.display = "";
     editFormContainer.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -883,6 +1031,8 @@
   function hideEditForm() {
     editFormContainer.style.display = "none";
     currentIndex = null;
+    jsonPreviewPanel.style.display = "none";
+    jsonPreviewPanel.innerHTML = "";
     // Remove any screenshot preview
     const preview = document.querySelector(".screenshot-preview");
     if (preview) preview.remove();
@@ -985,12 +1135,83 @@
     return labels;
   }
 
+  function deleteEntry(index) {
+    fetch("/editor/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ index: index, backup_created: backupCreated })
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) {
+          backupCreated = data.backup_created;
+          allData.splice(index, 1);
+          hideEditForm();
+          initFuse();
+          showStatus("Entry deleted.", false);
+          if (currentMode === "edit") {
+            if (searchInput.value.trim()) {
+              runSearch(searchInput.value.trim());
+            } else {
+              showRecentItems();
+            }
+          }
+        } else {
+          showStatus("Delete failed: " + (data.error || "Unknown error"), true);
+        }
+      })
+      .catch((err) => {
+        showStatus("Delete failed: " + err.message, true);
+      });
+  }
+
+  function deleteAllTestEntries() {
+    fetch("/editor/delete-test-entries", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ backup_created: backupCreated })
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) {
+          backupCreated = data.backup_created;
+          allData = allData.filter((e) =>
+            !(e.Title || "").toLowerCase().includes("bobdemo99")
+          );
+          hideEditForm();
+          initFuse();
+          showStatus("Deleted " + data.deleted + " test entries.", false);
+          if (currentMode === "edit") {
+            if (searchInput.value.trim()) {
+              runSearch(searchInput.value.trim());
+            } else {
+              showRecentItems();
+            }
+          }
+        } else {
+          showStatus("Delete failed: " + (data.error || "Unknown error"), true);
+        }
+      })
+      .catch((err) => {
+        showStatus("Delete failed: " + err.message, true);
+      });
+  }
+
   function saveItem(onSuccess) {
     const isCreate = currentIndex === null;
 
     if (!isCreate && currentIndex === null) return;
 
     const item = collectFormValues();
+
+    // Block save if link is a duplicate (create mode)
+    if (isCreate && item.Link) {
+      const dup = findDuplicateLink(item.Link);
+      if (dup) {
+        showDuplicateLinkWarning(item.Link, dup);
+        return;
+      }
+    }
 
     // Check for author-level propagation (edit mode only)
     const propagate = isCreate ? [] : buildPropagation(item);

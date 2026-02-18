@@ -918,6 +918,29 @@ article header strong {
     border-color: var(--pico-secondary);
 }
 
+/* JSON preview panel */
+#json-preview-panel {
+    margin-top: 1rem;
+    width: 100%;
+}
+
+#json-preview-panel pre {
+    background: var(--pico-code-background-color);
+    border: 1px solid var(--pico-muted-border-color);
+    border-radius: 0.375rem;
+    padding: 1rem;
+    font-size: 1rem;
+    line-height: 1.5;
+    overflow-x: auto;
+    white-space: pre;
+    margin-bottom: 0.75rem;
+}
+
+#json-preview-panel h4 {
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+}
+
 /* Status messages */
 .status-success {
     color: #2e7d32;
@@ -933,16 +956,29 @@ article header strong {
     margin-top: 0.75rem;
 }
 
-/* Skip checkbox */
+/* Skip checkbox + Delete button row */
 .form-field-skip {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    justify-content: space-between;
     margin-bottom: 1rem;
     padding: 0.5rem 0.75rem;
     border: 2px solid var(--pico-muted-border-color);
     border-radius: var(--pico-border-radius);
     background: var(--pico-card-sectioning-background-color);
+}
+
+.form-field-skip .skip-left {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 50%;
+}
+
+.form-field-skip .skip-right {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
 }
 
 .form-field-skip label {
@@ -957,6 +993,37 @@ article header strong {
 
 .form-field-skip input[type="checkbox"] {
     margin: 0;
+}
+
+.btn-delete-entry {
+    background: #c62828;
+    border-color: #c62828;
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.8rem;
+    letter-spacing: 0.05em;
+    padding: 0.35rem 1rem;
+    margin-bottom: 0;
+    width: auto;
+}
+
+.btn-delete-entry:hover {
+    background: #b71c1c;
+    border-color: #b71c1c;
+}
+
+.delete-confirm-buttons {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+    margin-top: 1rem;
+}
+
+.delete-confirm-buttons .btn-action {
+    width: auto;
+    padding: 0.4rem 1.2rem;
+    font-size: 0.85rem;
+    margin-bottom: 0;
 }
 
 /* Categories checkboxes */

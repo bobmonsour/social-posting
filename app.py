@@ -734,6 +734,102 @@ def editor_save():
     return jsonify(result)
 
 
+@app.route("/editor/delete", methods=["POST"])
+def editor_delete():
+    payload = request.get_json()
+    index = payload.get("index") if payload else None
+    backup_created = payload.get("backup_created", False) if payload else False
+
+    if index is None or not isinstance(index, int):
+        return jsonify({"success": False, "error": "Missing or invalid index"}), 400
+
+    with open(BUNDLEDB_PATH, "r") as f:
+        data = json.load(f)
+
+    if index < 0 or index >= len(data):
+        return jsonify({"success": False, "error": "Index out of range"}), 400
+
+    # Create backup if this is the first modification in the session
+    if not backup_created:
+        os.makedirs(BUNDLEDB_BACKUP_DIR, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y-%m-%d--%H%M%S")
+        backup_path = os.path.join(BUNDLEDB_BACKUP_DIR, f"bundledb-{timestamp}.json")
+        shutil.copy2(BUNDLEDB_PATH, backup_path)
+
+    item = data[index]
+
+    # For sites, also remove from showcase-data.json
+    if item.get("Type") == "site" and item.get("Link"):
+        try:
+            with open(SHOWCASE_PATH, "r") as f:
+                showcase_data = json.load(f)
+            showcase_data = [e for e in showcase_data if e.get("link") != item["Link"]]
+            with open(SHOWCASE_PATH, "w") as f:
+                json.dump(showcase_data, f, indent=2)
+        except Exception:
+            pass
+
+    del data[index]
+
+    with open(BUNDLEDB_PATH, "w") as f:
+        json.dump(data, f, indent=2)
+
+    return jsonify({"success": True, "backup_created": True})
+
+
+@app.route("/editor/delete-test-entries", methods=["POST"])
+def editor_delete_test_entries():
+    payload = request.get_json() or {}
+    backup_created = payload.get("backup_created", False)
+    marker = "bobdemo99"
+
+    with open(BUNDLEDB_PATH, "r") as f:
+        data = json.load(f)
+
+    test_entries = [e for e in data if marker in (e.get("Title") or "").lower()]
+    if not test_entries:
+        return jsonify({"success": True, "backup_created": backup_created, "deleted": 0})
+
+    # Create backup if first modification in session
+    if not backup_created:
+        os.makedirs(BUNDLEDB_BACKUP_DIR, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y-%m-%d--%H%M%S")
+        backup_path = os.path.join(BUNDLEDB_BACKUP_DIR, f"bundledb-{timestamp}.json")
+        shutil.copy2(BUNDLEDB_PATH, backup_path)
+
+    # Collect links of test site entries for showcase-data cleanup
+    test_site_links = {
+        e["Link"] for e in test_entries
+        if e.get("Type") == "site" and e.get("Link")
+    }
+
+    # Remove test entries from bundledb
+    remaining = [e for e in data if marker not in (e.get("Title") or "").lower()]
+    with open(BUNDLEDB_PATH, "w") as f:
+        json.dump(remaining, f, indent=2)
+
+    # Remove matching entries from showcase-data
+    if test_site_links:
+        try:
+            with open(SHOWCASE_PATH, "r") as f:
+                showcase_data = json.load(f)
+            showcase_data = [
+                e for e in showcase_data
+                if e.get("link") not in test_site_links
+                and marker not in (e.get("title") or "").lower()
+            ]
+            with open(SHOWCASE_PATH, "w") as f:
+                json.dump(showcase_data, f, indent=2)
+        except Exception:
+            pass
+
+    return jsonify({
+        "success": True,
+        "backup_created": True,
+        "deleted": len(test_entries)
+    })
+
+
 @app.route("/editor/favicon", methods=["POST"])
 def editor_favicon():
     data = request.get_json()

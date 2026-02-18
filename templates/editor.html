@@ -5,7 +5,7 @@
 {% block content %}
 <div style="display: flex; align-items: center; margin-top: -1.25rem; margin-bottom: 1.25rem">
     <a href="/" class="btn-nav">Back to Social Posting</a>
-    <h2 style="margin: 0; flex: 1; text-align: center; font-family: var(--font-body)">Editing bundledb</h2>
+    <h2 style="margin: 0; flex: 1; text-align: center; font-family: var(--font-body)">Bundle Entry Editor</h2>
     <div style="display: flex; gap: 0.5rem;">
         <button type="button" id="btn-run-latest" class="btn-action" style="margin-bottom: 0; padding: 0.4rem 1rem; font-size: 0.85rem;">Run Latest</button>
         <button type="button" id="btn-deploy" class="btn-action" style="margin-bottom: 0; padding: 0.4rem 1rem; font-size: 0.85rem;">Deploy</button>
@@ -56,14 +56,37 @@
                 <button type="button" id="btn-save" class="btn-action">Save</button>
                 <button type="button" id="btn-save-end" class="btn-action">Save &amp; Run Latest</button>
                 <button type="button" id="btn-save-deploy" class="btn-action">Save &amp; Deploy</button>
+                <button type="button" id="btn-view-json" class="btn-action btn-secondary" style="display:none;">View JSON</button>
                 <button type="button" id="btn-cancel" class="btn-action btn-secondary">Cancel</button>
             </div>
+            <div id="json-preview-panel" style="display:none;"></div>
         </fieldset>
     </div>
 
     <!-- Status message -->
     <div id="status-message" style="display:none;"></div>
 
+</div>
+
+<!-- Delete confirmation modal -->
+<div id="delete-confirm-modal" class="deploy-modal-overlay" style="display:none;">
+    <div class="deploy-modal">
+        <h3>Confirm Delete</h3>
+        <p id="delete-confirm-message"></p>
+        <div class="delete-confirm-buttons">
+            <button type="button" id="delete-confirm-ok" class="btn-action btn-delete-entry">DELETE</button>
+            <button type="button" id="delete-confirm-cancel" class="btn-action btn-secondary">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- Duplicate link modal -->
+<div id="duplicate-link-modal" class="deploy-modal-overlay" style="display:none;">
+    <div class="deploy-modal">
+        <h3 id="duplicate-link-title">Duplicate Link</h3>
+        <p id="duplicate-link-message"></p>
+        <button type="button" id="duplicate-link-ok" class="btn-action">Ok</button>
+    </div>
 </div>
 
 <!-- Deploy output modal -->
