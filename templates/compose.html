@@ -237,11 +237,7 @@
                 {% else %}
                 <button type="button" class="btn-bwe-post" data-name="{{ site.name }}" data-url="{{ site.url }}">Post</button>
                 {% endif %}
-                <form action="/bwe-to-post/delete" method="post" class="inline-form">
-                    <input type="hidden" name="name" value="{{ site.name }}">
-                    <input type="hidden" name="url" value="{{ site.url }}">
-                    <button type="submit" class="btn-del-draft">Del</button>
-                </form>
+                <button type="button" class="btn-del-draft btn-bwe-to-post-del" data-name="{{ site.name }}" data-url="{{ site.url }}">Del</button>
             </div>
         </div>
         {% endfor %}
@@ -273,8 +269,54 @@
 </div>
 
 </div>
+
+<!-- BWE delete confirmation modal -->
+<div id="bwe-del-modal" class="deploy-modal-overlay" style="display:none;">
+    <div class="deploy-modal">
+        <h3>Confirm Delete</h3>
+        <p id="bwe-del-message"></p>
+        <div class="delete-confirm-buttons">
+            <button type="button" id="bwe-del-ok" class="btn-action" style="background:#c62828;border-color:#c62828;color:#fff;font-weight:700;">DELETE</button>
+            <button type="button" id="bwe-del-cancel" class="btn-action btn-secondary">Cancel</button>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/compose.js') }}"></script>
+<script>
+(function () {
+    const modal = document.getElementById("bwe-del-modal");
+    const msg = document.getElementById("bwe-del-message");
+    const okBtn = document.getElementById("bwe-del-ok");
+    const cancelBtn = document.getElementById("bwe-del-cancel");
+
+    cancelBtn.addEventListener("click", () => { modal.style.display = "none"; });
+
+    document.querySelectorAll(".btn-bwe-to-post-del").forEach((btn) => {
+        btn.addEventListener("click", () => {
+            const name = btn.dataset.name;
+            const url = btn.dataset.url;
+            msg.textContent = 'Remove "' + name + '" from the Sites to Post list?';
+            okBtn.onclick = () => {
+                modal.style.display = "none";
+                const form = document.createElement("form");
+                form.method = "post";
+                form.action = "/bwe-to-post/delete";
+                const nInput = document.createElement("input");
+                nInput.type = "hidden"; nInput.name = "name"; nInput.value = name;
+                const uInput = document.createElement("input");
+                uInput.type = "hidden"; uInput.name = "url"; uInput.value = url;
+                form.appendChild(nInput);
+                form.appendChild(uInput);
+                document.body.appendChild(form);
+                form.submit();
+            };
+            modal.style.display = "";
+            cancelBtn.focus();
+        });
+    });
+})();
+</script>
 {% endblock %}
