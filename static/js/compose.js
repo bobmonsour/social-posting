@@ -163,7 +163,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     textMastodon.addEventListener("input", () => {
-        if (!activeMode) return;
+        if (!activeMode || activeMode === "11ty-bwe") return;
         const mode = modesConfig[activeMode];
         if (!mode) return;
         const prefixes = mode.prefixes || {};
@@ -173,7 +173,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     textBluesky.addEventListener("input", () => {
-        if (!activeMode) return;
+        if (!activeMode || activeMode === "11ty-bwe") return;
         const mode = modesConfig[activeMode];
         if (!mode) return;
         const prefixes = mode.prefixes || {};
