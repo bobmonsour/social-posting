@@ -120,6 +120,27 @@ def add_bwe_to_post(title, url):
         f.write("\n".join(lines))
 
 
+def delete_bwe_to_post(name, url):
+    """Remove an entry from the TO BE POSTED section."""
+    to_post, posted = parse_bwe_file()
+    to_post = [e for e in to_post if not (e["name"] == name and e["url"] == url)]
+
+    lines = ["- TO BE POSTED -"]
+    for entry in to_post:
+        lines.append(f"[{entry['name']}]({entry['url']})")
+    lines.append("")
+    lines.append("- ALREADY POSTED -")
+    for entry in posted:
+        line = f"{entry['date']} [{entry['name']}]({entry['url']})"
+        if entry.get("status"):
+            line += f" — {entry['status']}"
+        lines.append(line)
+    lines.append("")
+
+    with open(BWE_FILE, "w") as f:
+        f.write("\n".join(lines))
+
+
 def delete_bwe_posted(name, url):
     """Remove an entry from the ALREADY POSTED section."""
     to_post, posted = parse_bwe_file()

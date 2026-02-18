@@ -655,6 +655,26 @@ label:has(#cb-bluesky) {
     opacity: 0.85;
 }
 
+.bwe-queue-item-actions {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.bwe-queue-item-actions form.inline-form {
+    display: inline;
+    margin: 0;
+    padding: 0;
+}
+
+.bwe-queue-item-actions form.inline-form button[type="submit"].btn-del-draft {
+    width: auto !important;
+    display: inline-block !important;
+    padding: 0.1rem 0.5rem;
+}
+
 /* ===== BWE posted sidebar ===== */
 .bwe-posted h2 {
     font-size: 1.75rem;

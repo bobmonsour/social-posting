@@ -229,14 +229,21 @@
     <h2>Sites to Post <small>({{ bwe_to_post | length }})</small></h2>
     {% if bwe_to_post %}
         {% for site in bwe_to_post %}
-        <p class="bwe-queue-item">
+        <div class="bwe-queue-item">
             <a href="{{ site.url }}" target="_blank" rel="noopener">{{ site.name }}</a>
-            {% if site.draft_id %}
-            <a href="/draft/{{ site.draft_id }}" class="btn-use-draft">Use</a>
-            {% else %}
-            <button type="button" class="btn-bwe-post" data-name="{{ site.name }}" data-url="{{ site.url }}">Post</button>
-            {% endif %}
-        </p>
+            <div class="bwe-queue-item-actions">
+                {% if site.draft_id %}
+                <a href="/draft/{{ site.draft_id }}" class="btn-use-draft">Use</a>
+                {% else %}
+                <button type="button" class="btn-bwe-post" data-name="{{ site.name }}" data-url="{{ site.url }}">Post</button>
+                {% endif %}
+                <form action="/bwe-to-post/delete" method="post" class="inline-form">
+                    <input type="hidden" name="name" value="{{ site.name }}">
+                    <input type="hidden" name="url" value="{{ site.url }}">
+                    <button type="submit" class="btn-del-draft">Del</button>
+                </form>
+            </div>
+        </div>
         {% endfor %}
     {% else %}
         <p class="muted">None</p>

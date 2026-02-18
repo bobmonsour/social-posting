@@ -14,7 +14,7 @@ from platforms.base import LinkCard, MediaAttachment
 from services.media import process_uploads, cleanup_uploads, compress_for_bluesky, get_mime_type
 from services.link_card import fetch_og_metadata
 from services.social_links import extract_social_links
-from services.bwe_list import get_bwe_lists, mark_bwe_posted, delete_bwe_posted, add_bwe_to_post
+from services.bwe_list import get_bwe_lists, mark_bwe_posted, delete_bwe_posted, delete_bwe_to_post, add_bwe_to_post
 from services.issue_counts import get_latest_issue_counts
 from services.blog_post import create_blog_post, blog_post_exists, delete_blog_post, edit_blog_post
 
@@ -581,6 +581,15 @@ def edit_blog_post_route():
         return jsonify({"success": False, "error": "No issue number"}), 400
     result = edit_blog_post(issue_number)
     return jsonify(result)
+
+
+@app.route("/bwe-to-post/delete", methods=["POST"])
+def delete_bwe_to_post_entry():
+    name = request.form.get("name", "").strip()
+    url = request.form.get("url", "").strip()
+    if name and url:
+        delete_bwe_to_post(name, url)
+    return redirect(url_for("compose"))
 
 
 @app.route("/bwe-posted/delete", methods=["POST"])
