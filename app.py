@@ -34,14 +34,15 @@ def friendly_time(iso_timestamp):
 
 @app.context_processor
 def cache_busting():
-    """Provide CSS cache-busting timestamp to templates."""
-    css_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                            "static", "css", "style.css")
-    try:
-        mtime = int(os.path.getmtime(css_path))
-    except OSError:
-        mtime = 0
-    return {"css_version": mtime}
+    """Provide CSS/JS cache-busting timestamps to templates."""
+    static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+    versions = {}
+    for key, rel_path in [("css_version", "css/style.css"), ("js_version", "js/editor.js")]:
+        try:
+            versions[key] = int(os.path.getmtime(os.path.join(static_dir, rel_path)))
+        except OSError:
+            versions[key] = 0
+    return versions
 
 _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 HISTORY_FILE = os.path.join(_BASE_DIR, "posts", "history.json")
