@@ -30,7 +30,8 @@ social-posting/
 │   ├── social_links.py     # Extract Mastodon/Bluesky profiles from site HTML
 │   ├── favicon.py          # Multi-strategy favicon fetching (existing/Google API/HTML extraction)
 │   ├── description.py      # Multi-source meta description extraction (mirrors getdescription.js)
-│   └── rss_link.py         # RSS/Atom feed URL discovery (mirrors getrsslink.js)
+│   ├── rss_link.py         # RSS/Atom feed URL discovery (mirrors getrsslink.js)
+│   └── bwe_list.py         # Parse/modify built-with-eleventy.md (to-post/posted lists)
 ├── scripts/
 │   └── capture-screenshot.js  # Puppeteer full-page screenshot capture
 ├── templates/              # Jinja2 (base.html, compose.html, result.html)
@@ -95,7 +96,7 @@ When a post fails on any platform:
 
 ## Bundledb Editor
 
-The `/editor` page provides search and edit for `bundledb.json` items, plus a create mode for adding new entries. The editor page has a "Back to Social Posting" button, "Editing bundledb" header, and right-justified "Run Latest" and "Deploy" buttons in the header bar. Mode (Edit/Create) is selected via radio buttons at the top, then type is selected. Switching between modes clears the type selection. In edit mode, fuzzy search (Fuse.js) over type-specific keys finds items. In create mode, selecting a type opens a blank form with auto-populated fields and cursor in the Title field. Fields are ordered per `FIELD_ORDER` in `editor.js` with manual-entry fields first, followed by fetch buttons, then auto-generated fields. Saves go to `POST /editor/save`, which creates a backup on first save per session.
+The `/editor` page provides search and edit for `bundledb.json` items, plus a create mode for adding new entries. The editor page has a "Back to Social Posting" button, "Bundle Entry Editor" header, and right-justified "Run Latest" and "Deploy" buttons in the header bar. Mode (Edit/Create) is selected via radio buttons at the top, then type is selected. Switching between modes clears the type selection. In edit mode, fuzzy search (Fuse.js) over type-specific keys finds items. In create mode, selecting a type opens a blank form with auto-populated fields and cursor in the Title field. Fields are ordered per `FIELD_ORDER` in `editor.js` with manual-entry fields first, followed by fetch buttons, then auto-generated fields. Saves go to `POST /editor/save`, which creates a backup on first save per session.
 
 **Edit/Create modes** (`editor.js` + `editor.html`):
 - Mode radio buttons (Edit/Create) at top of editor. Edit mode is the default.
@@ -110,6 +111,29 @@ The `/editor` page provides search and edit for `bundledb.json` items, plus a cr
 - **Site**: Issue, Type, Title, Link, Date, formattedDate, [Fetch/Refresh Description, Favicon & Screenshot button], description, favicon, screenshotpath.
 - **Release**: Issue, Type, Title, Link, Date, formattedDate, [Fetch/Refresh Description button], description.
 - **Starter**: Issue, Type, Title, Link, Demo, [Fetch/Refresh Description & Screenshot button], description, screenshotpath.
+
+**Auto-slugify** (create mode, `editor.js`):
+- Title and Author fields auto-compute `slugifiedTitle` and `slugifiedAuthor` on blur.
+- Client-side `slugify()` function matches `@sindresorhus/slugify` behavior: custom replacements map (German umlauts ö→oe/ä→ae/ü→ue, ligatures, special Latin chars), NFD decomposition with diacritic stripping, decamelization, contraction handling (`it's`→`its`), dash normalization.
+
+**View JSON button** (create mode, `editor.js`):
+- "View JSON" button in the save button row opens a read-only panel showing the pretty-printed JSON entry to be added to `bundledb.json`.
+- For site entries, also shows the `showcase-data.json` entry below.
+- Clicking again refreshes the preview; panel closes on save.
+
+**Duplicate link detection** (create mode, `editor.js`):
+- On Link field blur, checks for existing entries with the same normalized link across `bundledb.json` and `showcase-data.json`.
+- Save is blocked if a duplicate is found, with a modal showing the duplicate entry details.
+- URL normalization (`normalizeLink`): lowercases, strips trailing slashes, prepends `https://` if no protocol, strips `www.` prefix — so `https://www.example.com` and `https://example.com` are treated as identical.
+
+**Delete entry** (edit mode, `editor.js` + `app.py`):
+- "DELETE ENTRY" red button in the skip checkbox row (right-justified).
+- Custom confirmation modal with "ARE YOU SURE YOU WANT TO DELETE THE [type] NAMED [title]?" message. Cancel button is focused by default (Enter does not delete).
+- `POST /editor/delete` removes the entry from `bundledb.json` (and from `showcase-data.json` for sites).
+
+**Delete test entries** (edit mode, `editor.js` + `app.py`):
+- "DELETE ALL TEST ENTRIES" button appears next to DELETE ENTRY only when entries with "bobdemo99" in their title exist.
+- `POST /editor/delete-test-entries` removes all matching entries from both `bundledb.json` and `showcase-data.json`.
 
 **Skip checkbox** (edit mode only):
 - A "Skip (exclude from site generation)" checkbox appears at the top of the edit form.
@@ -195,6 +219,13 @@ The `/editor` page provides search and edit for `bundledb.json` items, plus a cr
 - `POST /editor/deploy` runs `npm run deploy` in `ELEVENTY_PROJECT_DIR` via `subprocess.run()` with 120s timeout, captures full stdout+stderr.
 - Modal shows deploy output, then "View 11tybundle.dev" button which opens `https://11tybundle.dev`.
 
+## BWE Sites to Post Management
+
+The compose page sidebar shows "Sites to Post" from `built-with-eleventy.md`. Each entry has:
+- **Post** button (or **Use** link if a draft exists): populates the compose form in 11ty-bwe mode.
+- **Del** button: removes the entry from the TO BE POSTED list via `POST /bwe-to-post/delete`. Shows a confirmation modal with Cancel focused by default.
+- Backend: `delete_bwe_to_post(name, url)` in `services/bwe_list.py` parses and rewrites the markdown file.
+
 ## Key Conventions
 
 - All paths in `app.py` are `__file__`-relative via `_BASE_DIR` (not CWD-relative).
@@ -206,6 +237,7 @@ The `/editor` page provides search and edit for `bundledb.json` items, plus a cr
 - Content warnings use radio buttons for both platforms (None, Sexual, Nudity, Graphic Media, Porn, Political). Mastodon values are human-readable strings used as spoiler text; Bluesky values are API label identifiers.
 - Draft deletion route (`/draft/<id>/delete`) handles drafts, failed posts, and legacy failed entries.
 - Sidebar post cards show badges (DRAFT/FAILED/platform), action buttons, 50-char text preview, and timestamp.
+- Static asset cache-busting: CSS and JS files use `?v={{ css_version }}` / `?v={{ js_version }}` query params (file mtime) via Flask context processor.
 
 ## Configuration
 
