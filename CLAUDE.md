@@ -98,7 +98,7 @@ When a post fails on any platform:
 
 ## Bundledb Editor
 
-The `/editor` page provides search and edit for `bundledb.json` items, plus a create mode for adding new entries. The editor page has a "Back to Social Posting" button, "Bundle Entry Editor" header, and right-justified "Run Latest" and "Deploy" buttons in the header bar. Mode (Edit/Create) is selected via radio buttons at the top, then type is selected. Switching between modes clears the type selection. In edit mode, fuzzy search (Fuse.js) over type-specific keys finds items. In create mode, selecting a type opens a blank form with auto-populated fields and cursor in the Title field. Fields are ordered per `FIELD_ORDER` in `editor.js` with manual-entry fields first, followed by fetch buttons, then auto-generated fields. Saves go to `POST /editor/save`, which creates a backup on first save per session.
+The `/editor` page provides search and edit for `bundledb.json` items, plus a create mode for adding new entries. The editor page has a "Back to Social Posting" button, "Bundle Entry Editor" header, and right-justified "Check URL", "Run Latest", and "Deploy" buttons in the header bar. Mode (Edit/Create) is selected via radio buttons at the top, then type is selected. Switching between modes clears the type selection. In edit mode, fuzzy search (Fuse.js) over type-specific keys finds items. In create mode, selecting a type opens a blank form with auto-populated fields and cursor in the Title field. Fields are ordered per `FIELD_ORDER` in `editor.js` with manual-entry fields first, followed by fetch buttons, then auto-generated fields. Saves go to `POST /editor/save`, which creates a backup on first save per session.
 
 **Edit/Create modes** (`editor.js` + `editor.html`):
 - Mode radio buttons (Edit/Create) at top of editor. Edit mode is the default.
@@ -127,6 +127,12 @@ The `/editor` page provides search and edit for `bundledb.json` items, plus a cr
 - On Link field blur, checks for existing entries with the same normalized link across `bundledb.json` and `showcase-data.json`.
 - Save is blocked if a duplicate is found, with a modal showing the duplicate entry details.
 - URL normalization (`normalizeLink`): lowercases, strips trailing slashes, prepends `https://` if no protocol, strips `www.` prefix — so `https://www.example.com` and `https://example.com` are treated as identical.
+
+**Check URL** (`editor.js` + `app.py`):
+- "Check URL" button in the editor header opens a modal with a URL input field, Check and Close buttons.
+- `POST /editor/check-url` normalizes the URL (lowercase, strip trailing slashes, ensure protocol, strip `www.`) and searches both `bundledb.json` (by `Link`) and `showcase-data.json` (by `link`).
+- Results show which file(s) contain the URL, with entry type and title.
+- Modal dismisses via Close button or Escape key.
 
 **Delete entry** (edit mode, `editor.js` + `app.py`):
 - "DELETE ENTRY" red button in the skip checkbox row (right-justified).
