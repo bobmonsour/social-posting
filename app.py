@@ -670,6 +670,27 @@ def editor_save():
 
         data[index] = item
 
+        # For site edits: sync showcase-data.json if entry exists
+        if item.get("Type") == "site":
+            link = item.get("Link", "")
+            if link:
+                try:
+                    with open(SHOWCASE_PATH, "r") as f:
+                        showcase_data = json.load(f)
+                    for sc_entry in showcase_data:
+                        if sc_entry.get("link") == link:
+                            for key in ("title", "description", "favicon", "screenshotpath"):
+                                bundledb_key = "Title" if key == "title" else key
+                                sc_entry[key] = item.get(bundledb_key, "")
+                            sc_entry["date"] = item.get("Date", "")
+                            sc_entry["formattedDate"] = item.get("formattedDate", "")
+                            break
+                    with open(SHOWCASE_PATH, "w") as f:
+                        json.dump(showcase_data, f, indent=2)
+                    result["showcase_updated"] = True
+                except Exception:
+                    pass
+
         # Handle author-level field propagation
         propagate = payload.get("propagate", [])
         propagated = 0
@@ -709,6 +730,20 @@ def editor_favicon():
     return jsonify({"success": False, "error": "Could not fetch favicon"})
 
 
+@app.route("/editor/description", methods=["POST"])
+def editor_description():
+    data = request.get_json()
+    url = data.get("url", "").strip() if data else ""
+    if not url:
+        return jsonify({"success": False, "error": "No URL provided"}), 400
+
+    from services.description import extract_description
+    description = extract_description(url)
+    if description:
+        return jsonify({"success": True, "description": description})
+    return jsonify({"success": False, "error": "Could not extract description"})
+
+
 @app.route("/editor/screenshot", methods=["POST"])
 def editor_screenshot():
     data = request.get_json()
@@ -717,12 +752,15 @@ def editor_screenshot():
         return jsonify({"success": False, "error": "No URL provided"}), 400
 
     try:
+        env = os.environ.copy()
+        env["NODE_PATH"] = os.path.join(DBTOOLS_DIR, "node_modules")
         result = subprocess.run(
             ["node", SCREENSHOT_SCRIPT, url],
             cwd=DBTOOLS_DIR,
             capture_output=True,
             text=True,
-            timeout=60
+            timeout=60,
+            env=env,
         )
         output = json.loads(result.stdout.strip())
         return jsonify(output)

@@ -24,8 +24,8 @@
       "rssLink", "Categories"
     ],
     site: [
-      "Issue", "Type", "Title", "description", "Link", "Date",
-      "formattedDate", "favicon", "screenshotpath"
+      "Issue", "Type", "Title", "Link", "Date",
+      "formattedDate", "description", "favicon", "screenshotpath"
     ],
     release: [
       "Issue", "Type", "Title", "description", "Link", "Date",
@@ -334,6 +334,7 @@
       editFormTitle.textContent = "Edit: " + item.Title;
     }
     editFormFields.innerHTML = "";
+    lastFetchedUrl = "";
 
     // Hide search/recent
     recentItems.style.display = "none";
@@ -368,13 +369,13 @@
         renderTextField(field, item);
       }
 
-      // Insert fetch button after Link field for site creates
-      if (field === "Link" && isCreate && currentType === "site") {
+      // Insert fetch button after Date field for sites (create and edit)
+      if (field === "Date" && currentType === "site") {
         const btn = document.createElement("button");
         btn.type = "button";
         btn.className = "btn-action btn-fetch-data";
-        btn.textContent = "Fetch Favicon & Screenshot";
-        btn.addEventListener("click", fetchSiteData);
+        btn.textContent = "Fetch Description, Favicon & Screenshot";
+        btn.addEventListener("click", () => { lastFetchedUrl = ""; fetchSiteData(); });
         editFormFields.appendChild(btn);
       }
     });
@@ -823,7 +824,9 @@
       });
   }
 
-  // --- Site create: fetch favicon & screenshot ---
+  // --- Site create: fetch favicon, screenshot & description ---
+
+  let lastFetchedUrl = "";
 
   function fetchSiteData() {
     const linkEl = document.getElementById("field-Link");
@@ -833,13 +836,19 @@
       return;
     }
 
+    // Avoid re-fetching for the same URL
+    if (url === lastFetchedUrl) return;
+    lastFetchedUrl = url;
+
     const btn = editFormFields.querySelector(".btn-fetch-data");
     if (btn) {
       btn.disabled = true;
       btn.textContent = "Fetching...";
     }
 
-    // Fetch favicon and screenshot in parallel
+    showStatus("Fetching site data...", false);
+
+    // Fetch favicon, screenshot, and description in parallel
     const faviconPromise = fetch("/editor/favicon", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -852,7 +861,13 @@
       body: JSON.stringify({ url: url })
     }).then((r) => r.json()).catch(() => ({ success: false }));
 
-    Promise.all([faviconPromise, screenshotPromise]).then(([favResult, ssResult]) => {
+    const descriptionPromise = fetch("/editor/description", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: url })
+    }).then((r) => r.json()).catch(() => ({ success: false }));
+
+    Promise.all([faviconPromise, screenshotPromise, descriptionPromise]).then(([favResult, ssResult, descResult]) => {
       if (favResult.success && favResult.favicon) {
         const favEl = document.getElementById("field-favicon");
         if (favEl) favEl.value = favResult.favicon;
@@ -876,16 +891,25 @@
         }
       }
 
+      if (descResult.success && descResult.description) {
+        const descEl = document.getElementById("field-description");
+        if (descEl && !descEl.value.trim()) {
+          descEl.value = descResult.description;
+        }
+      }
+
       let msgs = [];
       if (favResult.success) msgs.push("Favicon fetched");
       else msgs.push("Favicon failed");
       if (ssResult.success) msgs.push("Screenshot captured");
       else msgs.push("Screenshot failed");
-      showStatus(msgs.join(". ") + ".", !favResult.success && !ssResult.success);
+      if (descResult.success) msgs.push("Description extracted");
+      else msgs.push("Description failed");
+      showStatus(msgs.join(". ") + ".", !favResult.success && !ssResult.success && !descResult.success);
     }).finally(() => {
       if (btn) {
         btn.disabled = false;
-        btn.textContent = "Fetch Favicon & Screenshot";
+        btn.textContent = "Fetch Description, Favicon & Screenshot";
       }
     });
   }
