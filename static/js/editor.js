@@ -18,22 +18,22 @@
   // Field order per type
   const FIELD_ORDER = {
     "blog post": [
-      "Issue", "Type", "Title", "slugifiedTitle", "Link", "Date",
-      "formattedDate", "description", "Author", "slugifiedAuthor",
-      "AuthorSite", "AuthorSiteDescription", "socialLinks", "favicon",
-      "rssLink", "Categories"
+      "Issue", "Type", "Title", "Link", "Date", "Author", "Categories",
+      "formattedDate", "slugifiedAuthor", "slugifiedTitle",
+      "description", "AuthorSite", "AuthorSiteDescription", "socialLinks",
+      "favicon", "rssLink"
     ],
     site: [
       "Issue", "Type", "Title", "Link", "Date",
       "formattedDate", "description", "favicon", "screenshotpath"
     ],
     release: [
-      "Issue", "Type", "Title", "description", "Link", "Date",
-      "formattedDate"
+      "Issue", "Type", "Title", "Link", "Date",
+      "formattedDate", "description"
     ],
     starter: [
-      "Issue", "Type", "Title", "Link", "Demo", "description",
-      "screenshotpath"
+      "Issue", "Type", "Title", "Link", "Demo",
+      "description", "screenshotpath"
     ]
   };
 
@@ -103,24 +103,13 @@
   modeRadios.forEach((radio) => {
     radio.addEventListener("change", () => {
       currentMode = radio.value;
+      currentType = null;
+      typeRadios.forEach((r) => { r.checked = false; });
       hideEditForm();
       searchInput.value = "";
       searchResults.style.display = "none";
       recentItems.style.display = "none";
-
-      if (currentMode === "edit") {
-        searchSection.style.display = currentType ? "" : "none";
-        if (currentType) {
-          showRecentItems();
-          initFuse();
-        }
-      } else {
-        // Create mode: hide search, show create form if type selected
-        searchSection.style.display = "none";
-        if (currentType) {
-          showCreateForm();
-        }
-      }
+      searchSection.style.display = "none";
     });
   });
 
@@ -369,19 +358,78 @@
         renderTextField(field, item);
       }
 
-      // Insert fetch button after Date field for sites (create and edit)
+      // Insert fetch buttons after Date field
       if (field === "Date" && currentType === "site") {
+        const allPopulated = item.description && item.favicon && item.screenshotpath;
         const btn = document.createElement("button");
         btn.type = "button";
         btn.className = "btn-action btn-fetch-data";
-        btn.textContent = "Fetch Description, Favicon & Screenshot";
+        btn.textContent = allPopulated
+          ? "Refresh Description, Favicon & Screenshot"
+          : "Fetch Description, Favicon & Screenshot";
         btn.addEventListener("click", () => { lastFetchedUrl = ""; fetchSiteData(); });
         editFormFields.appendChild(btn);
+      }
+      if (field === "Date" && currentType === "release") {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "btn-action btn-fetch-data";
+        btn.textContent = item.description ? "Refresh Description" : "Fetch Description";
+        btn.addEventListener("click", () => { lastFetchedUrl = ""; fetchDescriptionOnly(); });
+        editFormFields.appendChild(btn);
+      }
+      if (field === "Demo" && currentType === "starter") {
+        const allPopulated = item.description && item.screenshotpath;
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "btn-action btn-fetch-data";
+        btn.textContent = allPopulated
+          ? "Refresh Description & Screenshot"
+          : "Fetch Description & Screenshot";
+        btn.addEventListener("click", () => { lastFetchedUrl = ""; fetchStarterData(); });
+        editFormFields.appendChild(btn);
+      }
+      if (field === "Categories" && currentType === "blog post" && !item.description) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "btn-action btn-fetch-data";
+        btn.textContent = "Fetch Description";
+        btn.addEventListener("click", () => { lastFetchedUrl = ""; fetchDescriptionOnly(); });
+        editFormFields.appendChild(btn);
+      }
+      // Auto-populate AuthorSite with origin of Link for blog post creates
+      if (field === "AuthorSite" && currentType === "blog post") {
+        const asEl = document.getElementById("field-AuthorSite");
+        if (asEl && !asEl.value.trim()) {
+          const linkEl = document.getElementById("field-Link");
+          if (linkEl && linkEl.value.trim()) {
+            try {
+              const origin = new URL(linkEl.value.trim()).origin;
+              asEl.value = origin;
+            } catch { /* invalid URL, leave empty */ }
+          }
+        }
+        // Insert Fetch/Refresh Author Info button
+        const authorBtn = document.createElement("button");
+        authorBtn.type = "button";
+        authorBtn.id = "btn-fetch-author-info";
+        authorBtn.className = "btn-action btn-fetch-data";
+        const authorEl = document.getElementById("field-Author");
+        const authorName = authorEl ? authorEl.value.trim() : (item.Author || "");
+        authorBtn.textContent = uniqueAuthors.includes(authorName)
+          ? "Refresh Author Info" : "Fetch Author Info";
+        authorBtn.addEventListener("click", fetchAuthorInfo);
+        editFormFields.appendChild(authorBtn);
       }
     });
 
     editFormContainer.style.display = "";
     editFormContainer.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    if (isCreate) {
+      const titleField = document.getElementById("field-Title");
+      if (titleField) titleField.focus();
+    }
   }
 
   function renderSocialLinksFieldset(item) {
@@ -547,7 +595,15 @@
   }
 
   function autoFillFromAuthor(name) {
-    if (!name || !uniqueAuthors.includes(name)) return;
+    const isExisting = name && uniqueAuthors.includes(name);
+
+    // Rename the author info button based on whether author is known
+    const authorBtn = document.getElementById("btn-fetch-author-info");
+    if (authorBtn) {
+      authorBtn.textContent = isExisting ? "Refresh Author Info" : "Fetch Author Info";
+    }
+
+    if (!isExisting) return;
 
     // Find most recent blog post by this author
     let best = null;
@@ -893,9 +949,7 @@
 
       if (descResult.success && descResult.description) {
         const descEl = document.getElementById("field-description");
-        if (descEl && !descEl.value.trim()) {
-          descEl.value = descResult.description;
-        }
+        if (descEl) descEl.value = descResult.description;
       }
 
       let msgs = [];
@@ -910,6 +964,193 @@
       if (btn) {
         btn.disabled = false;
         btn.textContent = "Fetch Description, Favicon & Screenshot";
+      }
+    });
+  }
+
+  function fetchStarterData() {
+    const demoEl = document.getElementById("field-Demo");
+    const url = demoEl ? demoEl.value.trim() : "";
+    if (!url) {
+      showStatus("Enter a Demo link first.", true);
+      return;
+    }
+
+    if (url === lastFetchedUrl) return;
+    lastFetchedUrl = url;
+
+    const btn = editFormFields.querySelector(".btn-fetch-data");
+    const origLabel = btn ? btn.textContent : "";
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Fetching...";
+    }
+
+    showStatus("Fetching starter data...", false);
+
+    const descriptionPromise = fetch("/editor/description", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: url })
+    }).then((r) => r.json()).catch(() => ({ success: false }));
+
+    const screenshotPromise = fetch("/editor/screenshot", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: url })
+    }).then((r) => r.json()).catch(() => ({ success: false }));
+
+    Promise.all([descriptionPromise, screenshotPromise]).then(([descResult, ssResult]) => {
+      if (descResult.success && descResult.description) {
+        const descEl = document.getElementById("field-description");
+        if (descEl) descEl.value = descResult.description;
+      }
+
+      if (ssResult.success && ssResult.screenshotpath) {
+        const ssEl = document.getElementById("field-screenshotpath");
+        if (ssEl) ssEl.value = ssResult.screenshotpath;
+
+        if (ssResult.filename) {
+          const existing = document.querySelector(".screenshot-preview");
+          if (existing) existing.remove();
+
+          const img = document.createElement("img");
+          img.className = "screenshot-preview";
+          img.src = "/editor/screenshot-preview/" + ssResult.filename;
+          img.alt = "Screenshot preview";
+          editFormFields.appendChild(img);
+        }
+      }
+
+      let msgs = [];
+      if (descResult.success) msgs.push("Description extracted");
+      else msgs.push("Description failed");
+      if (ssResult.success) msgs.push("Screenshot captured");
+      else msgs.push("Screenshot failed");
+      showStatus(msgs.join(". ") + ".", !descResult.success && !ssResult.success);
+    }).finally(() => {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = origLabel;
+      }
+    });
+  }
+
+  function fetchDescriptionOnly() {
+    const linkEl = document.getElementById("field-Link");
+    const url = linkEl ? linkEl.value.trim() : "";
+    if (!url) {
+      showStatus("Enter a Link first.", true);
+      return;
+    }
+
+    if (url === lastFetchedUrl) return;
+    lastFetchedUrl = url;
+
+    const btn = editFormFields.querySelector(".btn-fetch-data");
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Fetching...";
+    }
+
+    showStatus("Fetching description...", false);
+
+    fetch("/editor/description", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: url })
+    }).then((r) => r.json()).then((result) => {
+      if (result.success && result.description) {
+        const descEl = document.getElementById("field-description");
+        if (descEl && !descEl.value.trim()) {
+          descEl.value = result.description;
+        }
+        showStatus("Description extracted.", false);
+      } else {
+        showStatus("Description failed.", true);
+      }
+    }).catch(() => {
+      showStatus("Description failed.", true);
+    }).finally(() => {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "Fetch Description";
+      }
+    });
+  }
+
+  function fetchAuthorInfo() {
+    const asEl = document.getElementById("field-AuthorSite");
+    const url = asEl ? asEl.value.trim() : "";
+    if (!url) {
+      showStatus("Enter an AuthorSite first.", true);
+      return;
+    }
+
+    const btn = document.getElementById("btn-fetch-author-info");
+    const origLabel = btn ? btn.textContent : "";
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Fetching...";
+    }
+
+    showStatus("Fetching author info...", false);
+
+    fetch("/editor/author-info", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: url })
+    }).then((r) => r.json()).then((result) => {
+      if (!result.success) {
+        showStatus("Author info fetch failed.", true);
+        return;
+      }
+
+      let msgs = [];
+
+      if (result.description) {
+        const el = document.getElementById("field-AuthorSiteDescription");
+        if (el && !el.value.trim()) el.value = result.description;
+        msgs.push("Description");
+      }
+
+      if (result.favicon) {
+        const el = document.getElementById("field-favicon");
+        if (el && !el.value.trim()) el.value = result.favicon;
+        msgs.push("Favicon");
+      }
+
+      if (result.rssLink) {
+        const el = document.getElementById("field-rssLink");
+        if (el && !el.value.trim()) el.value = result.rssLink;
+        msgs.push("RSS link");
+      }
+
+      if (result.socialLinks) {
+        const sl = result.socialLinks;
+        if (sl.mastodon) {
+          const el = document.getElementById("field-sl-mastodon");
+          if (el && !el.value.trim()) el.value = sl.mastodon;
+          msgs.push("Mastodon");
+        }
+        if (sl.bluesky) {
+          const el = document.getElementById("field-sl-bluesky");
+          if (el && !el.value.trim()) el.value = sl.bluesky;
+          msgs.push("Bluesky");
+        }
+      }
+
+      if (msgs.length) {
+        showStatus("Fetched: " + msgs.join(", ") + ".", false);
+      } else {
+        showStatus("No author info found.", true);
+      }
+    }).catch(() => {
+      showStatus("Author info fetch failed.", true);
+    }).finally(() => {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = origLabel;
       }
     });
   }

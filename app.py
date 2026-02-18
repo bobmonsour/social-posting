@@ -600,6 +600,20 @@ def editor():
 def editor_data():
     with open(BUNDLEDB_PATH, "r") as f:
         data = json.load(f)
+
+    # For site entries, merge screenshotpath from showcase-data.json
+    try:
+        with open(SHOWCASE_PATH, "r") as f:
+            showcase_data = json.load(f)
+        showcase_by_link = {e["link"]: e for e in showcase_data if e.get("link")}
+        for item in data:
+            if item.get("Type") == "site" and item.get("Link"):
+                sc = showcase_by_link.get(item["Link"])
+                if sc:
+                    item["screenshotpath"] = sc.get("screenshotpath", "")
+    except Exception:
+        pass
+
     return jsonify(data)
 
 
@@ -629,13 +643,12 @@ def editor_save():
     result = {"success": True, "backup_created": True, "propagated": 0}
 
     if is_create:
-        data.append(item)
-        result["new_index"] = len(data) - 1
-
         # For site type: add to BWE list and showcase-data.json
         if item.get("Type") == "site":
             title = item.get("Title", "")
             link = item.get("Link", "")
+            screenshotpath = item.pop("screenshotpath", "")
+
             if title and link:
                 try:
                     add_bwe_to_post(title, link)
@@ -651,7 +664,7 @@ def editor_save():
                         "date": item.get("Date", ""),
                         "formattedDate": item.get("formattedDate", ""),
                         "favicon": item.get("favicon", ""),
-                        "screenshotpath": item.get("screenshotpath", ""),
+                        "screenshotpath": screenshotpath,
                     }
                     with open(SHOWCASE_PATH, "r") as f:
                         showcase_data = json.load(f)
@@ -661,6 +674,9 @@ def editor_save():
                     result["showcase_added"] = True
                 except Exception:
                     pass
+
+        data.append(item)
+        result["new_index"] = len(data) - 1
     else:
         index = payload.get("index")
         if index is None:
@@ -668,10 +684,9 @@ def editor_save():
         if index < 0 or index >= len(data):
             return jsonify({"success": False, "error": "Index out of range"}), 400
 
-        data[index] = item
-
-        # For site edits: sync showcase-data.json if entry exists
+        # For site edits: strip screenshotpath from bundledb, sync to showcase-data.json
         if item.get("Type") == "site":
+            screenshotpath = item.pop("screenshotpath", "")
             link = item.get("Link", "")
             if link:
                 try:
@@ -679,9 +694,10 @@ def editor_save():
                         showcase_data = json.load(f)
                     for sc_entry in showcase_data:
                         if sc_entry.get("link") == link:
-                            for key in ("title", "description", "favicon", "screenshotpath"):
+                            for key in ("title", "description", "favicon"):
                                 bundledb_key = "Title" if key == "title" else key
                                 sc_entry[key] = item.get(bundledb_key, "")
+                            sc_entry["screenshotpath"] = screenshotpath
                             sc_entry["date"] = item.get("Date", "")
                             sc_entry["formattedDate"] = item.get("formattedDate", "")
                             break
@@ -690,6 +706,8 @@ def editor_save():
                     result["showcase_updated"] = True
                 except Exception:
                     pass
+
+        data[index] = item
 
         # Handle author-level field propagation
         propagate = payload.get("propagate", [])
@@ -728,6 +746,27 @@ def editor_favicon():
     if result:
         return jsonify({"success": True, "favicon": result})
     return jsonify({"success": False, "error": "Could not fetch favicon"})
+
+
+@app.route("/editor/author-info", methods=["POST"])
+def editor_author_info():
+    """Fetch author site description, social links, favicon, and RSS link."""
+    data = request.get_json()
+    url = data.get("url", "").strip() if data else ""
+    if not url:
+        return jsonify({"success": False, "error": "No URL provided"}), 400
+
+    from services.description import extract_description
+    from services.social_links import extract_social_links
+    from services.favicon import fetch_favicon
+    from services.rss_link import extract_rss_link
+
+    result = {"success": True}
+    result["description"] = extract_description(url) or ""
+    result["socialLinks"] = extract_social_links(url) or {}
+    result["favicon"] = fetch_favicon(url) or ""
+    result["rssLink"] = extract_rss_link(url) or ""
+    return jsonify(result)
 
 
 @app.route("/editor/description", methods=["POST"])
