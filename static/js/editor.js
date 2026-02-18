@@ -15,6 +15,49 @@
   const PROPAGATABLE_FIELDS = ["AuthorSiteDescription", "rssLink", "favicon"];
   const PROPAGATABLE_SOCIAL = ["mastodon", "bluesky", "youtube", "github", "linkedin"];
 
+  // Slugify — mirrors @sindresorhus/slugify with default options
+  // Replacements applied before NFD diacritic stripping (mirrors @sindresorhus/transliterate)
+  const SLUGIFY_REPLACEMENTS = new Map([
+    ["&", " and "], ["\u{1F984}", " unicorn "], ["\u2665", " love "],
+    // German umlauts (must come before NFD which would strip to base letter)
+    ["\u00E4", "ae"], ["\u00C4", "Ae"],
+    ["\u00F6", "oe"], ["\u00D6", "Oe"],
+    ["\u00FC", "ue"], ["\u00DC", "Ue"],
+    ["\u00DF", "ss"], ["\u1E9E", "Ss"],
+    // Ligatures and special Latin
+    ["\u00E6", "ae"], ["\u00C6", "AE"],
+    ["\u0153", "oe"], ["\u0152", "OE"],
+    ["\u00F8", "o"], ["\u00D8", "O"],
+    ["\u0142", "l"], ["\u0141", "L"],
+    ["\u00F0", "d"], ["\u00D0", "D"],
+    ["\u00FE", "th"], ["\u00DE", "TH"],
+    ["\u0111", "d"], ["\u0110", "D"],
+  ]);
+  function slugify(text) {
+    // Custom replacements (& → and, etc.)
+    for (const [key, value] of SLUGIFY_REPLACEMENTS) {
+      text = text.replaceAll(key, value);
+    }
+    // Transliterate: NFD decompose, strip diacritics, normalize dashes
+    text = text.normalize("NFD").replace(/\p{Diacritic}/gu, "").normalize();
+    text = text.replace(/\p{Dash_Punctuation}/gu, "-");
+    // Decamelize: split camelCase into separate words
+    text = text
+      .replaceAll(/([A-Z]{2,})(\d+)/g, "$1 $2")
+      .replaceAll(/([a-z\d]+)([A-Z]{2,})/g, "$1 $2")
+      .replaceAll(/([a-z\d])([A-Z])/g, "$1 $2")
+      .replaceAll(/([A-Z]+)([A-Z][a-rt-z\d]+)/g, "$1 $2");
+    // Lowercase
+    text = text.toLowerCase();
+    // Handle contractions: 's → s, 't → t (straight and curly apostrophes)
+    text = text.replaceAll(/([a-z\d]+)['\u2019]([ts])(\s|$)/g, "$1$2$3");
+    // Replace non-alphanumeric runs with separator
+    text = text.replace(/[^a-z\d]+/g, "-");
+    // Remove leading/trailing separators and collapse duplicates
+    text = text.replace(/^-|-$/g, "");
+    return text;
+  }
+
   // Field order per type
   const FIELD_ORDER = {
     "blog post": [
@@ -559,6 +602,28 @@
         editFormFields.appendChild(authorBtn);
       }
     });
+
+    // Auto-slugify Title → slugifiedTitle, Author → slugifiedAuthor
+    if (currentType === "blog post") {
+      const titleField = document.getElementById("field-Title");
+      const slugTitleField = document.getElementById("field-slugifiedTitle");
+      if (titleField && slugTitleField) {
+        titleField.addEventListener("blur", () => {
+          if (titleField.value.trim() && !slugTitleField.value.trim()) {
+            slugTitleField.value = slugify(titleField.value);
+          }
+        });
+      }
+      const authorField = document.getElementById("field-Author");
+      const slugAuthorField = document.getElementById("field-slugifiedAuthor");
+      if (authorField && slugAuthorField) {
+        authorField.addEventListener("blur", () => {
+          if (authorField.value.trim() && !slugAuthorField.value.trim()) {
+            slugAuthorField.value = slugify(authorField.value);
+          }
+        });
+      }
+    }
 
     editFormContainer.style.display = "";
     editFormContainer.scrollIntoView({ behavior: "smooth", block: "start" });
