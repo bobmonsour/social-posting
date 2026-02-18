@@ -121,6 +121,12 @@
   const deployModalOk = document.getElementById("deploy-modal-ok");
   const btnRunLatest = document.getElementById("btn-run-latest");
   const btnDeploy = document.getElementById("btn-deploy");
+  const btnCheckUrlOpen = document.getElementById("btn-check-url-open");
+  const checkUrlInput = document.getElementById("check-url-input");
+  const btnCheckUrl = document.getElementById("btn-check-url");
+  const checkUrlModal = document.getElementById("check-url-modal");
+  const checkUrlResult = document.getElementById("check-url-result");
+  const checkUrlModalClose = document.getElementById("check-url-modal-close");
 
   // Load data on page load
   fetch("/editor/data")
@@ -402,6 +408,69 @@
 
   dupLinkOk.addEventListener("click", () => {
     dupLinkModal.style.display = "none";
+  });
+
+  // Check URL
+  btnCheckUrlOpen.addEventListener("click", () => {
+    checkUrlInput.value = "";
+    checkUrlResult.style.display = "none";
+    checkUrlResult.innerHTML = "";
+    checkUrlModal.style.display = "flex";
+    setTimeout(() => checkUrlInput.focus(), 50);
+  });
+
+  function doCheckUrl() {
+    const url = checkUrlInput.value.trim();
+    if (!url) return;
+    btnCheckUrl.textContent = "Checking...";
+    btnCheckUrl.disabled = true;
+    fetch("/editor/check-url", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.found && data.found.length > 0) {
+          let html = "<p><strong>URL found in:</strong></p><ul>";
+          for (const match of data.found) {
+            html += `<li><strong>${match.source}</strong>`;
+            if (match.type) html += ` &mdash; ${match.type}`;
+            if (match.title) html += `: ${match.title}`;
+            html += "</li>";
+          }
+          html += "</ul>";
+          checkUrlResult.innerHTML = html;
+        } else {
+          checkUrlResult.innerHTML =
+            "<p>URL not found in bundledb.json or showcase-data.json.</p>";
+        }
+        checkUrlResult.style.display = "block";
+      })
+      .catch((err) => {
+        checkUrlResult.innerHTML = `<p class="status-error">Error: ${err.message}</p>`;
+        checkUrlResult.style.display = "block";
+      })
+      .finally(() => {
+        btnCheckUrl.textContent = "Check";
+        btnCheckUrl.disabled = false;
+      });
+  }
+
+  btnCheckUrl.addEventListener("click", doCheckUrl);
+  checkUrlInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      doCheckUrl();
+    }
+  });
+  checkUrlModalClose.addEventListener("click", () => {
+    checkUrlModal.style.display = "none";
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && checkUrlModal.style.display !== "none") {
+      checkUrlModal.style.display = "none";
+    }
   });
 
   function normalizeLink(url) {

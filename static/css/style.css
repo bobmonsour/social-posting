@@ -811,6 +811,11 @@ article header strong {
     display: inline-block;
 }
 
+button.btn-nav {
+    border: none;
+    margin: 0;
+}
+
 .btn-nav:hover {
     background: var(--pico-primary-hover-background);
     color: var(--pico-primary-inverse);
@@ -1103,6 +1108,20 @@ article header strong {
     display: inline-block;
     margin-top: 0.5rem;
     margin-bottom: 0.75rem;
+}
+
+/* Check URL modal */
+.check-url-buttons {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.check-url-buttons .btn-action {
+    width: auto;
+    padding: 0.4rem 1.2rem;
+    font-size: 0.85rem;
+    margin-bottom: 0;
 }
 
 /* Deploy modal */

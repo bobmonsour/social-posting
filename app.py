@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import shutil
 import subprocess
 import uuid
@@ -604,6 +605,60 @@ def delete_bwe_posted_entry():
 @app.route("/editor")
 def editor():
     return render_template("editor.html")
+
+
+@app.route("/editor/check-url", methods=["POST"])
+def editor_check_url():
+    url = request.json.get("url", "").strip()
+    if not url:
+        return jsonify({"error": "No URL provided"}), 400
+
+    # Normalize: lowercase, strip trailing slashes, ensure protocol, strip www.
+    normalized = url.lower().rstrip("/")
+    if not normalized.startswith(("http://", "https://")):
+        normalized = "https://" + normalized
+    normalized = re.sub(r"^(https?://)www\.", r"\1", normalized)
+
+    results = []
+
+    # Check bundledb.json
+    try:
+        with open(BUNDLEDB_PATH, "r") as f:
+            bundledb = json.load(f)
+        for entry in bundledb:
+            entry_link = (entry.get("Link") or "").strip().lower().rstrip("/")
+            if not entry_link.startswith(("http://", "https://")):
+                entry_link = "https://" + entry_link
+            entry_link = re.sub(r"^(https?://)www\.", r"\1", entry_link)
+            if entry_link == normalized:
+                results.append({
+                    "source": "bundledb.json",
+                    "type": entry.get("Type", ""),
+                    "title": entry.get("Title", ""),
+                    "link": entry.get("Link", ""),
+                })
+    except Exception:
+        pass
+
+    # Check showcase-data.json
+    try:
+        with open(SHOWCASE_PATH, "r") as f:
+            showcase = json.load(f)
+        for entry in showcase:
+            entry_link = (entry.get("link") or "").strip().lower().rstrip("/")
+            if not entry_link.startswith(("http://", "https://")):
+                entry_link = "https://" + entry_link
+            entry_link = re.sub(r"^(https?://)www\.", r"\1", entry_link)
+            if entry_link == normalized:
+                results.append({
+                    "source": "showcase-data.json",
+                    "title": entry.get("title", ""),
+                    "link": entry.get("link", ""),
+                })
+    except Exception:
+        pass
+
+    return jsonify({"url": url, "found": results})
 
 
 @app.route("/editor/data")
