@@ -1,6 +1,8 @@
 # Socially Bundled
 
-Personal social media cross-poster and bundledb editor. Single Flask app that posts to Mastodon and Bluesky from one form and manages the 11ty Bundle database.
+Personal publication management tool for 11tybundle.dev. What started as a social media cross-poster has evolved into the primary editorial interface for managing the 11ty Bundle -- a curated database of blog posts, sites, releases, and starters from the Eleventy community. Single Flask app with two surfaces: a Bundle Entry Editor and a Social Posting page with workflow integrations that tie the two together.
+
+This app is purpose-built for the sole use of the editor of 11tybundle.dev, running on a local machine with access to sibling project directories (`dbtools/`, `11tybundle.dev/`, etc.) and local Node.js tooling. It is not designed for general-purpose deployment.
 
 ## Quick Start
 
