@@ -5,7 +5,11 @@
 {% block content %}
 <div style="display: flex; align-items: center; margin-top: -1.25rem; margin-bottom: 1.25rem">
     <a href="/" class="btn-nav">Back to Social Posting</a>
-    <h2 style="margin: 0; flex: 1; text-align: center; font-family: var(--font-body)">Editing bundledb.json</h2>
+    <h2 style="margin: 0; flex: 1; text-align: center; font-family: var(--font-body)">Editing bundledb</h2>
+    <div style="display: flex; gap: 0.5rem;">
+        <button type="button" id="btn-run-latest" class="btn-action" style="margin-bottom: 0; padding: 0.4rem 1rem; font-size: 0.85rem;">Run Latest</button>
+        <button type="button" id="btn-deploy" class="btn-action" style="margin-bottom: 0; padding: 0.4rem 1rem; font-size: 0.85rem;">Deploy</button>
+    </div>
 </div>
 <div class="editor-container">
 
@@ -50,6 +54,8 @@
             <div id="edit-form-fields"></div>
             <div class="edit-actions">
                 <button type="button" id="btn-save" class="btn-action">Save</button>
+                <button type="button" id="btn-save-end" class="btn-action">Save &amp; Run Latest</button>
+                <button type="button" id="btn-save-deploy" class="btn-action">Save &amp; Deploy</button>
                 <button type="button" id="btn-cancel" class="btn-action btn-secondary">Cancel</button>
             </div>
         </fieldset>
@@ -58,6 +64,15 @@
     <!-- Status message -->
     <div id="status-message" style="display:none;"></div>
 
+</div>
+
+<!-- Deploy output modal -->
+<div id="deploy-modal" class="deploy-modal-overlay" style="display:none;">
+    <div class="deploy-modal">
+        <h3 id="deploy-modal-title">Deploy Output</h3>
+        <pre id="deploy-modal-output" class="deploy-modal-output"></pre>
+        <button type="button" id="deploy-modal-ok" class="btn-action">Ok</button>
+    </div>
 </div>
 {% endblock %}
 

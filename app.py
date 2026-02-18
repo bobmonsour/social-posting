@@ -809,6 +809,110 @@ def editor_screenshot():
         return jsonify({"success": False, "error": str(e)})
 
 
+@app.route("/editor/end-session", methods=["POST"])
+def editor_end_session():
+    """Run post-processing scripts to regenerate derived data files."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    env = os.environ.copy()
+    env["NODE_PATH"] = os.path.join(DBTOOLS_DIR, "node_modules")
+
+    def run_script(args, stdin_data=None):
+        try:
+            result = subprocess.run(
+                args,
+                cwd=DBTOOLS_DIR,
+                capture_output=True,
+                text=True,
+                timeout=60,
+                env=env,
+                input=stdin_data,
+            )
+            return {"success": True, "stdout": result.stdout.strip(), "stderr": result.stderr.strip()}
+        except subprocess.TimeoutExpired:
+            return {"success": False, "error": "Timed out"}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        f_issue = executor.submit(run_script, ["node", "lib/genissuerecords.js"])
+        f_insights = executor.submit(run_script, ["node", "generate-insights.js"], "1\n")
+        f_latest = executor.submit(run_script, ["node", "generate-latest-data.js"])
+
+    return jsonify({
+        "success": True,
+        "genissuerecords": f_issue.result(),
+        "generate_insights": f_insights.result(),
+        "generate_latest_data": f_latest.result(),
+    })
+
+
+ELEVENTY_PROJECT_DIR = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundle.dev"
+
+@app.route("/editor/run-latest", methods=["POST"])
+def editor_run_latest():
+    """Start 'npm run latest' in the 11tybundle.dev project and wait for the server to be ready."""
+    import select
+    import threading
+
+    try:
+        proc = subprocess.Popen(
+            ["npm", "run", "latest"],
+            cwd=ELEVENTY_PROJECT_DIR,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+
+        # Watch stdout for Eleventy's server ready message
+        deadline = 30  # seconds
+        import time
+        start = time.time()
+        while time.time() - start < deadline:
+            line = proc.stdout.readline()
+            if not line:
+                if proc.poll() is not None:
+                    return jsonify({"success": False, "error": "Process exited unexpectedly"})
+                continue
+            if "Server at" in line:
+                # Server is ready — drain stdout in a background thread to prevent blocking
+                def drain():
+                    try:
+                        for _ in proc.stdout:
+                            pass
+                    except Exception:
+                        pass
+                threading.Thread(target=drain, daemon=True).start()
+                return jsonify({"success": True})
+
+        # Timed out waiting for server
+        proc.kill()
+        return jsonify({"success": False, "error": "Timed out waiting for Eleventy server"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
+@app.route("/editor/deploy", methods=["POST"])
+def editor_deploy():
+    """Run 'npm run deploy' in the 11tybundle.dev project and capture output."""
+    try:
+        result = subprocess.run(
+            ["npm", "run", "deploy"],
+            cwd=ELEVENTY_PROJECT_DIR,
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        return jsonify({
+            "success": result.returncode == 0,
+            "output": result.stdout + ("\n" + result.stderr if result.stderr else ""),
+        })
+    except subprocess.TimeoutExpired:
+        return jsonify({"success": False, "output": "Deploy timed out after 120 seconds."})
+    except Exception as e:
+        return jsonify({"success": False, "output": str(e)})
+
+
 @app.route("/editor/screenshot-preview/<filename>")
 def editor_screenshot_preview(filename):
     return send_from_directory(SCREENSHOT_DIR, filename)

@@ -59,8 +59,16 @@
   const editFormTitle = document.getElementById("edit-form-title");
   const editFormFields = document.getElementById("edit-form-fields");
   const btnSave = document.getElementById("btn-save");
+  const btnSaveEnd = document.getElementById("btn-save-end");
+  const btnSaveDeploy = document.getElementById("btn-save-deploy");
   const btnCancel = document.getElementById("btn-cancel");
   const statusMessage = document.getElementById("status-message");
+  const deployModal = document.getElementById("deploy-modal");
+  const deployModalTitle = document.getElementById("deploy-modal-title");
+  const deployModalOutput = document.getElementById("deploy-modal-output");
+  const deployModalOk = document.getElementById("deploy-modal-ok");
+  const btnRunLatest = document.getElementById("btn-run-latest");
+  const btnDeploy = document.getElementById("btn-deploy");
 
   // Load data on page load
   fetch("/editor/data")
@@ -153,7 +161,136 @@
   });
 
   // Save handler
-  btnSave.addEventListener("click", saveItem);
+  btnSave.addEventListener("click", () => saveItem());
+
+  // --- Run Latest / Deploy shared flows ---
+
+  function runLatestFlow() {
+    deployModalTitle.textContent = "Running end-session scripts...";
+    deployModalOutput.textContent = "";
+    deployModalOk.style.display = "none";
+    deployModal.style.display = "";
+
+    return fetch("/editor/end-session", { method: "POST" })
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data.success) {
+          deployModalTitle.textContent = "End-session scripts failed";
+          deployModalOk.textContent = "Ok";
+          deployModalOk.onclick = () => { deployModal.style.display = "none"; };
+          deployModalOk.style.display = "";
+          return;
+        }
+        const scripts = [
+          ["genissuerecords", "Issue Records"],
+          ["generate_insights", "Insights"],
+          ["generate_latest_data", "Latest Data"]
+        ];
+        const lines = scripts.map(([key, label]) => {
+          const r = data[key];
+          return label + ": " + (r && r.success ? "OK" : "FAILED");
+        });
+        deployModalOutput.textContent = lines.join("\n");
+
+        deployModalTitle.textContent = "Starting local server...";
+        return fetch("/editor/run-latest", { method: "POST" })
+          .then((r) => r.json())
+          .then((result) => {
+            if (result.success) {
+              deployModalTitle.textContent = "Local server ready";
+              deployModalOutput.textContent += "\n\nServer running at localhost:8080";
+            } else {
+              deployModalTitle.textContent = "Server failed to start";
+              deployModalOutput.textContent += "\n\n" + (result.error || "Unknown error");
+            }
+            deployModalOk.textContent = "View Local Site";
+            deployModalOk.onclick = () => {
+              deployModal.style.display = "none";
+              if (result.success) window.open("http://localhost:8080", "_blank");
+            };
+            deployModalOk.style.display = "";
+          });
+      })
+      .catch((err) => {
+        deployModalTitle.textContent = "Failed";
+        deployModalOutput.textContent = "Error: " + err.message;
+        deployModalOk.textContent = "Ok";
+        deployModalOk.onclick = () => { deployModal.style.display = "none"; };
+        deployModalOk.style.display = "";
+      });
+  }
+
+  function runDeployFlow() {
+    deployModalTitle.textContent = "Deploying...";
+    deployModalOutput.textContent = "Running npm run deploy...\n";
+    deployModalOk.style.display = "none";
+    deployModal.style.display = "";
+
+    return fetch("/editor/deploy", { method: "POST" })
+      .then((r) => r.json())
+      .then((data) => {
+        deployModalTitle.textContent = data.success ? "Deploy Complete" : "Deploy Failed";
+        deployModalOutput.textContent = data.output || "(no output)";
+        deployModalOutput.scrollTop = deployModalOutput.scrollHeight;
+        deployModalOk.textContent = "View 11tybundle.dev";
+        deployModalOk.onclick = () => {
+          deployModal.style.display = "none";
+          if (data.success) window.open("https://11tybundle.dev", "_blank");
+        };
+        deployModalOk.style.display = "";
+      })
+      .catch((err) => {
+        deployModalTitle.textContent = "Deploy Failed";
+        deployModalOutput.textContent = "Error: " + err.message;
+        deployModalOk.textContent = "Ok";
+        deployModalOk.onclick = () => { deployModal.style.display = "none"; };
+        deployModalOk.style.display = "";
+      });
+  }
+
+  // Save & Run Latest handler
+  btnSaveEnd.addEventListener("click", () => {
+    saveItem(() => {
+      btnSaveEnd.disabled = true;
+      btnSaveEnd.textContent = "Running scripts...";
+      runLatestFlow().finally(() => {
+        btnSaveEnd.disabled = false;
+        btnSaveEnd.textContent = "Save & Run Latest";
+      });
+    });
+  });
+
+  // Save & Deploy handler
+  btnSaveDeploy.addEventListener("click", () => {
+    saveItem(() => {
+      btnSaveDeploy.disabled = true;
+      btnSaveDeploy.textContent = "Deploying...";
+      runDeployFlow().finally(() => {
+        btnSaveDeploy.disabled = false;
+        btnSaveDeploy.textContent = "Save & Deploy";
+      });
+    });
+  });
+
+  // Standalone Run Latest handler (header button, no save)
+  btnRunLatest.addEventListener("click", () => {
+    btnRunLatest.disabled = true;
+    btnRunLatest.textContent = "Running...";
+    runLatestFlow().finally(() => {
+      btnRunLatest.disabled = false;
+      btnRunLatest.textContent = "Run Latest";
+    });
+  });
+
+  // Standalone Deploy handler (header button, no save)
+  btnDeploy.addEventListener("click", () => {
+    btnDeploy.disabled = true;
+    btnDeploy.textContent = "Deploying...";
+    runDeployFlow().finally(() => {
+      btnDeploy.disabled = false;
+      btnDeploy.textContent = "Deploy";
+    });
+  });
 
   // Cancel handler
   btnCancel.addEventListener("click", () => {
@@ -783,7 +920,7 @@
     return labels;
   }
 
-  function saveItem() {
+  function saveItem(onSuccess) {
     const isCreate = currentIndex === null;
 
     if (!isCreate && currentIndex === null) return;
@@ -807,6 +944,8 @@
     }
 
     btnSave.disabled = true;
+    btnSaveEnd.disabled = true;
+    btnSaveDeploy.disabled = true;
     btnSave.textContent = "Saving...";
 
     const payload = {
@@ -857,7 +996,8 @@
           if (propCount > 0) msg += " Updated " + propCount + " other post" + (propCount === 1 ? "" : "s") + ".";
           if (data.bwe_added) msg += " Added to BWE list.";
           if (data.showcase_added) msg += " Added to showcase.";
-          showStatus(msg, false);
+          if (!onSuccess) showStatus(msg, false);
+          if (onSuccess) onSuccess();
 
           // Restore search/recent view (edit mode)
           if (currentMode === "edit") {
@@ -876,6 +1016,8 @@
       })
       .finally(() => {
         btnSave.disabled = false;
+        btnSaveEnd.disabled = false;
+        btnSaveDeploy.disabled = false;
         btnSave.textContent = "Save";
       });
   }
@@ -1155,13 +1297,14 @@
     });
   }
 
-  function showStatus(msg, isError) {
+  function showStatus(msg, isError, timeout) {
+    statusMessage.style.whiteSpace = msg.includes("\n") ? "pre-wrap" : "";
     statusMessage.textContent = msg;
     statusMessage.className = isError ? "status-error" : "status-success";
     statusMessage.style.display = "";
     setTimeout(() => {
       statusMessage.style.display = "none";
-    }, 4000);
+    }, timeout || 4000);
   }
 
   function escapeHtml(str) {
