@@ -143,6 +143,12 @@ The `/editor` page provides search and edit for `bundledb.json` items, plus a cr
 - "DELETE ALL TEST ENTRIES" button appears next to DELETE ENTRY only when entries with "bobdemo99" in their title exist.
 - `POST /editor/delete-test-entries` removes all matching entries from both `bundledb.json` and `showcase-data.json`.
 
+**Test data guards** (`editor.js` + `editor.html`):
+- When any type is selected (edit or create mode), an orange warning banner appears below the type selector if any entries with "bobdemo99" in their title exist. Banner shows the count and a DELETE ALL TEST ITEMS button.
+- **Run Latest guard**: Clicking Run Latest (standalone or Save & Run Latest) when test data is present shows a warning modal ("Test Data Present") with Cancel and Proceed buttons. Proceed is focused by default.
+- **Deploy guard**: Clicking Deploy (standalone or Save & Deploy) when test data is present shows a blocking modal ("UNABLE TO DEPLOY WHEN TEST DATA IS PRESENT") with DELETE TEST ITEMS and Close buttons. DELETE TEST ITEMS is focused by default and calls the delete-test-entries endpoint.
+- Banner and guards refresh after test entries are deleted. Banner hides on mode switch.
+
 **Skip checkbox** (edit mode only):
 - A "Skip (exclude from site generation)" checkbox appears at the top of the edit form.
 - When checked, adds `Skip: true` to the saved item.
