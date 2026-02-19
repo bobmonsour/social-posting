@@ -44,9 +44,7 @@ social-posting/
 │   ├── history.json        # All posts, drafts, and failed posts (newest first)
 │   └── draft_images/       # Persisted images keyed by draft/failed UUID
 ├── uploads/                # Temporary upload dir (cleaned after posting)
-└── docs/
-    ├── modes.md            # Requirements doc for modes feature
-    └── tagging-site-owners.md  # Requirements doc for social link tagging
+└── docs/                  # Requirements docs for features (retained across sessions)
 ```
 
 ## Architecture
