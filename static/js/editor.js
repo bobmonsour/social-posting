@@ -366,7 +366,13 @@
       .then((r) => r.json())
       .then((data) => {
         deployModalTitle.textContent = data.success ? "Deploy Complete" : "Deploy Failed";
-        deployModalOutput.textContent = data.output || "(no output)";
+        let output = data.output || "(no output)";
+        if (data.git_result) {
+          output += data.git_result.success
+            ? "\n\n" + data.git_result.message
+            : "\n\nNote: DB commit/push failed: " + data.git_result.message;
+        }
+        deployModalOutput.textContent = output;
         deployModalOutput.scrollTop = deployModalOutput.scrollHeight;
         deployModalOk.textContent = "View 11tybundle.dev";
         deployModalOk.onclick = () => {

@@ -53,6 +53,7 @@ BUNDLEDB_PATH = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundledb/bundledb.
 BUNDLEDB_BACKUP_DIR = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundledb/bundledb-backups"
 SHOWCASE_PATH = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundledb/showcase-data.json"
 DBTOOLS_DIR = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/dbtools"
+DBTOOLS_DB_DIR = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundledb"
 SCREENSHOT_DIR = os.path.join(DBTOOLS_DIR, "screenshots")
 SCREENSHOT_SCRIPT = os.path.join(_BASE_DIR, "scripts", "capture-screenshot.js")
 
@@ -1064,9 +1065,42 @@ def editor_deploy():
             text=True,
             timeout=120,
         )
+        deploy_output = result.stdout + ("\n" + result.stderr if result.stderr else "")
+        deploy_success = result.returncode == 0
+
+        git_result = {"success": False, "message": "Deploy failed, skipping git."}
+        if deploy_success:
+            try:
+                subprocess.run(["git", "add", "-A"], cwd=DBTOOLS_DB_DIR, check=True)
+                commit = subprocess.run(
+                    ["git", "commit", "-m", "New entries saved"],
+                    cwd=DBTOOLS_DB_DIR,
+                    capture_output=True,
+                    text=True,
+                )
+                if commit.returncode == 0:
+                    push = subprocess.run(
+                        ["git", "push"],
+                        cwd=DBTOOLS_DB_DIR,
+                        capture_output=True,
+                        text=True,
+                        timeout=30,
+                    )
+                    if push.returncode == 0:
+                        git_result = {"success": True, "message": "DB files committed and pushed."}
+                    else:
+                        git_result = {"success": False, "message": f"git push failed: {push.stderr.strip()}"}
+                elif "nothing to commit" in commit.stdout + commit.stderr:
+                    git_result = {"success": True, "message": "No DB changes to commit."}
+                else:
+                    git_result = {"success": False, "message": f"git commit failed: {commit.stderr.strip()}"}
+            except Exception as e:
+                git_result = {"success": False, "message": str(e)}
+
         return jsonify({
-            "success": result.returncode == 0,
-            "output": result.stdout + ("\n" + result.stderr if result.stderr else ""),
+            "success": deploy_success,
+            "output": deploy_output,
+            "git_result": git_result,
         })
     except subprocess.TimeoutExpired:
         return jsonify({"success": False, "output": "Deploy timed out after 120 seconds."})
