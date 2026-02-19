@@ -231,7 +231,9 @@ The `/editor` page provides search and edit for `bundledb.json` items, plus a cr
 
 **Deploy flow** (1 endpoint):
 - `POST /editor/deploy` runs `npm run deploy` in `ELEVENTY_PROJECT_DIR` via `subprocess.run()` with 120s timeout, captures full stdout+stderr.
-- Modal shows deploy output, then "View 11tybundle.dev" button which opens `https://11tybundle.dev`.
+- On successful deploy, auto-commits and pushes changed files in the `11tybundledb` repo (`DBTOOLS_DB_DIR`): `git add -A`, `git commit -m "New entries saved"`, `git push`. Git failures don't affect deploy success status.
+- Response includes `git_result` with `success` and `message`. "Nothing to commit" is treated as success.
+- Modal shows deploy output plus git result (success message or failure note), then "View 11tybundle.dev" button which opens `https://11tybundle.dev`.
 
 ## BWE Sites to Post Management
 
