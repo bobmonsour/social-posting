@@ -30,6 +30,9 @@
         <label><input type="radio" name="item-type" value="starter"> Starter</label>
     </fieldset>
 
+    <!-- Test data warning banner -->
+    <div id="test-data-banner" class="test-data-banner" style="display:none;"></div>
+
     <!-- Search -->
     <fieldset id="search-section" style="display:none;">
         <legend>Search</legend>
@@ -108,6 +111,27 @@
             <button type="button" id="check-url-modal-close" class="btn-action btn-secondary">Close</button>
         </div>
         <div id="check-url-result" style="display:none;"></div>
+    </div>
+</div>
+<!-- Run Latest test data warning modal -->
+<div id="test-warn-modal" class="deploy-modal-overlay" style="display:none;">
+    <div class="deploy-modal">
+        <h3>Test Data Present</h3>
+        <p>There are test entries (bobDemo99) in the database. Running latest will include test data on the local site.</p>
+        <div class="delete-confirm-buttons">
+            <button type="button" id="test-warn-proceed" class="btn-action">Proceed</button>
+            <button type="button" id="test-warn-cancel" class="btn-action btn-secondary">Cancel</button>
+        </div>
+    </div>
+</div>
+<!-- Deploy test data blocked modal -->
+<div id="test-deploy-modal" class="deploy-modal-overlay" style="display:none;">
+    <div class="deploy-modal">
+        <h3>UNABLE TO DEPLOY WHEN TEST DATA IS PRESENT</h3>
+        <div class="delete-confirm-buttons">
+            <button type="button" id="test-deploy-delete" class="btn-action btn-delete-entry">DELETE TEST ITEMS</button>
+            <button type="button" id="test-deploy-close" class="btn-action btn-secondary">Close</button>
+        </div>
     </div>
 </div>
 {% endblock %}

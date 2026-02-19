@@ -127,6 +127,13 @@
   const checkUrlModal = document.getElementById("check-url-modal");
   const checkUrlResult = document.getElementById("check-url-result");
   const checkUrlModalClose = document.getElementById("check-url-modal-close");
+  const testDataBanner = document.getElementById("test-data-banner");
+  const testWarnModal = document.getElementById("test-warn-modal");
+  const testWarnProceed = document.getElementById("test-warn-proceed");
+  const testWarnCancel = document.getElementById("test-warn-cancel");
+  const testDeployModal = document.getElementById("test-deploy-modal");
+  const testDeployDelete = document.getElementById("test-deploy-delete");
+  const testDeployClose = document.getElementById("test-deploy-close");
 
   // Load data on page load
   fetch("/editor/data")
@@ -165,6 +172,75 @@
     );
   }
 
+  // --- Test data helpers ---
+
+  function hasTestData() {
+    return allData.some((e) => (e.Title || "").toLowerCase().includes("bobdemo99"));
+  }
+
+  function getTestDataCount() {
+    return allData.filter((e) => (e.Title || "").toLowerCase().includes("bobdemo99")).length;
+  }
+
+  function updateTestDataBanner() {
+    if (!currentType || !hasTestData()) {
+      testDataBanner.style.display = "none";
+      return;
+    }
+    const count = getTestDataCount();
+    testDataBanner.innerHTML = "";
+    testDataBanner.style.display = "";
+
+    const msg = document.createElement("span");
+    msg.className = "test-data-message";
+    msg.textContent = count + " test " + (count === 1 ? "entry" : "entries") + " (bobDemo99) present in database";
+    testDataBanner.appendChild(msg);
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "btn-action btn-delete-entry";
+    btn.textContent = "DELETE ALL TEST ITEMS";
+    btn.addEventListener("click", () => {
+      deleteConfirmMessage.textContent =
+        "ARE YOU SURE YOU WANT TO DELETE ALL " + count + " TEST ENTRIES?";
+      deleteConfirmOk.onclick = () => {
+        deleteConfirmModal.style.display = "none";
+        deleteAllTestEntries();
+      };
+      deleteConfirmModal.style.display = "";
+      deleteConfirmCancel.focus();
+    });
+    testDataBanner.appendChild(btn);
+  }
+
+  // Modal event listeners for test data modals
+  testWarnCancel.addEventListener("click", () => {
+    testWarnModal.style.display = "none";
+  });
+  testDeployClose.addEventListener("click", () => {
+    testDeployModal.style.display = "none";
+  });
+
+  function guardRunLatest(callback) {
+    if (!hasTestData()) { callback(); return; }
+    testWarnModal.style.display = "";
+    testWarnProceed.onclick = () => {
+      testWarnModal.style.display = "none";
+      callback();
+    };
+    testWarnProceed.focus();
+  }
+
+  function guardDeploy(callback) {
+    if (!hasTestData()) { callback(); return; }
+    testDeployModal.style.display = "";
+    testDeployDelete.onclick = () => {
+      testDeployModal.style.display = "none";
+      deleteAllTestEntries();
+    };
+    testDeployDelete.focus();
+  }
+
   // Mode change handler
   modeRadios.forEach((radio) => {
     radio.addEventListener("change", () => {
@@ -176,6 +252,7 @@
       searchResults.style.display = "none";
       recentItems.style.display = "none";
       searchSection.style.display = "none";
+      testDataBanner.style.display = "none";
     });
   });
 
@@ -185,6 +262,7 @@
       currentType = radio.value;
       searchInput.value = "";
       hideEditForm();
+      updateTestDataBanner();
 
       if (currentMode === "edit") {
         searchSection.style.display = "";
@@ -309,11 +387,13 @@
   // Save & Run Latest handler
   btnSaveEnd.addEventListener("click", () => {
     saveItem(() => {
-      btnSaveEnd.disabled = true;
-      btnSaveEnd.textContent = "Running scripts...";
-      runLatestFlow().finally(() => {
-        btnSaveEnd.disabled = false;
-        btnSaveEnd.textContent = "Save & Run Latest";
+      guardRunLatest(() => {
+        btnSaveEnd.disabled = true;
+        btnSaveEnd.textContent = "Running scripts...";
+        runLatestFlow().finally(() => {
+          btnSaveEnd.disabled = false;
+          btnSaveEnd.textContent = "Save & Run Latest";
+        });
       });
     });
   });
@@ -321,32 +401,38 @@
   // Save & Deploy handler
   btnSaveDeploy.addEventListener("click", () => {
     saveItem(() => {
-      btnSaveDeploy.disabled = true;
-      btnSaveDeploy.textContent = "Deploying...";
-      runDeployFlow().finally(() => {
-        btnSaveDeploy.disabled = false;
-        btnSaveDeploy.textContent = "Save & Deploy";
+      guardDeploy(() => {
+        btnSaveDeploy.disabled = true;
+        btnSaveDeploy.textContent = "Deploying...";
+        runDeployFlow().finally(() => {
+          btnSaveDeploy.disabled = false;
+          btnSaveDeploy.textContent = "Save & Deploy";
+        });
       });
     });
   });
 
   // Standalone Run Latest handler (header button, no save)
   btnRunLatest.addEventListener("click", () => {
-    btnRunLatest.disabled = true;
-    btnRunLatest.textContent = "Running...";
-    runLatestFlow().finally(() => {
-      btnRunLatest.disabled = false;
-      btnRunLatest.textContent = "Run Latest";
+    guardRunLatest(() => {
+      btnRunLatest.disabled = true;
+      btnRunLatest.textContent = "Running...";
+      runLatestFlow().finally(() => {
+        btnRunLatest.disabled = false;
+        btnRunLatest.textContent = "Run Latest";
+      });
     });
   });
 
   // Standalone Deploy handler (header button, no save)
   btnDeploy.addEventListener("click", () => {
-    btnDeploy.disabled = true;
-    btnDeploy.textContent = "Deploying...";
-    runDeployFlow().finally(() => {
-      btnDeploy.disabled = false;
-      btnDeploy.textContent = "Deploy";
+    guardDeploy(() => {
+      btnDeploy.disabled = true;
+      btnDeploy.textContent = "Deploying...";
+      runDeployFlow().finally(() => {
+        btnDeploy.disabled = false;
+        btnDeploy.textContent = "Deploy";
+      });
     });
   });
 
@@ -1249,6 +1335,7 @@
           );
           hideEditForm();
           initFuse();
+          updateTestDataBanner();
           showStatus("Deleted " + data.deleted + " test entries.", false);
           if (currentMode === "edit") {
             if (searchInput.value.trim()) {
