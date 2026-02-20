@@ -68,7 +68,7 @@
     ],
     site: [
       "Issue", "Type", "Title", "Link", "Date",
-      "formattedDate", "description", "favicon", "screenshotpath"
+      "formattedDate", "description", "favicon", "screenshotpath", "leaderboardLink"
     ],
     release: [
       "Issue", "Type", "Title", "Link", "Date",
@@ -459,12 +459,15 @@
     const item = collectFormValues();
     let html = "<h4>bundledb.json entry</h4>";
 
-    // For sites, strip screenshotpath from bundledb preview (it goes to showcase-data)
+    // For sites, strip screenshotpath and leaderboardLink from bundledb preview (they go to showcase-data)
     const bundleItem = Object.assign({}, item);
     let screenshotpath = "";
+    let leaderboardLink = "";
     if (currentType === "site") {
       screenshotpath = bundleItem.screenshotpath || "";
+      leaderboardLink = bundleItem.leaderboardLink || "";
       delete bundleItem.screenshotpath;
+      delete bundleItem.leaderboardLink;
     }
     html += "<pre>" + escapeHtml(JSON.stringify(bundleItem, null, 2)) + "</pre>";
 
@@ -478,6 +481,7 @@
         formattedDate: item.formattedDate || "",
         favicon: item.favicon || "",
         screenshotpath: screenshotpath,
+        leaderboardLink: leaderboardLink,
       };
       html += "<pre>" + escapeHtml(JSON.stringify(showcaseEntry, null, 2)) + "</pre>";
     }
@@ -715,6 +719,7 @@
       item.Link = "";
       item.favicon = "";
       item.screenshotpath = "";
+      item.leaderboardLink = "";
     } else if (currentType === "release") {
       item.Title = "";
       item.description = "";
@@ -833,13 +838,13 @@
 
       // Insert fetch buttons after Date field
       if (field === "Date" && currentType === "site") {
-        const allPopulated = item.description && item.favicon && item.screenshotpath;
+        const allPopulated = item.description && item.favicon && item.screenshotpath && item.leaderboardLink;
         const btn = document.createElement("button");
         btn.type = "button";
         btn.className = "btn-action btn-fetch-data";
         btn.textContent = allPopulated
-          ? "Refresh Description, Favicon & Screenshot"
-          : "Fetch Description, Favicon & Screenshot";
+          ? "Refresh Description, Favicon, Screenshot & Leaderboard"
+          : "Fetch Description, Favicon, Screenshot & Leaderboard";
         btn.addEventListener("click", () => { lastFetchedUrl = ""; fetchSiteData(); });
         editFormFields.appendChild(btn);
       }
@@ -1513,7 +1518,13 @@
       body: JSON.stringify({ url: url })
     }).then((r) => r.json()).catch(() => ({ success: false }));
 
-    Promise.all([faviconPromise, screenshotPromise, descriptionPromise]).then(([favResult, ssResult, descResult]) => {
+    const leaderboardPromise = fetch("/editor/leaderboard", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: url })
+    }).then((r) => r.json()).catch(() => ({ success: false }));
+
+    Promise.all([faviconPromise, screenshotPromise, descriptionPromise, leaderboardPromise]).then(([favResult, ssResult, descResult, lbResult]) => {
       if (favResult.success && favResult.favicon) {
         const favEl = document.getElementById("field-favicon");
         if (favEl) favEl.value = favResult.favicon;
@@ -1542,6 +1553,11 @@
         if (descEl) descEl.value = descResult.description;
       }
 
+      if (lbResult.success && lbResult.leaderboard_link) {
+        const lbEl = document.getElementById("field-leaderboardLink");
+        if (lbEl) lbEl.value = lbResult.leaderboard_link;
+      }
+
       let msgs = [];
       if (favResult.success) msgs.push("Favicon fetched");
       else msgs.push("Favicon failed");
@@ -1549,11 +1565,14 @@
       else msgs.push("Screenshot failed");
       if (descResult.success) msgs.push("Description extracted");
       else msgs.push("Description failed");
+      if (lbResult.success && lbResult.leaderboard_link) msgs.push("Leaderboard found");
+      else if (lbResult.success) msgs.push("No leaderboard entry");
+      else msgs.push("Leaderboard check failed");
       showStatus(msgs.join(". ") + ".", !favResult.success && !ssResult.success && !descResult.success);
     }).finally(() => {
       if (btn) {
         btn.disabled = false;
-        btn.textContent = "Fetch Description, Favicon & Screenshot";
+        btn.textContent = "Fetch Description, Favicon, Screenshot & Leaderboard";
       }
     });
   }

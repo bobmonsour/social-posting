@@ -682,6 +682,7 @@ def editor_data():
                 sc = showcase_by_link.get(item["Link"])
                 if sc:
                     item["screenshotpath"] = sc.get("screenshotpath", "")
+                    item["leaderboardLink"] = sc.get("leaderboardLink", "")
     except Exception:
         pass
 
@@ -719,6 +720,7 @@ def editor_save():
             title = item.get("Title", "")
             link = item.get("Link", "")
             screenshotpath = item.pop("screenshotpath", "")
+            leaderboard_link = item.pop("leaderboardLink", "")
 
             if title and link:
                 try:
@@ -736,6 +738,7 @@ def editor_save():
                         "formattedDate": item.get("formattedDate", ""),
                         "favicon": item.get("favicon", ""),
                         "screenshotpath": screenshotpath,
+                        "leaderboardLink": leaderboard_link,
                     }
                     with open(SHOWCASE_PATH, "r") as f:
                         showcase_data = json.load(f)
@@ -755,9 +758,10 @@ def editor_save():
         if index < 0 or index >= len(data):
             return jsonify({"success": False, "error": "Index out of range"}), 400
 
-        # For site edits: strip screenshotpath from bundledb, sync to showcase-data.json
+        # For site edits: strip screenshotpath/leaderboardLink from bundledb, sync to showcase-data.json
         if item.get("Type") == "site":
             screenshotpath = item.pop("screenshotpath", "")
+            leaderboard_link = item.pop("leaderboardLink", "")
             link = item.get("Link", "")
             if link:
                 try:
@@ -769,6 +773,7 @@ def editor_save():
                                 bundledb_key = "Title" if key == "title" else key
                                 sc_entry[key] = item.get(bundledb_key, "")
                             sc_entry["screenshotpath"] = screenshotpath
+                            sc_entry["leaderboardLink"] = leaderboard_link
                             sc_entry["date"] = item.get("Date", "")
                             sc_entry["formattedDate"] = item.get("formattedDate", "")
                             break
@@ -948,6 +953,18 @@ def editor_description():
     if description:
         return jsonify({"success": True, "description": description})
     return jsonify({"success": False, "error": "Could not extract description"})
+
+
+@app.route("/editor/leaderboard", methods=["POST"])
+def editor_leaderboard():
+    data = request.get_json()
+    url = data.get("url", "").strip() if data else ""
+    if not url:
+        return jsonify({"success": False, "error": "No URL provided"}), 400
+
+    from services.leaderboard import check_leaderboard_link
+    result = check_leaderboard_link(url)
+    return jsonify({"success": True, "leaderboard_link": result})
 
 
 @app.route("/editor/screenshot", methods=["POST"])

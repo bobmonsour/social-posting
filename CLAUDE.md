@@ -34,6 +34,7 @@ social-posting/
 │   ├── favicon.py          # Multi-strategy favicon fetching (existing/Google API/HTML extraction)
 │   ├── description.py      # Multi-source meta description extraction (mirrors getdescription.js)
 │   ├── rss_link.py         # RSS/Atom feed URL discovery (mirrors getrsslink.js)
+│   ├── leaderboard.py      # 11ty Speedlify Leaderboard link check
 │   └── bwe_list.py         # Parse/modify built-with-eleventy.md (to-post/posted lists)
 ├── scripts/
 │   └── capture-screenshot.js  # Puppeteer full-page screenshot capture
@@ -109,7 +110,7 @@ The `/editor` page provides search and edit for `bundledb.json` items, plus a cr
 
 **Field order by type** (`FIELD_ORDER` in `editor.js`):
 - **Blog post**: Issue, Type, Title, Link, Date, Author, Categories, [Fetch Description button], formattedDate, slugifiedAuthor, slugifiedTitle, description, AuthorSite, [Fetch/Refresh Author Info button], AuthorSiteDescription, socialLinks, favicon, rssLink.
-- **Site**: Issue, Type, Title, Link, Date, formattedDate, [Fetch/Refresh Description, Favicon & Screenshot button], description, favicon, screenshotpath.
+- **Site**: Issue, Type, Title, Link, Date, formattedDate, [Fetch/Refresh Description, Favicon, Screenshot & Leaderboard button], description, favicon, screenshotpath, leaderboardLink.
 - **Release**: Issue, Type, Title, Link, Date, formattedDate, [Fetch/Refresh Description button], description.
 - **Starter**: Issue, Type, Title, Link, Demo, [Fetch/Refresh Description & Screenshot button], description, screenshotpath.
 
@@ -160,7 +161,7 @@ The `/editor` page provides search and edit for `bundledb.json` items, plus a cr
 
 **Fetch buttons** (per-type, create and edit):
 - **Blog posts**: "Fetch Description" button after Categories (hidden if description already populated in edit mode). Fetches blog post description from the Link URL.
-- **Sites**: "Fetch Description, Favicon & Screenshot" button after Date. Fetches all three in parallel from the Link URL. Shows "Refresh..." when all fields are already populated.
+- **Sites**: "Fetch Description, Favicon, Screenshot & Leaderboard" button after Date. Fetches all four in parallel from the Link URL. Shows "Refresh..." when all fields are already populated.
 - **Releases**: "Fetch Description" button after Date. Shows "Refresh Description" when description is already populated.
 - **Starters**: "Fetch Description & Screenshot" button after Demo. Fetches both from the Demo URL (not the GitHub link). Shows "Refresh..." when both fields are populated.
 - All fetch buttons use a `lastFetchedUrl` guard to prevent redundant fetches; clicking the button resets this to allow re-fetching.
@@ -200,9 +201,17 @@ The `/editor` page provides search and edit for `bundledb.json` items, plus a cr
 - When loading editor data (`GET /editor/data`), site entries have `screenshotpath` merged from `showcase-data.json` (matched by link).
 - On save (create or edit), `screenshotpath` is stripped from the item before writing to `bundledb.json` and written only to `showcase-data.json`.
 
+**Leaderboard link check** (`services/leaderboard.py`):
+- `check_leaderboard_link(url)` probes `https://www.11ty.dev/speedlify/<normalized-domain>` to check if a site appears on the 11ty Speedlify Leaderboard.
+- Normalizes hostname: strips `www.`, replaces `.` and `/` with `-`. Tries variations with/without `www-` prefix and trailing slash.
+- Returns the leaderboard URL string if found (HTTP 200), or `None`.
+- `POST /editor/leaderboard` endpoint — same pattern as `/editor/description`.
+- `leaderboardLink` is stored only in `showcase-data.json` (same pattern as `screenshotpath`).
+- Fetched in parallel with favicon, screenshot, and description in the site fetch flow.
+
 **Site save side-effects**:
-- On create, site saves call `add_bwe_to_post(title, link)` to append the site to the BWE "TO BE POSTED" list, and prepend an entry to `showcase-data.json` with title, description, link, date, formattedDate, favicon, and screenshotpath.
-- On edit, site saves sync the matching `showcase-data.json` entry (matched by link) with current title, description, favicon, screenshotpath, date, and formattedDate.
+- On create, site saves call `add_bwe_to_post(title, link)` to append the site to the BWE "TO BE POSTED" list, and prepend an entry to `showcase-data.json` with title, description, link, date, formattedDate, favicon, screenshotpath, and leaderboardLink.
+- On edit, site saves sync the matching `showcase-data.json` entry (matched by link) with current title, description, favicon, screenshotpath, leaderboardLink, date, and formattedDate.
 
 **Custom field labels**:
 - `Link` shows as "GitHub repo link" for release/starter types.
