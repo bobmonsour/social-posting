@@ -824,6 +824,8 @@
     }
 
     fields.forEach((field) => {
+      // Type is already selected via radio button in create mode
+      if (field === "Type" && isCreate) return;
       if (field === "socialLinks") {
         renderSocialLinksFieldset(item);
       } else if (field === "Categories") {
