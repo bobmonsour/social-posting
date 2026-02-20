@@ -13,6 +13,7 @@ MODES = {
         "prefixes": {
             "mastodon": "Built with Eleventy: ",
             "bluesky": "Built with Eleventy: ",
+            "discord": "Built with Eleventy: ",
         },
         "suffixes": {
             "mastodon": "\n\n#11ty @11ty@neighborhood.11ty.dev",
