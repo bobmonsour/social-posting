@@ -25,7 +25,8 @@ social-posting/
 │   ├── __init__.py         # get_platform() factory
 │   ├── base.py             # MediaAttachment, LinkCard, PostResult, PlatformClient ABC
 │   ├── mastodon_client.py  # Mastodon API via Mastodon.py
-│   └── bluesky_client.py   # Bluesky AT Protocol via atproto
+│   ├── bluesky_client.py   # Bluesky AT Protocol via atproto
+│   └── discord_client.py   # Discord webhook API via requests
 ├── services/
 │   ├── media.py            # process_uploads, cleanup_uploads, compress_for_bluesky
 │   ├── link_card.py        # Open Graph metadata fetching
@@ -64,11 +65,11 @@ Current modes:
 - **11ty BWE**: Same suffixes as 11ty, but with `Built with Eleventy: ` prefix. Cursor placed after the prefix.
 
 Mode behavior:
-- Selecting a mode auto-checks and locks both platform checkboxes.
+- Selecting a mode auto-checks and locks the mode's platform checkboxes (currently Mastodon and Bluesky; Discord is not auto-selected by any mode).
 - Per-platform textareas appear with prefix+suffix pre-filled.
 - Switching between modes (including None) resets all textareas to their initial state — user text is not carried over.
 - "Mirror across platforms" checkbox (default unchecked) enables cross-sync: typing in one platform textarea mirrors the body (preserving per-platform prefix/suffix) to the other. Checkbox is shown only when a mode is active and resets to unchecked on every mode switch.
-- "Show Preview" button renders both platforms with highlighted @mentions, #hashtags, and URLs.
+- "Show Preview" button renders all platforms with highlighted @mentions, #hashtags, and URLs.
 - Modes are stored on drafts/history entries as `mode` and `platform_texts` fields (backward compatible — absent for non-mode posts).
 
 ## Social Link Tagging
@@ -248,7 +249,7 @@ The compose page sidebar shows "Sites to Post" from `built-with-eleventy.md`. Ea
 - Alt text is required for all images (enforced client-side on submit).
 - Bluesky images auto-compressed to fit 1MB limit.
 - Character counting is grapheme-aware (`Intl.Segmenter`).
-- Content warnings use radio buttons for both platforms (None, Sexual, Nudity, Graphic Media, Porn, Political). Mastodon values are human-readable strings used as spoiler text; Bluesky values are API label identifiers.
+- Content warnings use radio buttons per platform. Mastodon: None, Sexual, Nudity, Graphic Media, Porn, Political (human-readable strings as spoiler text). Bluesky: same options (API label identifiers). Discord: None or Spoiler (wraps text in `||spoiler||` syntax with `**CW:**` header).
 - Draft deletion route (`/draft/<id>/delete`) handles drafts, failed posts, and legacy failed entries.
 - Sidebar post cards show badges (DRAFT/FAILED/platform), action buttons, 50-char text preview, and timestamp.
 - Static asset cache-busting: CSS and JS files use `?v={{ css_version }}` / `?v={{ js_version }}` query params (file mtime) via Flask context processor.
@@ -259,10 +260,11 @@ Environment variables in `.env` (see `.env.example`):
 
 - `MASTODON_INSTANCE_URL` / `MASTODON_ACCESS_TOKEN` (token needs `write:statuses` and `write:media` scopes)
 - `BLUESKY_IDENTIFIER` / `BLUESKY_APP_PASSWORD`
+- `DISCORD_WEBHOOK_URL` / `DISCORD_GUILD_ID` (webhook posts to a channel; guild ID used to construct message jump URLs)
 
 ## Tech Stack
 
-- **Backend**: Flask, Mastodon.py, atproto, Pillow, BeautifulSoup4, python-dotenv
+- **Backend**: Flask, Mastodon.py, atproto, requests, Pillow, BeautifulSoup4, python-dotenv
 - **Frontend**: Jinja2, Pico CSS (CDN), vanilla JS, Fuse.js (CDN, editor search)
 - **Tooling**: Node.js + Puppeteer (screenshot capture)
 - **No database** — flat JSON file for history, filesystem for images

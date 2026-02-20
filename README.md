@@ -2,7 +2,7 @@
 
 A personal publication management tool for [11tybundle.dev](https://11tybundle.dev). What started as a simple social media cross-poster has evolved into the primary editorial interface for managing the 11ty Bundle -- a curated database of blog posts, sites, releases, and starters from the Eleventy community.
 
-The app has two main surfaces: a **Bundle Entry Editor** for creating, editing, and publishing database entries, and a **Social Posting** page for cross-posting to Mastodon and Bluesky with workflow integrations that tie the two together.
+The app has two main surfaces: a **Bundle Entry Editor** for creating, editing, and publishing database entries, and a **Social Posting** page for cross-posting to Mastodon, Bluesky, and Discord with workflow integrations that tie the two together.
 
 > **Note**: This app is purpose-built for the sole use of the editor of 11tybundle.dev, running on a local machine with access to sibling project directories (`dbtools/`, `11tybundle.dev/`, etc.) and local Node.js tooling. It is not designed for general-purpose deployment. That said, the patterns and architecture here may be instructive for anyone looking to build their own editorial tooling or social media cross-posting workflows.
 
@@ -31,14 +31,15 @@ The editor (`/editor`) is the main workspace for managing `bundledb.json`, the d
 
 ## Social Posting
 
-Cross-post to Mastodon and Bluesky from a single compose form.
+Cross-post to Mastodon, Bluesky, and Discord from a single compose form.
 
-- Compose once, publish to both platforms simultaneously
+- Compose once, publish to all three platforms simultaneously
 - Attach up to 4 images (with required alt text) or a link card (mutually exclusive)
 - Save drafts for later, retry failed posts
-- Content warnings / content labels per platform
-- Grapheme-aware character counting (500 for Mastodon, 300 for Bluesky)
+- Content warnings / content labels per platform (Discord uses spoiler syntax)
+- Grapheme-aware character counting (500 for Mastodon, 300 for Bluesky, 2000 for Discord)
 - Bluesky images auto-compressed to fit the 1MB limit
+- Discord posts via webhook with auto-generated link previews
 - Light and dark mode UI
 
 ### Modes
@@ -56,11 +57,11 @@ When creating a new site entry in the editor, it is automatically added to the S
 
 ### Social Link Tagging
 
-When posting about a "Built with Eleventy" site, the app automatically fetches the site's HTML to discover the owner's Mastodon and Bluesky profiles. Discovered @-mentions are appended to the per-platform textareas. Detection strategies include JSON-LD `sameAs` arrays, `rel="me"` links, and URL pattern matching across the homepage, `/about/`, and `/en/` pages.
+When posting about a "Built with Eleventy" site, the app automatically fetches the site's HTML to discover the owner's Mastodon and Bluesky profiles (Discord does not support @-mentions via webhooks). Discovered @-mentions are appended to the per-platform textareas. Detection strategies include JSON-LD `sameAs` arrays, `rel="me"` links, and URL pattern matching across the homepage, `/about/`, and `/en/` pages.
 
 ## Tech Stack
 
-- **Backend**: Flask, Mastodon.py, atproto, Pillow, BeautifulSoup4, python-dotenv
+- **Backend**: Flask, Mastodon.py, atproto, requests, Pillow, BeautifulSoup4, python-dotenv
 - **Frontend**: Jinja2, Pico CSS (CDN), vanilla JS, Fuse.js (CDN, editor search)
 - **Tooling**: Node.js + Puppeteer (screenshot capture)
 - **Storage**: Flat JSON files for post history and bundle data, filesystem for images (no database)
