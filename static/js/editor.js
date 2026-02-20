@@ -5,7 +5,7 @@
   let fuse = null;
   let currentType = null;
   let currentIndex = null; // index into allData (null = create mode)
-  let currentMode = "edit"; // "edit" or "create"
+  let currentMode = "create"; // "edit" or "create"
   let backupCreated = false;
   let originalItem = null; // snapshot before editing
   let uniqueAuthors = []; // for autocomplete
@@ -993,6 +993,13 @@
     const rows = Math.ceil(uniqueCategories.length / cols);
     grid.style.gridTemplateRows = "repeat(" + rows + ", auto)";
 
+    // Display aliases for long category names (value stored is unchanged)
+    const categoryDisplayNames = {
+      "Internationalization": "i18n",
+      "Migrating to Eleventy": "Migrating to 11ty",
+      "The 11ty Conference 2024": "11ty Conf 2024",
+    };
+
     uniqueCategories.forEach((cat) => {
       const lbl = document.createElement("label");
       lbl.className = "category-checkbox";
@@ -1002,7 +1009,7 @@
       cb.value = cat;
       cb.checked = selected.has(cat);
       lbl.appendChild(cb);
-      lbl.appendChild(document.createTextNode(" " + cat));
+      lbl.appendChild(document.createTextNode(" " + (categoryDisplayNames[cat] || cat)));
       grid.appendChild(lbl);
     });
 
