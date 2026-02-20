@@ -190,11 +190,11 @@ The `/editor` page provides search and edit for `bundledb.json` items, plus a cr
 - Pre-checks categories that exist on the current item.
 
 **Favicon fetching** (`services/favicon.py`):
-- Tries existing file → Google API (`s2/favicons`) → HTML extraction (prioritizing SVG, large PNG, apple-touch-icon). Non-SVG/ICO images resized to 64x64 PNG via Pillow. Saves to `dbtools/favicons/` and copies to `_site/img/favicons/`.
+- Tries existing file → Google API (`s2/favicons`) → HTML extraction (prioritizing SVG, large PNG, apple-touch-icon). Non-SVG/ICO images resized to 64x64 PNG via Pillow. Saves to `11tybundledb/favicons/` and copies to `_site/img/favicons/`.
 - Exposed via `POST /editor/favicon`.
 
 **Screenshot capture** (`scripts/capture-screenshot.js`):
-- Puppeteer captures full-page JPEG at 1920x1080 with `networkidle0` + 3s delay. Saves to `dbtools/screenshots/` and `content/screenshots/`. Returns JSON with filename and path.
+- Puppeteer captures full-page JPEG at 1920x1080 with `networkidle0` + 3s delay. Saves to `11tybundledb/screenshots/` and `content/screenshots/`. Returns JSON with filename and path.
 - `POST /editor/screenshot` runs the script via `subprocess.run()` with 60s timeout and `NODE_PATH` set to `dbtools/node_modules/` (required because the script lives in `social-posting/scripts/` but Puppeteer is installed in `dbtools/`).
 - `GET /editor/screenshot-preview/<filename>` serves captured screenshots for inline preview.
 

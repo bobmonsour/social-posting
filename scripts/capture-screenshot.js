@@ -4,7 +4,7 @@
  * Capture a screenshot of a URL using Puppeteer.
  * Usage: node capture-screenshot.js <url>
  *
- * Saves to both dbtools/screenshots/ and content/screenshots/.
+ * Saves to both 11tybundledb/screenshots/ and content/screenshots/.
  * Outputs JSON to stdout: {success, filename, screenshotpath}
  *
  * Must be run with cwd set to the dbtools directory so Puppeteer resolves.
@@ -14,8 +14,8 @@ const puppeteer = require("puppeteer");
 const path = require("path");
 const fs = require("fs");
 
-const DBTOOLS_DIR = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/dbtools";
-const SCREENSHOTS_DIR = path.join(DBTOOLS_DIR, "screenshots");
+const BUNDLEDB_DIR = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundledb";
+const SCREENSHOTS_DIR = path.join(BUNDLEDB_DIR, "screenshots");
 const CONTENT_SCREENSHOTS_DIR =
   "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundle.dev/content/screenshots";
 

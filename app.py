@@ -54,7 +54,7 @@ BUNDLEDB_BACKUP_DIR = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundledb/bun
 SHOWCASE_PATH = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundledb/showcase-data.json"
 DBTOOLS_DIR = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/dbtools"
 DBTOOLS_DB_DIR = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundledb"
-SCREENSHOT_DIR = os.path.join(DBTOOLS_DIR, "screenshots")
+SCREENSHOT_DIR = os.path.join(DBTOOLS_DB_DIR, "screenshots")
 SCREENSHOT_SCRIPT = os.path.join(_BASE_DIR, "scripts", "capture-screenshot.js")
 
 
