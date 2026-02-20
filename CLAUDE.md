@@ -100,13 +100,13 @@ When a post fails on any platform:
 
 ## Bundledb Editor
 
-The `/editor` page provides search and edit for `bundledb.json` items, plus a create mode for adding new entries. The editor page has a "Back to Social Posting" button, "Bundle Entry Editor" header, and right-justified "Check URL", "Run Latest", and "Deploy" buttons in the header bar. Mode (Edit/Create) is selected via radio buttons at the top, then type is selected. Switching between modes clears the type selection. In edit mode, fuzzy search (Fuse.js) over type-specific keys finds items. In create mode, selecting a type opens a blank form with auto-populated fields and cursor in the Title field. Fields are ordered per `FIELD_ORDER` in `editor.js` with manual-entry fields first, followed by fetch buttons, then auto-generated fields. Saves go to `POST /editor/save`, which creates a backup on first save per session.
+The `/editor` page (linked from the main page as "Bundle Editor") provides search and edit for `bundledb.json` items, plus a create mode for adding new entries. The editor page has a "Back to Social Posting" button, "Bundle Entry Editor" header, and right-justified "Check URL", "Run Latest", and "Deploy" buttons in the header bar. Mode (Edit/Create) is selected via radio buttons at the top, then type is selected. Switching between modes clears the type selection. In edit mode, fuzzy search (Fuse.js) over type-specific keys finds items. In create mode, selecting a type opens a blank form with auto-populated fields and cursor in the Title field. Fields are ordered per `FIELD_ORDER` in `editor.js` with manual-entry fields first, followed by fetch buttons, then auto-generated fields. Saves go to `POST /editor/save`, which creates a backup on first save per session.
 
 **Edit/Create modes** (`editor.js` + `editor.html`):
-- Mode radio buttons (Edit/Create) at top of editor. Edit mode is the default.
+- Mode radio buttons (Edit/Create) at top of editor. Create mode is the default.
 - Switching between Edit and Create clears the type selection and hides all form elements.
 - Create mode hides search/recent items and shows a blank form for the selected type.
-- New items are auto-populated with `Date` (ISO), `formattedDate` (human-readable), `Issue` (current max from data), and `Type`.
+- New items are auto-populated with `Date` (ISO), `formattedDate` (human-readable), `Issue` (current max from data), and `Type`. The `Type` field is hidden in create mode since it's already selected via the radio button.
 - On create, cursor is auto-focused on the Title field.
 - Create saves append to the end of the `bundledb.json` array (edit saves update in place).
 
@@ -174,7 +174,7 @@ The `/editor` page provides search and edit for `bundledb.json` items, plus a cr
 - Selecting an existing author auto-fills empty fields (AuthorSite, AuthorSiteDescription, favicon, rssLink, socialLinks) from the most recent post by that author, and renames the author info button to "Refresh Author Info".
 
 **Author info fetching** (blog posts, create and edit):
-- AuthorSite auto-populates with the origin of the blog post Link URL when empty (e.g., `https://example.com/blog/post` → `https://example.com`). Editable since the author's site may differ.
+- AuthorSite auto-populates with the origin of the blog post Link URL when empty (e.g., `https://example.com/blog/post` → `https://example.com`). Triggers both at form render time and when a new author name is entered (on Author field blur). Editable since the author's site may differ.
 - "Fetch Author Info" button appears after AuthorSite for new authors (not in database).
 - "Refresh Author Info" button appears for existing authors (after autocomplete populates fields).
 - Both buttons call `POST /editor/author-info` with the AuthorSite URL, which fetches in parallel: AuthorSiteDescription (via description service), socialLinks (via social_links service), favicon (via favicon service), rssLink (via rss_link service).
@@ -185,7 +185,8 @@ The `/editor` page provides search and edit for `bundledb.json` items, plus a cr
 - Validates probed paths by checking response content looks like a feed (not an HTML error page).
 
 **Categories checkbox grid** (blog posts):
-- Categories rendered as a checkbox grid instead of a comma-separated text input.
+- Categories rendered as a 5-column checkbox grid using CSS `grid-auto-flow: column` with dynamic row count, so alphabetical order flows down each column.
+- Display aliases shorten long category names without affecting stored values: "Internationalization" → "i18n", "Migrating to Eleventy" → "Migrating to 11ty", "The 11ty Conference 2024" → "11ty Conf 2024" (configured in `categoryDisplayNames` in `editor.js`).
 - Includes an "Add new category" input + button for dynamically adding categories.
 - Pre-checks categories that exist on the current item.
 
@@ -215,9 +216,10 @@ The `/editor` page provides search and edit for `bundledb.json` items, plus a cr
 - On create, site saves call `add_bwe_to_post(title, link)` to append the site to the BWE "TO BE POSTED" list, and prepend an entry to `showcase-data.json` with title, description, link, date, formattedDate, favicon, screenshotpath, and leaderboardLink.
 - On edit, site saves sync the matching `showcase-data.json` entry (matched by link) with current title, description, favicon, screenshotpath, leaderboardLink, date, and formattedDate.
 
-**Custom field labels**:
+**Custom field labels** (`fieldDisplayNames` and `fieldLabel()` in `editor.js`):
 - `Link` shows as "GitHub repo link" for release/starter types.
 - `Demo` shows as "Link to demo site" for starter type.
+- CamelCase field names display with spaces: `formattedDate` → "Formatted Date", `slugifiedAuthor` → "Slugified Author", `slugifiedTitle` → "Slugified Title", `AuthorSite` → "Author Site", `AuthorSiteDescription` → "Author Site Description".
 
 **Author-field propagation** (edit mode, `editor.js` + `app.py`):
 - When saving a blog post edit, `buildPropagation()` compares original item (snapshotted as `originalItem` when the form opens) against edited values.
