@@ -1,9 +1,11 @@
 from platforms.mastodon_client import MastodonClient
 from platforms.bluesky_client import BlueskyClient
+from platforms.discord_client import DiscordClient
 
 PLATFORMS = {
     "mastodon": MastodonClient,
     "bluesky": BlueskyClient,
+    "discord": DiscordClient,
 }
 
 

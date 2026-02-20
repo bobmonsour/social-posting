@@ -14,13 +14,18 @@
             <input type="checkbox" name="platforms" value="mastodon" id="cb-mastodon"
                    {% if not mastodon_available %}disabled{% endif %}>
             Mastodon (500 chars)
-            {% if not mastodon_available %}<small> — not configured</small>{% endif %}
+            {% if not mastodon_available %}<small class="not-configured"> — not configured</small>{% endif %}
         </label>
         <label>
             <input type="checkbox" name="platforms" value="bluesky" id="cb-bluesky"
                    {% if not bluesky_available %}disabled{% endif %}>
             Bluesky (300 chars)
-            {% if not bluesky_available %}<small> — not configured</small>{% endif %}
+            {% if not bluesky_available %}<small class="not-configured"> — not configured</small>{% endif %}
+        </label>
+        <label>
+            <input type="checkbox" name="platforms" value="discord" id="cb-discord"
+                   {% if not discord_available %}disabled{% endif %}>
+            Discord (2000 chars){% if not discord_available %} <small class="not-configured">— not configured</small>{% endif %}
         </label>
     </fieldset>
 
@@ -62,6 +67,12 @@
         <label><input type="radio" name="cw_bluesky" value="political" {% if draft and draft.cw_bluesky == 'political' %}checked{% endif %}> Political</label>
     </fieldset>
 
+    <fieldset id="cw-discord-section" class="platform-section" hidden>
+        <legend>Content Warning (Discord)</legend>
+        <label><input type="radio" name="cw_discord" value="" {% if not draft or not draft.cw_discord %}checked{% endif %}> None</label>
+        <label><input type="radio" name="cw_discord" value="Spoiler" {% if draft and draft.cw_discord == 'Spoiler' %}checked{% endif %}> Spoiler</label>
+    </fieldset>
+
     <!-- Shared post text (hidden when mode active) -->
     <fieldset id="shared-text-section">
         <legend>Post</legend>
@@ -70,6 +81,7 @@
         <div id="char-counters" class="char-counters">
             <span id="counter-mastodon" class="counter" hidden>Mastodon: <span class="count">0</span>/500</span>
             <span id="counter-bluesky" class="counter" hidden>Bluesky: <span class="count">0</span>/300</span>
+            <span id="counter-discord" class="counter" hidden>Discord: <span class="count">0</span>/2000</span>
         </div>
     </fieldset>
 
@@ -93,6 +105,14 @@
                 <span id="counter-bluesky-mode" class="counter">Bluesky: <span class="count">0</span>/300</span>
             </div>
         </div>
+        <div class="platform-text-group">
+            <label class="platform-text-label" for="text-discord">Discord</label>
+            <textarea name="text_discord" id="text-discord" rows="5"
+                      placeholder="Discord text">{{ draft.platform_texts.discord if draft and draft.platform_texts else '' }}</textarea>
+            <div class="char-counters">
+                <span id="counter-discord-mode" class="counter">Discord: <span class="count">0</span>/2000</span>
+            </div>
+        </div>
     </fieldset>
 
     <!-- Preview (shown when mode active) -->
@@ -107,6 +127,10 @@
             <div class="preview-panel">
                 <div class="preview-panel-header">Bluesky</div>
                 <div class="preview-panel-body" id="preview-bluesky"></div>
+            </div>
+            <div class="preview-panel">
+                <div class="preview-panel-header">Discord</div>
+                <div class="preview-panel-body" id="preview-discord"></div>
             </div>
         </div>
     </fieldset>

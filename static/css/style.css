@@ -204,6 +204,12 @@ button, [type="submit"] {
     font-weight: 700;
 }
 
+.not-configured {
+    color: #c62828;
+    display: inline;
+}
+
+
 /* ===== Link card input row ===== */
 .link-card-input {
     display: flex;

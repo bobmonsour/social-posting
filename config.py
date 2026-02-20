@@ -9,6 +9,9 @@ MASTODON_ACCESS_TOKEN = os.getenv("MASTODON_ACCESS_TOKEN", "")
 BLUESKY_IDENTIFIER = os.getenv("BLUESKY_IDENTIFIER", "")
 BLUESKY_APP_PASSWORD = os.getenv("BLUESKY_APP_PASSWORD", "")
 
+DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "")
+DISCORD_GUILD_ID = os.getenv("DISCORD_GUILD_ID", "")
+
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
 MAX_IMAGES = 4
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
@@ -21,3 +24,7 @@ def mastodon_configured():
 
 def bluesky_configured():
     return bool(BLUESKY_IDENTIFIER and BLUESKY_APP_PASSWORD)
+
+
+def discord_configured():
+    return bool(DISCORD_WEBHOOK_URL and DISCORD_GUILD_ID)
