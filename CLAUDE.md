@@ -4,6 +4,8 @@ Personal publication management tool for 11tybundle.dev. What started as a socia
 
 This app is purpose-built for the sole use of the editor of 11tybundle.dev, running on a local machine with access to sibling project directories (`dbtools/`, `11tybundle.dev/`, etc.) and local Node.js tooling. It is not designed for general-purpose deployment.
 
+**Reference codebase — dbtools**: The `dbtools/` directory at `/Users/Bob/Dropbox/Docs/Sites/11tybundle/dbtools/` contains the original Node.js tooling that this app is progressively replacing. When asked to port or replicate functionality from dbtools, always read the source files there directly rather than inferring behavior from this project's code.
+
 ## Quick Start
 
 ```bash
