@@ -120,8 +120,8 @@ The `/editor` page provides search and edit for `bundledb.json` items, plus a cr
 - Title and Author fields auto-compute `slugifiedTitle` and `slugifiedAuthor` on blur.
 - Client-side `slugify()` function matches `@sindresorhus/slugify` behavior: custom replacements map (German umlauts ö→oe/ä→ae/ü→ue, ligatures, special Latin chars), NFD decomposition with diacritic stripping, decamelization, contraction handling (`it's`→`its`), dash normalization.
 
-**View JSON button** (create mode, `editor.js`):
-- "View JSON" button in the save button row opens a read-only panel showing the pretty-printed JSON entry to be added to `bundledb.json`.
+**View JSON button** (create and edit modes, `editor.js`):
+- "View JSON" button in the save button row opens a read-only panel showing the pretty-printed JSON entry.
 - For site entries, also shows the `showcase-data.json` entry below.
 - Clicking again refreshes the preview; panel closes on save.
 

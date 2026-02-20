@@ -454,7 +454,7 @@
     }
   });
 
-  // View JSON handler (create mode only)
+  // View JSON handler
   btnViewJson.addEventListener("click", () => {
     const item = collectFormValues();
     let html = "<h4>bundledb.json entry</h4>";
@@ -934,8 +934,8 @@
       }
     }
 
-    // Show View JSON button only in create mode; reset panel
-    btnViewJson.style.display = isCreate ? "" : "none";
+    // Show View JSON button; reset panel
+    btnViewJson.style.display = "";
     jsonPreviewPanel.style.display = "none";
     jsonPreviewPanel.innerHTML = "";
 
