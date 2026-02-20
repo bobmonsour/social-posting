@@ -988,6 +988,11 @@
     const grid = document.createElement("div");
     grid.className = "categories-grid";
 
+    // Set row count so CSS grid-auto-flow: column fills alphabetically down columns
+    const cols = 5;
+    const rows = Math.ceil(uniqueCategories.length / cols);
+    grid.style.gridTemplateRows = "repeat(" + rows + ", auto)";
+
     uniqueCategories.forEach((cat) => {
       const lbl = document.createElement("label");
       lbl.className = "category-checkbox";

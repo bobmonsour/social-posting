@@ -252,6 +252,10 @@ The compose page sidebar shows "Sites to Post" from `built-with-eleventy.md`. Ea
 - **Del** button: removes the entry from the TO BE POSTED list via `POST /bwe-to-post/delete`. Shows a confirmation modal with Cancel focused by default.
 - Backend: `delete_bwe_to_post(name, url)` in `services/bwe_list.py` parses and rewrites the markdown file.
 
+## Testing
+
+- **Visual testing via browser**: When making UI or layout changes, use the Claude in Chrome MCP tools to verify the result in the running app at `http://127.0.0.1:5555`. Navigate to the relevant page, interact as needed, and take screenshots to confirm the change looks correct before committing.
+
 ## Key Conventions
 
 - All paths in `app.py` are `__file__`-relative via `_BASE_DIR` (not CWD-relative).
