@@ -1186,6 +1186,14 @@
     }
   }
 
+  const fieldDisplayNames = {
+    "formattedDate": "Formatted Date",
+    "slugifiedAuthor": "Slugified Author",
+    "slugifiedTitle": "Slugified Title",
+    "AuthorSite": "Author Site",
+    "AuthorSiteDescription": "Author Site Description",
+  };
+
   function fieldLabel(field) {
     if (field === "Link" && (currentType === "release" || currentType === "starter")) {
       return "GitHub repo link";
@@ -1193,7 +1201,7 @@
     if (field === "Demo" && currentType === "starter") {
       return "Link to demo site";
     }
-    return field;
+    return fieldDisplayNames[field] || field;
   }
 
   function renderTextField(field, item) {
