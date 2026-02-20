@@ -1119,7 +1119,19 @@
       authorBtn.textContent = isExisting ? "Refresh Author Info" : "Fetch Author Info";
     }
 
-    if (!isExisting) return;
+    if (!isExisting) {
+      // New author: auto-populate AuthorSite with origin of Link URL if empty
+      const asEl = document.getElementById("field-AuthorSite");
+      if (asEl && !asEl.value.trim()) {
+        const linkEl = document.getElementById("field-Link");
+        if (linkEl && linkEl.value.trim()) {
+          try {
+            asEl.value = new URL(linkEl.value.trim()).origin;
+          } catch { /* invalid URL, leave empty */ }
+        }
+      }
+      return;
+    }
 
     // Find most recent blog post by this author
     let best = null;
