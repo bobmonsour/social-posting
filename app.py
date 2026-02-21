@@ -53,8 +53,8 @@ BUNDLEDB_PATH = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundledb/bundledb.
 BUNDLEDB_BACKUP_DIR = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundledb/bundledb-backups"
 SHOWCASE_PATH = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundledb/showcase-data.json"
 DBTOOLS_DIR = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/dbtools"
-DBTOOLS_DB_DIR = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundledb"
-SCREENSHOT_DIR = os.path.join(DBTOOLS_DB_DIR, "screenshots")
+BUNDLEDB_DIR = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundledb"
+SCREENSHOT_DIR = os.path.join(BUNDLEDB_DIR, "screenshots")
 SCREENSHOT_SCRIPT = os.path.join(_BASE_DIR, "scripts", "capture-screenshot.js")
 
 
@@ -1109,17 +1109,17 @@ def editor_deploy():
         git_result = {"success": False, "message": "Deploy failed, skipping git."}
         if deploy_success:
             try:
-                subprocess.run(["git", "add", "-A"], cwd=DBTOOLS_DB_DIR, check=True)
+                subprocess.run(["git", "add", "-A"], cwd=BUNDLEDB_DIR, check=True)
                 commit = subprocess.run(
                     ["git", "commit", "-m", "New entries saved"],
-                    cwd=DBTOOLS_DB_DIR,
+                    cwd=BUNDLEDB_DIR,
                     capture_output=True,
                     text=True,
                 )
                 if commit.returncode == 0:
                     push = subprocess.run(
                         ["git", "push"],
-                        cwd=DBTOOLS_DB_DIR,
+                        cwd=BUNDLEDB_DIR,
                         capture_output=True,
                         text=True,
                         timeout=30,
