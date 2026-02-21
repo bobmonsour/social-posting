@@ -60,7 +60,7 @@ def test_editor_data_merges_showcase(client, app, sample_bundledb, sample_showca
     _write_json(app.config["BUNDLEDB_PATH"], sample_bundledb)
     _write_json(app.config["SHOWCASE_PATH"], sample_showcase)
     resp = client.get("/editor/data")
-    data = resp.get_json()
+    data = resp.get_json()["bundledb"]
     site = next(e for e in data if e["Type"] == "site")
     assert site["screenshotpath"] == "/screenshots/cool11ty-dev.jpg"
     assert site["leaderboardLink"] == "https://www.11ty.dev/speedlify/cool11ty-dev/"
@@ -70,7 +70,7 @@ def test_editor_data_no_showcase_match(client, app, sample_bundledb):
     _write_json(app.config["BUNDLEDB_PATH"], sample_bundledb)
     _write_json(app.config["SHOWCASE_PATH"], [])
     resp = client.get("/editor/data")
-    data = resp.get_json()
+    data = resp.get_json()["bundledb"]
     site = next(e for e in data if e["Type"] == "site")
     assert "screenshotpath" not in site
 

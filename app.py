@@ -722,7 +722,14 @@ def editor_data():
     except Exception:
         pass
 
-    return jsonify(data)
+    # Also return showcase data for duplicate link detection
+    try:
+        with open(_get_path("SHOWCASE_PATH"), "r") as f:
+            showcase_list = json.load(f)
+    except Exception:
+        showcase_list = []
+
+    return jsonify({"bundledb": data, "showcase": showcase_list})
 
 
 @app.route("/editor/save", methods=["POST"])

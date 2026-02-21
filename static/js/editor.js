@@ -2,6 +2,7 @@
   "use strict";
 
   let allData = [];
+  let showcaseData = [];
   let fuse = null;
   let currentType = null;
   let currentIndex = null; // index into allData (null = create mode)
@@ -139,7 +140,8 @@
   fetch("/editor/data")
     .then((r) => r.json())
     .then((data) => {
-      allData = data;
+      allData = data.bundledb;
+      showcaseData = data.showcase || [];
       buildUniqueAuthors();
       buildUniqueCategories();
     })
@@ -580,20 +582,38 @@
   function findDuplicateLink(link) {
     if (!link) return null;
     const normalized = normalizeLink(link);
+    const sources = [];
+    let matchEntry = null;
+
     for (const entry of allData) {
       const existing = normalizeLink(entry.Link || "");
       if (existing && existing === normalized) {
-        return entry;
+        matchEntry = { Type: entry.Type, Title: entry.Title };
+        sources.push("bundledb.json");
+        break;
       }
     }
-    return null;
+
+    for (const entry of showcaseData) {
+      const existing = normalizeLink(entry.link || "");
+      if (existing && existing === normalized) {
+        if (!matchEntry) matchEntry = { Type: "site", Title: entry.title };
+        if (!sources.includes("showcase-data.json")) sources.push("showcase-data.json");
+        break;
+      }
+    }
+
+    if (!matchEntry) return null;
+    matchEntry.sources = sources;
+    return matchEntry;
   }
 
   function showDuplicateLinkWarning(link, existing) {
     const type = existing.Type || "entry";
     const title = existing.Title || "(untitled)";
+    const files = existing.sources ? existing.sources.join(" and ") : "bundledb.json";
     dupLinkMessage.textContent =
-      "This link already exists as a " + type + ': "' + title + '".';
+      "This link already exists as a " + type + ' in ' + files + ': "' + title + '".';
     dupLinkModal.style.display = "";
   }
 

@@ -35,7 +35,7 @@ def test_round_trip_blog_post(client, app):
     }
     client.post("/editor/save", json={"item": item, "create": True})
     resp = client.get("/editor/data")
-    data = resp.get_json()
+    data = resp.get_json()["bundledb"]
     assert len(data) == 1
     saved = data[0]
     for key in ("Issue", "Type", "Title", "Link", "Date", "Author", "Categories",
@@ -68,7 +68,7 @@ def test_round_trip_site(client, app, monkeypatch):
     client.post("/editor/save", json={"item": item, "create": True})
 
     resp = client.get("/editor/data")
-    data = resp.get_json()
+    data = resp.get_json()["bundledb"]
     site = data[0]
     assert site["Title"] == "RT Site"
     # screenshotpath should come from showcase merge
