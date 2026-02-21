@@ -1,35 +1,12 @@
 # Socially Bundled
 
-![Socially Bundled home page](home-screen.png)
+![Socially Bundled home page](socially-bundled-home.png)
 
 A personal publication management tool for [11tybundle.dev](https://11tybundle.dev). What started as a simple social media cross-poster has evolved into the primary editorial interface for managing the 11ty Bundle -- a curated database of blog posts, sites, releases, and starters from the Eleventy community.
 
-The app has three main surfaces: a **Bundle Entry Editor** for creating, editing, and publishing database entries, a **Social Posting** page for cross-posting to Mastodon, Bluesky, and Discord with workflow integrations that tie the two together, and a **Database Management** page for visibility into the underlying data files, backup history, and recent git commits.
+The app has three main surfaces: a **Social Posting** page for cross-posting to Mastodon, Bluesky, and Discord with workflow integrations, a **Bundle Entry Editor** for creating, editing, and publishing database entries, and a **Database Management** page for visibility into the underlying data files, backup history, and recent git commits.
 
 > **Note**: This app is purpose-built for the sole use of the editor of 11tybundle.dev, running on a local machine with access to sibling project directories (`dbtools/`, `11tybundle.dev/`, etc.) and local Node.js tooling. It is not designed for general-purpose deployment. That said, the patterns and architecture here may be instructive for anyone looking to build their own editorial tooling or social media cross-posting workflows.
-
-## Bundle Entry Editor
-
-The editor (`/editor`) is the main workspace for managing `bundledb.json`, the database that powers 11tybundle.dev. It supports four entry types: blog posts, sites, releases, and starters.
-
-**Creating entries**:
-- Select a type and fill in fields with auto-populated date, issue number, and type.
-- Title and Author fields auto-compute slugified versions on blur (matching `@sindresorhus/slugify`).
-- Per-type fetch buttons pull descriptions, favicons, screenshots, and author info from the entry's URL.
-- Author autocomplete from existing database entries, with auto-fill of author-level fields (site description, social links, favicon, RSS link).
-- Duplicate link detection on blur and save, with `www.`/non-`www.` normalization.
-- View JSON preview before saving (for sites, also shows the showcase-data entry).
-
-**Editing entries**:
-- Fuzzy search (Fuse.js) across type-specific fields to find entries.
-- Author-field propagation: filling in a previously-empty author-level field prompts to update all other posts by the same author.
-- Skip entries to exclude them from site generation.
-- Delete entries with confirmation, or bulk-delete test entries.
-
-**Build and deploy**:
-- Save and run the local Eleventy dev server to preview changes.
-- Deploy directly to production from the editor.
-- End-session scripts generate issue records, insights, and latest-data files.
 
 ## Social Posting
 
@@ -62,6 +39,37 @@ When creating a new site entry in the editor, it is automatically added to the S
 ### Social Link Tagging
 
 When posting about a "Built with Eleventy" site, the app automatically fetches the site's HTML to discover the owner's Mastodon and Bluesky profiles (Discord does not support @-mentions via webhooks). Discovered @-mentions are appended to the per-platform textareas. Detection strategies include JSON-LD `sameAs` arrays, `rel="me"` links, and URL pattern matching across the homepage, `/about/`, and `/en/` pages.
+
+## Bundle Entry Editor
+
+The editor (`/editor`) is the main workspace for managing `bundledb.json`, the database that powers 11tybundle.dev. It supports four entry types: blog posts, sites, releases, and starters.
+
+**Creating entries**:
+- Select a type and fill in fields with auto-populated date, issue number, and type.
+- Title and Author fields auto-compute slugified versions on blur (matching `@sindresorhus/slugify`).
+- Per-type fetch buttons pull descriptions, favicons, screenshots, and author info from the entry's URL.
+- Author autocomplete from existing database entries, with auto-fill of author-level fields (site description, social links, favicon, RSS link).
+- Duplicate link detection on blur and save, with `www.`/non-`www.` normalization.
+- View JSON preview before saving (for sites, also shows the showcase-data entry).
+
+**Editing entries**:
+- Fuzzy search (Fuse.js) across type-specific fields to find entries.
+- Author-field propagation: filling in a previously-empty author-level field prompts to update all other posts by the same author.
+- Skip entries to exclude them from site generation.
+- Delete entries with confirmation, or bulk-delete test entries.
+
+**Build and deploy**:
+- Save and run the local Eleventy dev server to preview changes.
+- Deploy directly to production from the editor.
+- End-session scripts generate issue records, insights, and latest-data files.
+
+## Database Management
+
+The database management page (`/db-mgmt`) provides read-only visibility into the state of the two main data files.
+
+- **Database statistics**: total entries, per-type counts (blog posts, sites, releases, starters), unique authors, and categories for `bundledb.json`; total entries for `showcase-data.json`.
+- **Backup files**: file count and oldest backup date for both `bundledb-backups/` and `showcase-data-backups/` directories. Backups are auto-created on first save per session and pruned to a maximum of 25.
+- **Recent git commits**: the 5 most recent commits to each data file in the `11tybundledb` repo, with short SHA (linked to GitHub), date, and a list of newly added entry titles (computed by diffing each commit against its parent).
 
 ## Tech Stack
 
