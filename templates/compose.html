@@ -257,6 +257,11 @@
         <div class="bwe-queue-item">
             <a href="{{ site.url }}" target="_blank" rel="noopener">{{ site.name }}</a>
             <div class="bwe-queue-item-actions">
+                <span class="bwe-platform-cbs">
+                    <label class="bwe-platform-cb"><input type="checkbox" class="bwe-plat-cb" data-platform="M" {% if "M" in site.platforms %}checked{% endif %}>M</label>
+                    <label class="bwe-platform-cb"><input type="checkbox" class="bwe-plat-cb" data-platform="B" {% if "B" in site.platforms %}checked{% endif %}>B</label>
+                    <label class="bwe-platform-cb"><input type="checkbox" class="bwe-plat-cb" data-platform="D" {% if "D" in site.platforms %}checked{% endif %}>D</label>
+                </span>
                 {% if site.draft_id %}
                 <a href="/draft/{{ site.draft_id }}" class="btn-use-draft">Use</a>
                 {% else %}
@@ -278,6 +283,11 @@
         <div class="bwe-posted-item">
             <a href="{{ site.url }}" target="_blank" rel="noopener">{{ site.name }}</a>
             <div class="bwe-posted-item-actions">
+                {% if site.platforms %}
+                <span class="bwe-plat-badges">
+                    {% for p in site.platforms %}<span class="bwe-plat-badge bwe-plat-{{ p }}">{{ p }}</span>{% endfor %}
+                </span>
+                {% endif %}
                 <form action="/bwe-posted/delete" method="post" class="inline-form">
                     <input type="hidden" name="name" value="{{ site.name }}">
                     <input type="hidden" name="url" value="{{ site.url }}">

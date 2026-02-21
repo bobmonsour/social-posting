@@ -15,7 +15,7 @@ from platforms.base import LinkCard, MediaAttachment
 from services.media import process_uploads, cleanup_uploads, compress_for_bluesky, get_mime_type
 from services.link_card import fetch_og_metadata
 from services.social_links import extract_social_links
-from services.bwe_list import get_bwe_lists, mark_bwe_posted, delete_bwe_posted, delete_bwe_to_post, add_bwe_to_post
+from services.bwe_list import get_bwe_lists, mark_bwe_posted, update_bwe_after_post, delete_bwe_posted, delete_bwe_to_post, add_bwe_to_post
 from services.issue_counts import get_latest_issue_counts
 from services.blog_post import create_blog_post, blog_post_exists, delete_blog_post, edit_blog_post
 
@@ -463,14 +463,15 @@ def post():
     bwe_name = request.form.get("bwe_site_name", "").strip()
     bwe_url = request.form.get("bwe_site_url", "").strip()
     if mode == "11ty-bwe" and bwe_name and bwe_url:
-        status_parts = []
-        for r in results:
-            if r["success"]:
-                status_parts.append(f"Posted to {r['platform'].title()}")
-            else:
-                status_parts.append(f"Failed to post to {r['platform'].title()}")
-        timestamp = datetime.now(timezone.utc).isoformat()
-        mark_bwe_posted(bwe_name, bwe_url, timestamp, ", ".join(status_parts))
+        platform_letter_map = {"mastodon": "M", "bluesky": "B", "discord": "D"}
+        posted_platforms = [
+            platform_letter_map[r["platform"]]
+            for r in results
+            if r["success"] and r["platform"] in platform_letter_map
+        ]
+        if posted_platforms:
+            timestamp = datetime.now(timezone.utc).isoformat()
+            update_bwe_after_post(bwe_name, bwe_url, posted_platforms, timestamp)
 
     return render_template("result.html", results=results)
 

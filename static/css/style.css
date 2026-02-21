@@ -649,7 +649,7 @@ label:has(#cb-bluesky) {
     margin-bottom: 0.25rem;
     display: flex;
     justify-content: space-between;
-    align-items: baseline;
+    align-items: center;
 }
 
 .btn-bwe-post {
@@ -673,10 +673,19 @@ label:has(#cb-bluesky) {
 
 .bwe-queue-item-actions {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: 0.4rem;
     flex-shrink: 0;
     white-space: nowrap;
+}
+
+.bwe-queue-item-actions > * {
+    margin-bottom: 0;
+}
+
+.bwe-queue-item-actions button {
+    margin-bottom: 0;
+    vertical-align: middle;
 }
 
 .bwe-queue-item-actions form.inline-form {
@@ -689,6 +698,60 @@ label:has(#cb-bluesky) {
     width: auto !important;
     display: inline-block !important;
     padding: 0.1rem 0.5rem;
+}
+
+/* BWE platform checkboxes (Sites to Post) */
+.bwe-platform-cbs {
+    display: inline-flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin-right: 0.35rem;
+}
+
+.bwe-platform-cb {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    margin-bottom: 0;
+}
+
+.bwe-platform-cb input[type="checkbox"] {
+    margin: 0;
+}
+
+/* BWE platform badges (Sites Posted) */
+.bwe-plat-badges {
+    display: inline-flex;
+    gap: 0.2rem;
+    align-items: center;
+}
+
+.bwe-plat-badge {
+    display: inline-block;
+    padding: 0.05rem 0.35rem;
+    border-radius: 3px;
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: white;
+}
+
+.bwe-plat-M {
+    background: #6364ff;
+}
+
+.bwe-plat-B {
+    background: #0085ff;
+}
+
+.bwe-plat-D {
+    background: #5865f2;
 }
 
 /* ===== BWE posted sidebar ===== */

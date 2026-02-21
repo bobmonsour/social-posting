@@ -686,9 +686,23 @@ document.addEventListener("DOMContentLoaded", () => {
             const name = btn.dataset.name;
             const url = btn.dataset.url;
 
-            // Check both platforms
-            cbMastodon.checked = true;
-            cbBluesky.checked = true;
+            // Read M/B/D checkboxes from the BWE queue item
+            const queueItem = btn.closest(".bwe-queue-item");
+            const platCbs = queueItem ? queueItem.querySelectorAll(".bwe-plat-cb") : [];
+            const platformMap = {M: cbMastodon, B: cbBluesky, D: cbDiscord};
+            const checkedPlatforms = [];
+
+            // Set main platform checkboxes from BWE entry's selections
+            cbMastodon.checked = false;
+            cbBluesky.checked = false;
+            cbDiscord.checked = false;
+            platCbs.forEach(cb => {
+                const mainCb = platformMap[cb.dataset.platform];
+                if (mainCb && cb.checked) {
+                    mainCb.checked = true;
+                    checkedPlatforms.push(cb.dataset.platform);
+                }
+            });
 
             // Select and activate 11ty-bwe mode
             const bweRadio = document.getElementById("mode-11ty-bwe");
@@ -697,18 +711,27 @@ document.addEventListener("DOMContentLoaded", () => {
                 activateMode("11ty-bwe");
             }
 
+            // Override platform checkboxes after mode activation (mode may auto-check)
+            cbMastodon.checked = checkedPlatforms.includes("M");
+            cbBluesky.checked = checkedPlatforms.includes("B");
+            cbDiscord.checked = checkedPlatforms.includes("D");
+
             // Insert site name into per-platform textareas after the prefix
             const mode = modesConfig["11ty-bwe"];
             if (mode) {
                 const prefixes = mode.prefixes || {};
                 const suffixes = mode.suffixes || {};
-                for (const [platform, el] of [["mastodon", textMastodon], ["bluesky", textBluesky]]) {
+                const textareaMap = {mastodon: textMastodon, bluesky: textBluesky, discord: textDiscord};
+                for (const [platform, el] of Object.entries(textareaMap)) {
                     const pre = prefixes[platform] || "";
                     const suf = suffixes[platform] || "";
                     el.value = pre + name + suf;
                 }
                 updateModeCharCounters();
             }
+
+            // Update visibility of platform groups
+            updatePlatformSections();
 
             // Set link URL
             linkUrl.value = url;
