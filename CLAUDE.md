@@ -1,6 +1,6 @@
 # Socially Bundled
 
-Personal publication management tool for 11tybundle.dev. What started as a social media cross-poster has evolved into the primary editorial interface for managing the 11ty Bundle -- a curated database of blog posts, sites, releases, and starters from the Eleventy community. Single Flask app with two surfaces: a Bundle Entry Editor and a Social Posting page with workflow integrations that tie the two together.
+Personal publication management tool for 11tybundle.dev. What started as a social media cross-poster has evolved into the primary editorial interface for managing the 11ty Bundle -- a curated database of blog posts, sites, releases, and starters from the Eleventy community. Single Flask app with three surfaces: a Bundle Entry Editor, a Social Posting page with workflow integrations that tie the two together, and a Database Management page for visibility into the underlying data files.
 
 This app is purpose-built for the sole use of the editor of 11tybundle.dev, running on a local machine with access to sibling project directories (`dbtools/`, `11tybundle.dev/`, etc.) and local Node.js tooling. It is not designed for general-purpose deployment.
 
@@ -40,10 +40,11 @@ social-posting/
 │   └── bwe_list.py         # Parse/modify built-with-eleventy.md (to-post/posted lists)
 ├── scripts/
 │   └── capture-screenshot.js  # Puppeteer full-page screenshot capture
-├── templates/              # Jinja2 (base.html, compose.html, result.html)
+├── templates/              # Jinja2 (base.html, compose.html, result.html, editor.html, db_mgmt.html)
 ├── static/
 │   ├── css/style.css       # Pico CSS overrides, warm color scheme, light/dark
-│   └── js/compose.js       # Form interactivity, modes, draft/image handling, validation
+│   ├── js/compose.js       # Form interactivity, modes, draft/image handling, validation
+│   └── js/db_mgmt.js       # Fetch and render git commit history for DB management page
 ├── posts/
 │   ├── history.json        # All posts, drafts, and failed posts (newest first)
 │   └── draft_images/       # Persisted images keyed by draft/failed UUID
@@ -104,7 +105,7 @@ When a post fails on any platform:
 
 ## Bundledb Editor
 
-The `/editor` page (linked from the main page as "Bundle Editor") provides search and edit for `bundledb.json` items, plus a create mode for adding new entries. The editor page has a "Back to Social Posting" button, "Bundle Entry Editor" header, and right-justified "Check URL", "Run Latest", and "Deploy" buttons in the header bar. Mode (Edit/Create) is selected via radio buttons at the top, then type is selected. Switching between modes clears the type selection. In edit mode, fuzzy search (Fuse.js) over type-specific keys finds items. In create mode, selecting a type opens a blank form with auto-populated fields and cursor in the Title field. Fields are ordered per `FIELD_ORDER` in `editor.js` with manual-entry fields first, followed by fetch buttons, then auto-generated fields. Saves go to `POST /editor/save`, which creates a backup on first save per session.
+The `/editor` page (linked from the main page as "Bundle Editor") provides search and edit for `bundledb.json` items, plus a create mode for adding new entries. The editor page has a "Back to Social Posting" button, "Bundle Entry Editor" header, and right-justified "Check URL", "Run Latest", "Deploy", and "DB Mgmt" buttons in the header bar. Mode (Edit/Create) is selected via radio buttons at the top, then type is selected. Switching between modes clears the type selection. In edit mode, fuzzy search (Fuse.js) over type-specific keys finds items. In create mode, selecting a type opens a blank form with auto-populated fields and cursor in the Title field. Fields are ordered per `FIELD_ORDER` in `editor.js` with manual-entry fields first, followed by fetch buttons, then auto-generated fields. Saves go to `POST /editor/save`, which creates backups of both `bundledb.json` and `showcase-data.json` on first save per session.
 
 **Edit/Create modes** (`editor.js` + `editor.html`):
 - Mode radio buttons (Edit/Create) at top of editor. Create mode is the default.
@@ -250,6 +251,27 @@ The `/editor` page (linked from the main page as "Bundle Editor") provides searc
 - On successful deploy, auto-commits and pushes changed files in the `11tybundledb` repo (`BUNDLEDB_DIR`): `git add -A`, `git commit -m "New entries saved"`, `git push`. Git failures don't affect deploy success status.
 - Response includes `git_result` with `success` and `message`. "Nothing to commit" is treated as success.
 - Modal shows deploy output plus git result (success message or failure note), then "View 11tybundle.dev" button which opens `https://11tybundle.dev`.
+
+## Database Management
+
+The `/db-mgmt` page (linked from the editor header as "DB Mgmt") provides read-only visibility into the two main data files and their backup/git history.
+
+**Database Statistics** (`_compute_db_stats()` in `app.py`):
+- bundledb.json: total entries, per-type counts (Blog Posts, Sites, Releases, Starters), unique authors, categories.
+- showcase-data.json: total entries.
+
+**Backup Files** (`_compute_backup_info()` in `app.py`):
+- Displays file count and oldest backup date for both `bundledb-backups/` and `showcase-data-backups/` directories.
+
+**Recent Git Commits** (`_get_commit_history()` + `_find_added_entries()` in `app.py`, rendered by `db_mgmt.js`):
+- Shows the 5 most recent commits to each file in the `11tybundledb` git repo.
+- Each commit card displays short SHA (linked to GitHub), date, and a list of newly added entry titles (computed by diffing the file between the commit and its parent).
+- Commit data fetched asynchronously via `GET /db-mgmt/commits` to keep page load fast.
+
+**Backup system** (`_create_backup_with_pruning()` in `app.py`):
+- On first save/delete/delete-test-entries per session, both `bundledb.json` and `showcase-data.json` are backed up with timestamped filenames (`prefix-YYYY-MM-DD--HHMMSS.json`).
+- After creating a backup, auto-prunes oldest files to maintain a maximum of 25 backups per directory.
+- Backup directories: `11tybundledb/bundledb-backups/` and `11tybundledb/showcase-data-backups/`.
 
 ## BWE Sites to Post Management
 
