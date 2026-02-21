@@ -1255,7 +1255,9 @@
         item.Categories = Array.from(checked).map((cb) => cb.value);
       } else {
         const el = document.getElementById("field-" + field);
-        if (field === "Date" && el && el.dataset.fullDate) {
+        if (field === "Type" && !el) {
+          item[field] = currentType;
+        } else if (field === "Date" && el && el.dataset.fullDate) {
           item[field] = el.dataset.fullDate;
         } else {
           item[field] = el ? el.value : "";
