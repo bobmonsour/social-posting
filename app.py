@@ -1070,6 +1070,18 @@ def editor_run_latest():
     import threading
 
     try:
+        # Kill any existing processes on ports 8080-8083
+        for port in (8080, 8081, 8082, 8083):
+            try:
+                pids = subprocess.check_output(
+                    ["lsof", "-ti", f":{port}"], text=True
+                ).strip()
+                if pids:
+                    for pid in pids.split("\n"):
+                        subprocess.run(["kill", pid.strip()], check=False)
+            except subprocess.CalledProcessError:
+                pass  # Nothing listening on this port
+
         proc = subprocess.Popen(
             ["npm", "run", "latest"],
             cwd=ELEVENTY_PROJECT_DIR,
