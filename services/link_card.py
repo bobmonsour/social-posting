@@ -24,7 +24,7 @@ def fetch_og_metadata(url):
                 return tag.get("content", "")
             return ""
 
-        title = get_og("title") or soup.title.string if soup.title else ""
+        title = get_og("title") or (soup.title.string if soup.title else "")
         description = get_og("description")
         image_url = get_og("image")
 

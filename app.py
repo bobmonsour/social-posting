@@ -58,15 +58,29 @@ SCREENSHOT_DIR = os.path.join(DBTOOLS_DB_DIR, "screenshots")
 SCREENSHOT_SCRIPT = os.path.join(_BASE_DIR, "scripts", "capture-screenshot.js")
 
 
+def _get_path(key):
+    """Get a path from app.config, falling back to the module-level constant."""
+    defaults = {
+        "HISTORY_FILE": HISTORY_FILE,
+        "DRAFT_IMAGES_DIR": DRAFT_IMAGES_DIR,
+        "BUNDLEDB_PATH": BUNDLEDB_PATH,
+        "BUNDLEDB_BACKUP_DIR": BUNDLEDB_BACKUP_DIR,
+        "SHOWCASE_PATH": SHOWCASE_PATH,
+    }
+    return app.config.get(key, defaults.get(key, ""))
+
+
 def _read_history():
-    if not os.path.exists(HISTORY_FILE):
+    path = _get_path("HISTORY_FILE")
+    if not os.path.exists(path):
         return []
-    with open(HISTORY_FILE, "r") as f:
+    with open(path, "r") as f:
         return json.load(f)
 
 
 def _write_history(entries):
-    with open(HISTORY_FILE, "w") as f:
+    path = _get_path("HISTORY_FILE")
+    with open(path, "w") as f:
         json.dump(entries, f, indent=2)
 
 
@@ -151,6 +165,8 @@ def post():
             results=[{"platform": "error", "success": False, "error": "No text provided"}],
         )
 
+    draft_images_dir = _get_path("DRAFT_IMAGES_DIR")
+
     # --- Draft path: save and redirect, skip posting ---
     if is_draft:
         # Process any newly uploaded images
@@ -161,7 +177,7 @@ def post():
         # Generate draft ID and save images to persistent storage
         draft_id = str(uuid.uuid4())
         draft_images = []
-        draft_dir = os.path.join(DRAFT_IMAGES_DIR, draft_id)
+        draft_dir = os.path.join(draft_images_dir, draft_id)
 
         # Carry over any existing draft images
         old_draft_id = None
@@ -175,7 +191,7 @@ def post():
                     old_did = item["draft_id"]
                     old_draft_id = old_did
                     fname = item["filename"]
-                    src = os.path.join(DRAFT_IMAGES_DIR, old_did, fname)
+                    src = os.path.join(draft_images_dir, old_did, fname)
                     if os.path.exists(src):
                         os.makedirs(draft_dir, exist_ok=True)
                         dest = os.path.join(draft_dir, fname)
@@ -204,7 +220,7 @@ def post():
 
         # Clean up old draft images directory
         if old_draft_id:
-            old_dir = os.path.join(DRAFT_IMAGES_DIR, old_draft_id)
+            old_dir = os.path.join(draft_images_dir, old_draft_id)
             shutil.rmtree(old_dir, ignore_errors=True)
 
         bwe_name = request.form.get("bwe_site_name", "").strip()
@@ -234,7 +250,7 @@ def post():
             for old in history:
                 if (old.get("is_draft") and old.get("mode") == "11ty-bwe"
                         and old.get("link_url") == link_url):
-                    img_dir = os.path.join(DRAFT_IMAGES_DIR, old["id"])
+                    img_dir = os.path.join(draft_images_dir, old["id"])
                     shutil.rmtree(img_dir, ignore_errors=True)
             history = [e for e in history
                        if not (e.get("is_draft") and e.get("mode") == "11ty-bwe"
@@ -270,7 +286,7 @@ def post():
                 did = item["draft_id"]
                 fname = item["filename"]
                 alt = item.get("alt_text", "")
-                fpath = os.path.join(DRAFT_IMAGES_DIR, did, fname)
+                fpath = os.path.join(draft_images_dir, did, fname)
                 if os.path.exists(fpath):
                     mime = get_mime_type(fpath)
                     attachments.append(MediaAttachment(
@@ -351,12 +367,12 @@ def post():
     if any_failed and attachments:
         # Persist images for retry (same as draft image flow)
         failed_id = str(uuid.uuid4())
-        failed_dir = os.path.join(DRAFT_IMAGES_DIR, failed_id)
+        failed_dir = os.path.join(draft_images_dir, failed_id)
         failed_images = []
 
         # Carry over draft images if present
         if draft_id_to_clean:
-            src_dir = os.path.join(DRAFT_IMAGES_DIR, draft_id_to_clean)
+            src_dir = os.path.join(draft_images_dir, draft_id_to_clean)
             for att in attachments:
                 if att.file_path.startswith(src_dir):
                     fname = os.path.basename(att.file_path)
@@ -386,7 +402,7 @@ def post():
         newly_uploaded = [a for a in attachments if a.file_path.startswith(config.UPLOAD_FOLDER)]
         cleanup_uploads(newly_uploaded)
         if draft_id_to_clean:
-            old_dir = os.path.join(DRAFT_IMAGES_DIR, draft_id_to_clean)
+            old_dir = os.path.join(draft_images_dir, draft_id_to_clean)
             shutil.rmtree(old_dir, ignore_errors=True)
 
         # Save failed entry with images for retry
@@ -414,7 +430,7 @@ def post():
 
         # Clean up draft images directory if we used any
         if draft_id_to_clean:
-            draft_dir = os.path.join(DRAFT_IMAGES_DIR, draft_id_to_clean)
+            draft_dir = os.path.join(draft_images_dir, draft_id_to_clean)
             shutil.rmtree(draft_dir, ignore_errors=True)
 
         # Save to history with platform results
@@ -446,7 +462,7 @@ def post():
 
 @app.route("/draft-image/<draft_id>/<filename>")
 def draft_image(draft_id, filename):
-    draft_dir = os.path.join(DRAFT_IMAGES_DIR, draft_id)
+    draft_dir = os.path.join(_get_path("DRAFT_IMAGES_DIR"), draft_id)
     return send_from_directory(draft_dir, filename)
 
 
@@ -526,7 +542,7 @@ def _delete_entry(entry_id):
     for entry in history:
         if entry["id"] == entry_id:
             # Clean up any persisted images
-            img_dir = os.path.join(DRAFT_IMAGES_DIR, entry_id)
+            img_dir = os.path.join(_get_path("DRAFT_IMAGES_DIR"), entry_id)
             shutil.rmtree(img_dir, ignore_errors=True)
         else:
             remaining.append(entry)
@@ -629,7 +645,7 @@ def editor_check_url():
 
     # Check bundledb.json
     try:
-        with open(BUNDLEDB_PATH, "r") as f:
+        with open(_get_path("BUNDLEDB_PATH"), "r") as f:
             bundledb = json.load(f)
         for entry in bundledb:
             entry_link = (entry.get("Link") or "").strip().lower().rstrip("/")
@@ -648,7 +664,7 @@ def editor_check_url():
 
     # Check showcase-data.json
     try:
-        with open(SHOWCASE_PATH, "r") as f:
+        with open(_get_path("SHOWCASE_PATH"), "r") as f:
             showcase = json.load(f)
         for entry in showcase:
             entry_link = (entry.get("link") or "").strip().lower().rstrip("/")
@@ -669,12 +685,12 @@ def editor_check_url():
 
 @app.route("/editor/data")
 def editor_data():
-    with open(BUNDLEDB_PATH, "r") as f:
+    with open(_get_path("BUNDLEDB_PATH"), "r") as f:
         data = json.load(f)
 
     # For site entries, merge screenshotpath from showcase-data.json
     try:
-        with open(SHOWCASE_PATH, "r") as f:
+        with open(_get_path("SHOWCASE_PATH"), "r") as f:
             showcase_data = json.load(f)
         showcase_by_link = {e["link"]: e for e in showcase_data if e.get("link")}
         for item in data:
@@ -702,15 +718,15 @@ def editor_save():
     if item is None:
         return jsonify({"success": False, "error": "Missing item"}), 400
 
-    with open(BUNDLEDB_PATH, "r") as f:
+    with open(_get_path("BUNDLEDB_PATH"), "r") as f:
         data = json.load(f)
 
     # Create backup if this is the first save in the session
     if not backup_created:
-        os.makedirs(BUNDLEDB_BACKUP_DIR, exist_ok=True)
+        os.makedirs(_get_path("BUNDLEDB_BACKUP_DIR"), exist_ok=True)
         timestamp = datetime.now().strftime("%Y-%m-%d--%H%M%S")
-        backup_path = os.path.join(BUNDLEDB_BACKUP_DIR, f"bundledb-{timestamp}.json")
-        shutil.copy2(BUNDLEDB_PATH, backup_path)
+        backup_path = os.path.join(_get_path("BUNDLEDB_BACKUP_DIR"), f"bundledb-{timestamp}.json")
+        shutil.copy2(_get_path("BUNDLEDB_PATH"), backup_path)
 
     result = {"success": True, "backup_created": True, "propagated": 0}
 
@@ -740,10 +756,10 @@ def editor_save():
                         "screenshotpath": screenshotpath,
                         "leaderboardLink": leaderboard_link,
                     }
-                    with open(SHOWCASE_PATH, "r") as f:
+                    with open(_get_path("SHOWCASE_PATH"), "r") as f:
                         showcase_data = json.load(f)
                     showcase_data.insert(0, showcase_entry)
-                    with open(SHOWCASE_PATH, "w") as f:
+                    with open(_get_path("SHOWCASE_PATH"), "w") as f:
                         json.dump(showcase_data, f, indent=2)
                     result["showcase_added"] = True
                 except Exception:
@@ -765,7 +781,7 @@ def editor_save():
             link = item.get("Link", "")
             if link:
                 try:
-                    with open(SHOWCASE_PATH, "r") as f:
+                    with open(_get_path("SHOWCASE_PATH"), "r") as f:
                         showcase_data = json.load(f)
                     for sc_entry in showcase_data:
                         if sc_entry.get("link") == link:
@@ -777,7 +793,7 @@ def editor_save():
                             sc_entry["date"] = item.get("Date", "")
                             sc_entry["formattedDate"] = item.get("formattedDate", "")
                             break
-                    with open(SHOWCASE_PATH, "w") as f:
+                    with open(_get_path("SHOWCASE_PATH"), "w") as f:
                         json.dump(showcase_data, f, indent=2)
                     result["showcase_updated"] = True
                 except Exception:
@@ -804,7 +820,7 @@ def editor_save():
             propagated += 1
         result["propagated"] = propagated
 
-    with open(BUNDLEDB_PATH, "w") as f:
+    with open(_get_path("BUNDLEDB_PATH"), "w") as f:
         json.dump(data, f, indent=2)
 
     return jsonify(result)
@@ -819,7 +835,7 @@ def editor_delete():
     if index is None or not isinstance(index, int):
         return jsonify({"success": False, "error": "Missing or invalid index"}), 400
 
-    with open(BUNDLEDB_PATH, "r") as f:
+    with open(_get_path("BUNDLEDB_PATH"), "r") as f:
         data = json.load(f)
 
     if index < 0 or index >= len(data):
@@ -827,27 +843,27 @@ def editor_delete():
 
     # Create backup if this is the first modification in the session
     if not backup_created:
-        os.makedirs(BUNDLEDB_BACKUP_DIR, exist_ok=True)
+        os.makedirs(_get_path("BUNDLEDB_BACKUP_DIR"), exist_ok=True)
         timestamp = datetime.now().strftime("%Y-%m-%d--%H%M%S")
-        backup_path = os.path.join(BUNDLEDB_BACKUP_DIR, f"bundledb-{timestamp}.json")
-        shutil.copy2(BUNDLEDB_PATH, backup_path)
+        backup_path = os.path.join(_get_path("BUNDLEDB_BACKUP_DIR"), f"bundledb-{timestamp}.json")
+        shutil.copy2(_get_path("BUNDLEDB_PATH"), backup_path)
 
     item = data[index]
 
     # For sites, also remove from showcase-data.json
     if item.get("Type") == "site" and item.get("Link"):
         try:
-            with open(SHOWCASE_PATH, "r") as f:
+            with open(_get_path("SHOWCASE_PATH"), "r") as f:
                 showcase_data = json.load(f)
             showcase_data = [e for e in showcase_data if e.get("link") != item["Link"]]
-            with open(SHOWCASE_PATH, "w") as f:
+            with open(_get_path("SHOWCASE_PATH"), "w") as f:
                 json.dump(showcase_data, f, indent=2)
         except Exception:
             pass
 
     del data[index]
 
-    with open(BUNDLEDB_PATH, "w") as f:
+    with open(_get_path("BUNDLEDB_PATH"), "w") as f:
         json.dump(data, f, indent=2)
 
     return jsonify({"success": True, "backup_created": True})
@@ -859,7 +875,7 @@ def editor_delete_test_entries():
     backup_created = payload.get("backup_created", False)
     marker = "bobdemo99"
 
-    with open(BUNDLEDB_PATH, "r") as f:
+    with open(_get_path("BUNDLEDB_PATH"), "r") as f:
         data = json.load(f)
 
     test_entries = [e for e in data if marker in (e.get("Title") or "").lower()]
@@ -868,10 +884,10 @@ def editor_delete_test_entries():
 
     # Create backup if first modification in session
     if not backup_created:
-        os.makedirs(BUNDLEDB_BACKUP_DIR, exist_ok=True)
+        os.makedirs(_get_path("BUNDLEDB_BACKUP_DIR"), exist_ok=True)
         timestamp = datetime.now().strftime("%Y-%m-%d--%H%M%S")
-        backup_path = os.path.join(BUNDLEDB_BACKUP_DIR, f"bundledb-{timestamp}.json")
-        shutil.copy2(BUNDLEDB_PATH, backup_path)
+        backup_path = os.path.join(_get_path("BUNDLEDB_BACKUP_DIR"), f"bundledb-{timestamp}.json")
+        shutil.copy2(_get_path("BUNDLEDB_PATH"), backup_path)
 
     # Collect links of test site entries for showcase-data cleanup
     test_site_links = {
@@ -881,20 +897,20 @@ def editor_delete_test_entries():
 
     # Remove test entries from bundledb
     remaining = [e for e in data if marker not in (e.get("Title") or "").lower()]
-    with open(BUNDLEDB_PATH, "w") as f:
+    with open(_get_path("BUNDLEDB_PATH"), "w") as f:
         json.dump(remaining, f, indent=2)
 
     # Remove matching entries from showcase-data
     if test_site_links:
         try:
-            with open(SHOWCASE_PATH, "r") as f:
+            with open(_get_path("SHOWCASE_PATH"), "r") as f:
                 showcase_data = json.load(f)
             showcase_data = [
                 e for e in showcase_data
                 if e.get("link") not in test_site_links
                 and marker not in (e.get("title") or "").lower()
             ]
-            with open(SHOWCASE_PATH, "w") as f:
+            with open(_get_path("SHOWCASE_PATH"), "w") as f:
                 json.dump(showcase_data, f, indent=2)
         except Exception:
             pass
