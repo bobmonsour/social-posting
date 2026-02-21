@@ -133,7 +133,7 @@ The `/editor` page (linked from the main page as "Bundle Editor") provides searc
 
 **Duplicate link detection** (create mode, `editor.js`):
 - On Link field blur, checks for existing entries with the same normalized link across `bundledb.json` and `showcase-data.json`.
-- Save is blocked if a duplicate is found, with a modal showing the duplicate entry details.
+- Save is blocked if a duplicate is found, with a modal showing the duplicate entry type, title, and which file(s) it was found in.
 - URL normalization (`normalizeLink`): lowercases, strips trailing slashes, prepends `https://` if no protocol, strips `www.` prefix — so `https://www.example.com` and `https://example.com` are treated as identical.
 
 **Check URL** (`editor.js` + `app.py`):
@@ -207,7 +207,7 @@ The `/editor` page (linked from the main page as "Bundle Editor") provides searc
 
 **Screenshot data separation**:
 - `screenshotpath` is stored only in `showcase-data.json`, not in `bundledb.json`.
-- When loading editor data (`GET /editor/data`), site entries have `screenshotpath` merged from `showcase-data.json` (matched by link).
+- `GET /editor/data` returns `{"bundledb": [...], "showcase": [...]}`. Site entries in `bundledb` have `screenshotpath` merged from `showcase-data.json` (matched by link). The `showcase` array is used client-side for duplicate link detection.
 - On save (create or edit), `screenshotpath` is stripped from the item before writing to `bundledb.json` and written only to `showcase-data.json`.
 
 **Leaderboard link check** (`services/leaderboard.py`):
