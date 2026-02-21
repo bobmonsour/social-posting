@@ -47,6 +47,10 @@ social-posting/
 ├── posts/
 │   ├── history.json        # All posts, drafts, and failed posts (newest first)
 │   └── draft_images/       # Persisted images keyed by draft/failed UUID
+├── tests/                  # pytest suite (113 tests, uses responses + pytest-flask)
+│   ├── conftest.py         # Shared fixtures (app, client, sample data, temp paths)
+│   └── test_*.py           # Service, route, and data integrity tests
+├── pytest.ini              # pytest config (testpaths, warnings)
 ├── uploads/                # Temporary upload dir (cleaned after posting)
 └── docs/                  # Requirements docs for features (retained across sessions)
 ```
@@ -257,10 +261,24 @@ The compose page sidebar shows "Sites to Post" from `built-with-eleventy.md`. Ea
 ## Testing
 
 - **Visual testing via browser**: When making UI or layout changes, use the Claude in Chrome MCP tools to verify the result in the running app at `http://127.0.0.1:5555`. Navigate to the relevant page, interact as needed, and take screenshots to confirm the change looks correct before committing.
+- **pytest suite**: 113 tests in `tests/` covering services, routes, and data integrity. Run with `pytest` (or `pytest -v` for verbose). Uses `responses` to mock HTTP calls and `pytest-flask` for the test client. Tests override file paths via `app.config` so they use temp directories — no production data is touched.
+- **Test structure**:
+  - `conftest.py` — Flask test client, temp file fixtures, sample data
+  - `test_description.py` — description extraction + sanitization
+  - `test_social_links.py` — Mastodon/Bluesky detection + mention conversion
+  - `test_bwe_list.py` — BWE markdown parsing + mutation
+  - `test_rss_link.py` — RSS/Atom feed discovery
+  - `test_leaderboard.py` — Speedlify slug generation + probing
+  - `test_link_card.py` — OG metadata extraction
+  - `test_editor_routes.py` — Editor save/delete/check-url/data endpoints
+  - `test_history_routes.py` — Draft/post lifecycle, link preview, social links
+  - `test_data_integrity.py` — Round-trip, schema, showcase sync, backups
+- **Path overrides for testing**: `app.py` uses `_get_path(key)` to read file paths from `app.config` with fallback to module-level constants. Tests set `app.config["BUNDLEDB_PATH"]`, `app.config["SHOWCASE_PATH"]`, etc. to temp directories. For `bwe_list.BWE_FILE`, tests use `monkeypatch.setattr`.
+- **Adding tests**: When adding new services or routes, add corresponding test files. Mock external HTTP with `@responses.activate`. Use the `client` fixture for route tests and `app` fixture to access temp paths.
 
 ## Key Conventions
 
-- All paths in `app.py` are `__file__`-relative via `_BASE_DIR` (not CWD-relative).
+- All paths in `app.py` are `__file__`-relative via `_BASE_DIR` (not CWD-relative). Route functions read paths via `_get_path()` which checks `app.config` first (for test overrides), then falls back to the module-level constant.
 - `config.py` uses `__file__`-relative path for `UPLOAD_FOLDER`.
 - Image file inputs: the `<input type="file">` in the template has **no `name` attribute** — files are submitted via a dynamically-created hidden input in the JS submit handler. This prevents an empty file part from misaligning alt text indices in `process_uploads`.
 - Alt text is required for all images (enforced client-side on submit).
@@ -284,4 +302,5 @@ Environment variables in `.env` (see `.env.example`):
 - **Backend**: Flask, Mastodon.py, atproto, requests, Pillow, BeautifulSoup4, python-dotenv
 - **Frontend**: Jinja2, Pico CSS (CDN), vanilla JS, Fuse.js (CDN, editor search)
 - **Tooling**: Node.js + Puppeteer (screenshot capture)
+- **Testing**: pytest, responses (HTTP mocking), pytest-flask
 - **No database** — flat JSON file for history, filesystem for images
