@@ -1,6 +1,6 @@
 # Socially Bundled
 
-![Socially Bundled home page](socially-bundled-home.png)
+![Socially Bundled home page](home-screen.png)
 
 A personal publication management tool for [11tybundle.dev](https://11tybundle.dev). What started as a simple social media cross-poster has evolved into the primary editorial interface for managing the 11ty Bundle -- a curated database of blog posts, sites, releases, and starters from the Eleventy community.
 
