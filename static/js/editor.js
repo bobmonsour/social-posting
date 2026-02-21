@@ -488,6 +488,7 @@
 
     jsonPreviewPanel.innerHTML = html;
     jsonPreviewPanel.style.display = "";
+    jsonPreviewPanel.scrollIntoView({ behavior: "smooth", block: "start" });
   });
 
   function escapeHtml(text) {
