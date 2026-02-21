@@ -7,9 +7,9 @@ def test_parse_bwe_file_well_formed(bwe_file, monkeypatch):
     assert len(to_post) == 2
     assert to_post[0]["name"] == "My Cool Site"
     assert to_post[0]["url"] == "https://mycoolsite.dev"
-    assert to_post[0]["platforms"] == ["B", "M"]  # default platforms
+    assert to_post[0]["platforms"] == []  # default platforms (none checked)
     assert to_post[1]["name"] == "Another Site"
-    assert to_post[1]["platforms"] == ["B", "M"]
+    assert to_post[1]["platforms"] == []
     assert len(posted) == 1
     assert posted[0]["name"] == "Posted Site"
     assert posted[0]["date"] == "2026-01-10"
@@ -40,7 +40,7 @@ def test_add_bwe_to_post(bwe_file, monkeypatch):
     assert len(to_post) == 3
     assert to_post[2]["name"] == "New Site"
     assert to_post[2]["url"] == "https://newsite.dev"
-    assert to_post[2]["platforms"] == ["B", "M"]
+    assert to_post[2]["platforms"] == []
     # Posted section unchanged
     assert len(posted) == 1
 
@@ -115,7 +115,7 @@ def test_parse_to_post_with_platform_specifier(tmp_path, monkeypatch):
     assert len(to_post) == 3
     assert to_post[0]["platforms"] == ["D"]
     assert to_post[1]["platforms"] == ["B", "D", "M"]
-    assert to_post[2]["platforms"] == ["B", "M"]  # default
+    assert to_post[2]["platforms"] == []  # default
 
 
 def test_parse_posted_with_platform_spec(tmp_path, monkeypatch):
@@ -173,7 +173,7 @@ def test_update_bwe_after_post_partial(tmp_path, monkeypatch):
     """Post to only M — site should stay in to_post with B remaining."""
     content = (
         "- TO BE POSTED -\n"
-        "[My Site](https://mysite.dev)\n"
+        "[My Site](https://mysite.dev) {B,M}\n"
         "\n- ALREADY POSTED -\n"
     )
     path = tmp_path / "bwe.md"

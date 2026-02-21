@@ -6,7 +6,7 @@ _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BWE_FILE = os.path.join(_BASE_DIR, "built-with-eleventy.md")
 
 ALL_PLATFORMS = ["M", "B", "D"]
-DEFAULT_PLATFORMS = ["B", "M"]
+DEFAULT_PLATFORMS = []
 
 _LINK_RE = re.compile(r"^\[(.+?)\]\((.+?)\)(?:\s+\{([A-Z,]+)\})?$")
 _POSTED_RE = re.compile(
