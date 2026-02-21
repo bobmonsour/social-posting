@@ -51,7 +51,9 @@ Modes pre-fill per-platform textareas with hashtags, mentions, and prefixes tail
 
 ### Built with Eleventy Workflow
 
-A markdown file (`built-with-eleventy.md`) tracks sites built with Eleventy. The sidebar shows a "Sites to Post" queue and a "Sites Posted" history. Clicking **Post** on a queued site populates the compose form in 11ty BWE mode. Each queued site also has a **Del** button (with confirmation modal) to remove it from the list. After posting, the site moves to the "Already Posted" section with a timestamp and per-platform status.
+A markdown file (`built-with-eleventy.md`) tracks sites built with Eleventy. The sidebar shows a "Sites to Post" queue with per-platform M/B/D checkboxes (Mastodon/Bluesky/Discord) and a "Sites Posted" history with colored platform badges. Clicking **Post** on a queued site populates the compose form in 11ty BWE mode with the selected platforms. Each queued site also has a **Del** button (with confirmation modal) to remove it from the list.
+
+Partial posting is supported: if only some platforms are selected and posted successfully, the site stays in the queue with the remaining platforms, while the posted platforms appear in the "Sites Posted" section. A second post merges with the existing entry.
 
 When creating a new site entry in the editor, it is automatically added to the Sites to Post queue, connecting the editorial and social posting workflows.
 

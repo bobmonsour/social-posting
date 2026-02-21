@@ -276,14 +276,24 @@ The `/db-mgmt` page (linked from the editor header as "DB Mgmt") provides read-o
 ## BWE Sites to Post Management
 
 The compose page sidebar shows "Sites to Post" from `built-with-eleventy.md`. Each entry has:
-- **Post** button (or **Use** link if a draft exists): populates the compose form in 11ty-bwe mode.
+- **M/B/D checkboxes**: per-platform selection (Mastodon/Bluesky/Discord). All unchecked by default. Clicking **Post** reads these checkboxes to set the main platform checkboxes and activate 11ty-bwe mode.
+- **Post** button (or **Use** link if a draft exists): populates the compose form in 11ty-bwe mode with the selected platforms.
 - **Del** button: removes the entry from the TO BE POSTED list via `POST /bwe-to-post/delete`. Shows a confirmation modal with Cancel focused by default.
-- Backend: `delete_bwe_to_post(name, url)` in `services/bwe_list.py` parses and rewrites the markdown file.
+
+**Per-platform tracking** (`services/bwe_list.py`):
+- `ALL_PLATFORMS = ["M", "B", "D"]`, `DEFAULT_PLATFORMS = []` (all unchecked).
+- Markdown format uses optional `{PLATFORMS}` suffix: `[Name](url) {M,B}` or `[Name](url) {D}`. No suffix = default (empty).
+- Posted entries: `2026-02-21 [Name](url) {M,B}`. Legacy `— status` format parsed for backward compat via `_extract_platforms_from_status()`.
+- `_write_bwe_file(to_post, posted)` consolidates all file-writing (previously duplicated 5x).
+- `update_bwe_after_post(name, url, posted_platforms, timestamp)`: partial posting support — remaining platforms stay in to_post, posted platforms merge with existing posted entry if present.
+- `mark_bwe_posted()` retained as legacy wrapper calling `update_bwe_after_post()`.
+
+**Sites Posted** sidebar shows colored platform badges (M=purple, B=blue, D=blurple) for each posted entry.
 
 ## Testing
 
 - **Visual testing via browser**: When making UI or layout changes, use the Claude in Chrome MCP tools to verify the result in the running app at `http://127.0.0.1:5555`. Navigate to the relevant page, interact as needed, and take screenshots to confirm the change looks correct before committing.
-- **pytest suite**: 113 tests in `tests/` covering services, routes, and data integrity. Run with `pytest` (or `pytest -v` for verbose). Uses `responses` to mock HTTP calls and `pytest-flask` for the test client. Tests override file paths via `app.config` so they use temp directories — no production data is touched.
+- **pytest suite**: 121 tests in `tests/` covering services, routes, and data integrity. Run with `pytest` (or `pytest -v` for verbose). Uses `responses` to mock HTTP calls and `pytest-flask` for the test client. Tests override file paths via `app.config` so they use temp directories — no production data is touched.
 - **Test structure**:
   - `conftest.py` — Flask test client, temp file fixtures, sample data
   - `test_description.py` — description extraction + sanitization
