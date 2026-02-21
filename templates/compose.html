@@ -27,6 +27,11 @@
                    {% if not discord_available %}disabled{% endif %}>
             Discord Showcase channel (2000 chars){% if not discord_available %} <small class="not-configured">— not configured</small>{% endif %}
         </label>
+        <label>
+            <input type="checkbox" name="platforms" value="x" id="cb-x"
+                   {% if not x_available %}disabled{% endif %}>
+            X (280 chars){% if not x_available %} <small class="not-configured">— not configured</small>{% endif %}
+        </label>
     </fieldset>
 
     <!-- Mode selector -->
@@ -82,6 +87,7 @@
             <span id="counter-mastodon" class="counter" hidden>Mastodon: <span class="count">0</span>/500</span>
             <span id="counter-bluesky" class="counter" hidden>Bluesky: <span class="count">0</span>/300</span>
             <span id="counter-discord" class="counter" hidden>Discord Showcase channel: <span class="count">0</span>/2000</span>
+            <span id="counter-x" class="counter" hidden>X: <span class="count">0</span>/280</span>
         </div>
     </fieldset>
 
@@ -113,6 +119,14 @@
                 <span id="counter-discord-mode" class="counter">Discord Showcase channel: <span class="count">0</span>/2000</span>
             </div>
         </div>
+        <div class="platform-text-group">
+            <label class="platform-text-label" for="text-x">X</label>
+            <textarea name="text_x" id="text-x" rows="5"
+                      placeholder="X text">{{ draft.platform_texts.x if draft and draft.platform_texts else '' }}</textarea>
+            <div class="char-counters">
+                <span id="counter-x-mode" class="counter">X: <span class="count">0</span>/280</span>
+            </div>
+        </div>
     </fieldset>
 
     <!-- Preview (shown when mode active) -->
@@ -131,6 +145,10 @@
             <div class="preview-panel">
                 <div class="preview-panel-header">Discord Showcase channel</div>
                 <div class="preview-panel-body" id="preview-discord"></div>
+            </div>
+            <div class="preview-panel">
+                <div class="preview-panel-header">X</div>
+                <div class="preview-panel-body" id="preview-x"></div>
             </div>
         </div>
     </fieldset>
