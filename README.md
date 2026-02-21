@@ -4,7 +4,7 @@
 
 A personal publication management tool for [11tybundle.dev](https://11tybundle.dev). What started as a simple social media cross-poster has evolved into the primary editorial interface for managing the 11ty Bundle -- a curated database of blog posts, sites, releases, and starters from the Eleventy community.
 
-The app has two main surfaces: a **Bundle Entry Editor** for creating, editing, and publishing database entries, and a **Social Posting** page for cross-posting to Mastodon, Bluesky, and Discord with workflow integrations that tie the two together.
+The app has three main surfaces: a **Bundle Entry Editor** for creating, editing, and publishing database entries, a **Social Posting** page for cross-posting to Mastodon, Bluesky, and Discord with workflow integrations that tie the two together, and a **Database Management** page for visibility into the underlying data files, backup history, and recent git commits.
 
 > **Note**: This app is purpose-built for the sole use of the editor of 11tybundle.dev, running on a local machine with access to sibling project directories (`dbtools/`, `11tybundle.dev/`, etc.) and local Node.js tooling. It is not designed for general-purpose deployment. That said, the patterns and architecture here may be instructive for anyone looking to build their own editorial tooling or social media cross-posting workflows.
 
