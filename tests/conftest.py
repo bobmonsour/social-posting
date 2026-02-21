@@ -14,6 +14,7 @@ def app(tmp_path):
     history_file = tmp_path / "history.json"
     draft_images_dir = tmp_path / "draft_images"
     backup_dir = tmp_path / "bundledb-backups"
+    showcase_backup_dir = tmp_path / "showcase-data-backups"
 
     # Write empty defaults
     bundledb_path.write_text("[]")
@@ -21,6 +22,7 @@ def app(tmp_path):
     history_file.write_text("[]")
     draft_images_dir.mkdir()
     backup_dir.mkdir()
+    showcase_backup_dir.mkdir()
 
     flask_app = app_module.app
     flask_app.config["TESTING"] = True
@@ -29,12 +31,13 @@ def app(tmp_path):
     flask_app.config["HISTORY_FILE"] = str(history_file)
     flask_app.config["DRAFT_IMAGES_DIR"] = str(draft_images_dir)
     flask_app.config["BUNDLEDB_BACKUP_DIR"] = str(backup_dir)
+    flask_app.config["SHOWCASE_BACKUP_DIR"] = str(showcase_backup_dir)
 
     yield flask_app
 
     # Clean up config overrides
     for key in ("BUNDLEDB_PATH", "SHOWCASE_PATH", "HISTORY_FILE",
-                "DRAFT_IMAGES_DIR", "BUNDLEDB_BACKUP_DIR", "TESTING"):
+                "DRAFT_IMAGES_DIR", "BUNDLEDB_BACKUP_DIR", "SHOWCASE_BACKUP_DIR", "TESTING"):
         flask_app.config.pop(key, None)
 
 

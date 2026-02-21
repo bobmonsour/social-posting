@@ -1218,3 +1218,102 @@ button.btn-nav {
     padding: 0.4rem 1.2rem;
     font-size: 0.85rem;
 }
+
+/* ===== Database Management page ===== */
+
+.dbmgmt-container {
+    max-width: 80%;
+    margin: 0 auto;
+}
+
+.dbmgmt-section {
+    margin-bottom: 2.5rem;
+}
+
+.dbmgmt-section h3 {
+    font-family: var(--font-body);
+    font-weight: 700;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--pico-muted-color);
+    border-bottom: 2px solid var(--pico-muted-border-color);
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.dbmgmt-section h4 {
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin-bottom: 0.5rem;
+}
+
+.dbmgmt-stats-grid,
+.dbmgmt-commits-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+}
+
+.dbmgmt-stats-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.dbmgmt-stats-table td {
+    padding: 0.3rem 0.5rem;
+    font-size: 0.9rem;
+    border-bottom: 1px solid var(--pico-muted-border-color);
+}
+
+.dbmgmt-stats-table td:last-child {
+    text-align: right;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.dbmgmt-commit {
+    border: 2px solid var(--pico-muted-border-color);
+    border-radius: var(--pico-border-radius);
+    padding: 0.6rem 0.75rem;
+    margin-bottom: 0.5rem;
+    background: var(--pico-card-background-color);
+}
+
+.dbmgmt-commit-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 0.35rem;
+}
+
+.dbmgmt-commit-header a {
+    font-family: monospace;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.dbmgmt-commit-header span {
+    font-size: 0.8rem;
+    color: var(--pico-muted-color);
+    font-variant-numeric: tabular-nums;
+}
+
+.dbmgmt-commit ul {
+    margin: 0;
+    padding-left: 1.25rem;
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+.dbmgmt-commit li {
+    margin-bottom: 0.1rem;
+}
+
+.dbmgmt-no-entries {
+    font-size: 0.8rem;
+    color: var(--pico-muted-color);
+    font-style: italic;
+    margin: 0;
+}

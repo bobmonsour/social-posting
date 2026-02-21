@@ -38,7 +38,7 @@ def cache_busting():
     """Provide CSS/JS cache-busting timestamps to templates."""
     static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
     versions = {}
-    for key, rel_path in [("css_version", "css/style.css"), ("js_version", "js/editor.js")]:
+    for key, rel_path in [("css_version", "css/style.css"), ("js_version", "js/editor.js"), ("dbmgmt_js_version", "js/db_mgmt.js")]:
         try:
             versions[key] = int(os.path.getmtime(os.path.join(static_dir, rel_path)))
         except OSError:
@@ -51,6 +51,7 @@ DRAFT_IMAGES_DIR = os.path.join(_BASE_DIR, "posts", "draft_images")
 
 BUNDLEDB_PATH = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundledb/bundledb.json"
 BUNDLEDB_BACKUP_DIR = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundledb/bundledb-backups"
+SHOWCASE_BACKUP_DIR = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundledb/showcase-data-backups"
 SHOWCASE_PATH = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundledb/showcase-data.json"
 DBTOOLS_DIR = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/dbtools"
 BUNDLEDB_DIR = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundledb"
@@ -65,9 +66,23 @@ def _get_path(key):
         "DRAFT_IMAGES_DIR": DRAFT_IMAGES_DIR,
         "BUNDLEDB_PATH": BUNDLEDB_PATH,
         "BUNDLEDB_BACKUP_DIR": BUNDLEDB_BACKUP_DIR,
+        "SHOWCASE_BACKUP_DIR": SHOWCASE_BACKUP_DIR,
         "SHOWCASE_PATH": SHOWCASE_PATH,
     }
     return app.config.get(key, defaults.get(key, ""))
+
+
+def _create_backup_with_pruning(source_path, backup_dir, prefix, max_backups=25):
+    """Create a timestamped backup and prune old backups beyond max_backups."""
+    os.makedirs(backup_dir, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y-%m-%d--%H%M%S")
+    backup_path = os.path.join(backup_dir, f"{prefix}-{timestamp}.json")
+    shutil.copy2(source_path, backup_path)
+
+    # Prune oldest backups if over limit
+    backups = sorted(f for f in os.listdir(backup_dir) if f.startswith(prefix) and f.endswith(".json"))
+    while len(backups) > max_backups:
+        os.remove(os.path.join(backup_dir, backups.pop(0)))
 
 
 def _read_history():
@@ -723,10 +738,8 @@ def editor_save():
 
     # Create backup if this is the first save in the session
     if not backup_created:
-        os.makedirs(_get_path("BUNDLEDB_BACKUP_DIR"), exist_ok=True)
-        timestamp = datetime.now().strftime("%Y-%m-%d--%H%M%S")
-        backup_path = os.path.join(_get_path("BUNDLEDB_BACKUP_DIR"), f"bundledb-{timestamp}.json")
-        shutil.copy2(_get_path("BUNDLEDB_PATH"), backup_path)
+        _create_backup_with_pruning(_get_path("BUNDLEDB_PATH"), _get_path("BUNDLEDB_BACKUP_DIR"), "bundledb")
+        _create_backup_with_pruning(_get_path("SHOWCASE_PATH"), _get_path("SHOWCASE_BACKUP_DIR"), "showcase-data")
 
     result = {"success": True, "backup_created": True, "propagated": 0}
 
@@ -843,10 +856,8 @@ def editor_delete():
 
     # Create backup if this is the first modification in the session
     if not backup_created:
-        os.makedirs(_get_path("BUNDLEDB_BACKUP_DIR"), exist_ok=True)
-        timestamp = datetime.now().strftime("%Y-%m-%d--%H%M%S")
-        backup_path = os.path.join(_get_path("BUNDLEDB_BACKUP_DIR"), f"bundledb-{timestamp}.json")
-        shutil.copy2(_get_path("BUNDLEDB_PATH"), backup_path)
+        _create_backup_with_pruning(_get_path("BUNDLEDB_PATH"), _get_path("BUNDLEDB_BACKUP_DIR"), "bundledb")
+        _create_backup_with_pruning(_get_path("SHOWCASE_PATH"), _get_path("SHOWCASE_BACKUP_DIR"), "showcase-data")
 
     item = data[index]
 
@@ -884,10 +895,8 @@ def editor_delete_test_entries():
 
     # Create backup if first modification in session
     if not backup_created:
-        os.makedirs(_get_path("BUNDLEDB_BACKUP_DIR"), exist_ok=True)
-        timestamp = datetime.now().strftime("%Y-%m-%d--%H%M%S")
-        backup_path = os.path.join(_get_path("BUNDLEDB_BACKUP_DIR"), f"bundledb-{timestamp}.json")
-        shutil.copy2(_get_path("BUNDLEDB_PATH"), backup_path)
+        _create_backup_with_pruning(_get_path("BUNDLEDB_PATH"), _get_path("BUNDLEDB_BACKUP_DIR"), "bundledb")
+        _create_backup_with_pruning(_get_path("SHOWCASE_PATH"), _get_path("SHOWCASE_BACKUP_DIR"), "showcase-data")
 
     # Collect links of test site entries for showcase-data cleanup
     test_site_links = {
@@ -1149,6 +1158,129 @@ def editor_deploy():
 @app.route("/editor/screenshot-preview/<filename>")
 def editor_screenshot_preview(filename):
     return send_from_directory(SCREENSHOT_DIR, filename)
+
+
+# ===== Database Management =====
+
+def _compute_db_stats():
+    """Compute stats from bundledb.json and showcase-data.json."""
+    stats = {"total": 0, "types": {}, "authors": 0, "categories": 0, "showcase_total": 0}
+    try:
+        with open(_get_path("BUNDLEDB_PATH"), "r") as f:
+            data = json.load(f)
+        stats["total"] = len(data)
+        authors = set()
+        categories = set()
+        for item in data:
+            t = item.get("Type", "unknown")
+            stats["types"][t] = stats["types"].get(t, 0) + 1
+            if item.get("Author"):
+                authors.add(item["Author"])
+            for cat in item.get("Categories", []):
+                categories.add(cat)
+        stats["authors"] = len(authors)
+        stats["categories"] = len(categories)
+    except Exception:
+        pass
+    try:
+        with open(_get_path("SHOWCASE_PATH"), "r") as f:
+            showcase = json.load(f)
+        stats["showcase_total"] = len(showcase)
+    except Exception:
+        pass
+    return stats
+
+
+def _compute_backup_info():
+    """Count backup files and find oldest date for each backup directory."""
+    info = {}
+    for key, prefix in [("bundledb", "bundledb"), ("showcase", "showcase-data")]:
+        dir_key = "BUNDLEDB_BACKUP_DIR" if key == "bundledb" else "SHOWCASE_BACKUP_DIR"
+        backup_dir = _get_path(dir_key)
+        try:
+            files = sorted(f for f in os.listdir(backup_dir) if f.startswith(prefix) and f.endswith(".json"))
+            oldest = ""
+            if files:
+                # Parse date from filename: prefix-YYYY-MM-DD--HHMMSS.json
+                name = files[0].replace(prefix + "-", "").replace(".json", "")
+                parts = name.split("--")
+                if len(parts) == 2:
+                    oldest = parts[0]  # YYYY-MM-DD
+            info[key] = {"count": len(files), "oldest": oldest}
+        except Exception:
+            info[key] = {"count": 0, "oldest": ""}
+    return info
+
+
+def _find_added_entries(git_dir, sha, filename, title_key):
+    """Compare a commit with its parent to find newly added entry titles."""
+    try:
+        current = subprocess.run(
+            ["git", "show", f"{sha}:{filename}"],
+            cwd=git_dir, capture_output=True, text=True, timeout=10
+        )
+        parent = subprocess.run(
+            ["git", "show", f"{sha}~1:{filename}"],
+            cwd=git_dir, capture_output=True, text=True, timeout=10
+        )
+        if current.returncode != 0:
+            return []
+        current_data = json.loads(current.stdout)
+        current_titles = {item.get(title_key, "") for item in current_data if item.get(title_key)}
+        if parent.returncode != 0:
+            return sorted(current_titles)
+        parent_data = json.loads(parent.stdout)
+        parent_titles = {item.get(title_key, "") for item in parent_data if item.get(title_key)}
+        return sorted(current_titles - parent_titles)
+    except Exception:
+        return []
+
+
+def _get_commit_history(filename, title_key, count=10):
+    """Get recent git commits for a file with added entry titles."""
+    git_dir = BUNDLEDB_DIR
+    remote_url = "https://github.com/bobmonsour/11tybundledb"
+    try:
+        result = subprocess.run(
+            ["git", "log", f"--format=%H|%aI|%s", f"-{count}", "--", filename],
+            cwd=git_dir, capture_output=True, text=True, timeout=15
+        )
+        if result.returncode != 0:
+            return []
+    except Exception:
+        return []
+
+    commits = []
+    for line in result.stdout.strip().split("\n"):
+        if not line:
+            continue
+        parts = line.split("|", 2)
+        if len(parts) < 3:
+            continue
+        sha, date_str, subject = parts
+        added = _find_added_entries(git_dir, sha, filename, title_key)
+        commits.append({
+            "sha": sha[:7],
+            "url": f"{remote_url}/commit/{sha}",
+            "date": date_str[:10],
+            "subject": subject,
+            "added": added,
+        })
+    return commits
+
+
+@app.route("/db-mgmt")
+def db_mgmt():
+    stats = _compute_db_stats()
+    backup_info = _compute_backup_info()
+    return render_template("db_mgmt.html", stats=stats, backup_info=backup_info)
+
+
+@app.route("/db-mgmt/commits")
+def db_mgmt_commits():
+    bundledb_commits = _get_commit_history("bundledb.json", "Title", count=5)
+    showcase_commits = _get_commit_history("showcase-data.json", "title", count=5)
+    return jsonify({"bundledb": bundledb_commits, "showcase": showcase_commits})
 
 
 if __name__ == "__main__":

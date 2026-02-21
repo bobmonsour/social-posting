@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Database Management{% endblock %}
+
+{% block content %}
+<div style="display: flex; align-items: center; margin-top: -1.25rem; margin-bottom: 1.25rem">
+    <a href="/editor" class="btn-nav">&larr; Back to Editor</a>
+    <h2 style="margin: 0; flex: 1; text-align: center; font-family: var(--font-body)">Database Management</h2>
+    <div style="width: 120px"></div>
+</div>
+
+<div class="dbmgmt-container">
+
+    <!-- Database Statistics -->
+    <div class="dbmgmt-section">
+        <h3>Database Statistics</h3>
+        <div class="dbmgmt-stats-grid">
+            <div>
+                <h4>bundledb.json</h4>
+                <table class="dbmgmt-stats-table">
+                    <tr><td>Total entries</td><td>{{ stats.total }}</td></tr>
+                    <tr><td>Blog Posts</td><td>{{ stats.types.get('blog post', 0) }}</td></tr>
+                    <tr><td>Sites</td><td>{{ stats.types.get('site', 0) }}</td></tr>
+                    <tr><td>Releases</td><td>{{ stats.types.get('release', 0) }}</td></tr>
+                    <tr><td>Starters</td><td>{{ stats.types.get('starter', 0) }}</td></tr>
+                    <tr><td>Unique authors</td><td>{{ stats.authors }}</td></tr>
+                    <tr><td>Categories</td><td>{{ stats.categories }}</td></tr>
+                </table>
+            </div>
+            <div>
+                <h4>showcase-data.json</h4>
+                <table class="dbmgmt-stats-table">
+                    <tr><td>Total entries</td><td>{{ stats.showcase_total }}</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Backup Files -->
+    <div class="dbmgmt-section">
+        <h3>Backup Files</h3>
+        <div class="dbmgmt-stats-grid">
+            <div>
+                <h4>bundledb backups</h4>
+                <table class="dbmgmt-stats-table">
+                    <tr><td>Backup count</td><td>{{ backup_info.bundledb.count }}</td></tr>
+                    <tr><td>Oldest backup</td><td>{{ backup_info.bundledb.oldest or 'None' }}</td></tr>
+                </table>
+            </div>
+            <div>
+                <h4>showcase-data backups</h4>
+                <table class="dbmgmt-stats-table">
+                    <tr><td>Backup count</td><td>{{ backup_info.showcase.count }}</td></tr>
+                    <tr><td>Oldest backup</td><td>{{ backup_info.showcase.oldest or 'None' }}</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Git Commits -->
+    <div class="dbmgmt-section">
+        <h3>Recent Git Commits</h3>
+        <div class="dbmgmt-commits-grid">
+            <div>
+                <h4>bundledb.json</h4>
+                <div id="bundledb-commits">Loading commits...</div>
+            </div>
+            <div>
+                <h4>showcase-data.json</h4>
+                <div id="showcase-commits">Loading commits...</div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/db_mgmt.js') }}?v={{ dbmgmt_js_version }}"></script>
+{% endblock %}
