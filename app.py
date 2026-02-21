@@ -148,7 +148,6 @@ def compose():
         mastodon_available=config.mastodon_configured(),
         bluesky_available=config.bluesky_configured(),
         discord_available=config.discord_configured(),
-        x_available=config.x_configured(),
         recent_posts=recent,
         modes=all_modes(),
         bwe_to_post=bwe_to_post,
@@ -170,7 +169,7 @@ def post():
     platform_texts = None
     if mode and get_mode(mode):
         platform_texts = {}
-        for pname in ["mastodon", "bluesky", "discord", "x"]:
+        for pname in ["mastodon", "bluesky", "discord"]:
             pt = request.form.get(f"text_{pname}", "").strip()
             if pt:
                 platform_texts[pname] = pt
@@ -339,8 +338,6 @@ def post():
                 cw = request.form.get("cw_bluesky", "").strip() or None
             elif platform_name == "discord":
                 cw = request.form.get("cw_discord", "").strip() or None
-            elif platform_name == "x":
-                cw = None
 
             # For Bluesky, compress images if needed
             media = attachments
@@ -506,7 +503,6 @@ def use_draft(draft_id):
         mastodon_available=config.mastodon_configured(),
         bluesky_available=config.bluesky_configured(),
         discord_available=config.discord_configured(),
-        x_available=config.x_configured(),
         recent_posts=recent,
         draft=draft,
         modes=all_modes(),
@@ -537,7 +533,6 @@ def retry_post(post_id):
         mastodon_available=config.mastodon_configured(),
         bluesky_available=config.bluesky_configured(),
         discord_available=config.discord_configured(),
-        x_available=config.x_configured(),
         recent_posts=recent,
         draft=failed,
         modes=all_modes(),

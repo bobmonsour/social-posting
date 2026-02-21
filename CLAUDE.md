@@ -28,8 +28,7 @@ social-posting/
 │   ├── base.py             # MediaAttachment, LinkCard, PostResult, PlatformClient ABC
 │   ├── mastodon_client.py  # Mastodon API via Mastodon.py
 │   ├── bluesky_client.py   # Bluesky AT Protocol via atproto
-│   ├── discord_client.py   # Discord webhook API via requests
-│   └── x_client.py         # X (Twitter) API via tweepy
+│   └── discord_client.py   # Discord webhook API via requests
 ├── services/
 │   ├── media.py            # process_uploads, cleanup_uploads, compress_for_bluesky
 │   ├── link_card.py        # Open Graph metadata fetching
@@ -49,7 +48,7 @@ social-posting/
 ├── posts/
 │   ├── history.json        # All posts, drafts, and failed posts (newest first)
 │   └── draft_images/       # Persisted images keyed by draft/failed UUID
-├── tests/                  # pytest suite (122 tests, uses responses + pytest-flask)
+├── tests/                  # pytest suite (113 tests, uses responses + pytest-flask)
 │   ├── conftest.py         # Shared fixtures (app, client, sample data, temp paths)
 │   └── test_*.py           # Service, route, and data integrity tests
 ├── pytest.ini              # pytest config (testpaths, warnings)
@@ -74,7 +73,7 @@ Current modes:
 - **11ty BWE**: Same suffixes as 11ty, but with `Built with Eleventy: ` prefix. Cursor placed after the prefix.
 
 Mode behavior:
-- Selecting a mode auto-checks and locks the mode's platform checkboxes (currently Mastodon and Bluesky; Discord and X are not auto-selected by any mode).
+- Selecting a mode auto-checks and locks the mode's platform checkboxes (currently Mastodon and Bluesky; Discord is not auto-selected by any mode).
 - Per-platform textareas appear with prefix+suffix pre-filled.
 - Switching between modes (including None) resets all textareas to their initial state — user text is not carried over.
 - "Mirror across platforms" checkbox (default unchecked) enables cross-sync: typing in one platform textarea mirrors the body (preserving per-platform prefix/suffix) to the other. Checkbox is shown only when a mode is active and resets to unchecked on every mode switch.
@@ -284,7 +283,7 @@ The compose page sidebar shows "Sites to Post" from `built-with-eleventy.md`. Ea
 ## Testing
 
 - **Visual testing via browser**: When making UI or layout changes, use the Claude in Chrome MCP tools to verify the result in the running app at `http://127.0.0.1:5555`. Navigate to the relevant page, interact as needed, and take screenshots to confirm the change looks correct before committing.
-- **pytest suite**: 122 tests in `tests/` covering services, routes, and data integrity. Run with `pytest` (or `pytest -v` for verbose). Uses `responses` to mock HTTP calls and `pytest-flask` for the test client. Tests override file paths via `app.config` so they use temp directories — no production data is touched.
+- **pytest suite**: 113 tests in `tests/` covering services, routes, and data integrity. Run with `pytest` (or `pytest -v` for verbose). Uses `responses` to mock HTTP calls and `pytest-flask` for the test client. Tests override file paths via `app.config` so they use temp directories — no production data is touched.
 - **Test structure**:
   - `conftest.py` — Flask test client, temp file fixtures, sample data
   - `test_description.py` — description extraction + sanitization
@@ -295,7 +294,6 @@ The compose page sidebar shows "Sites to Post" from `built-with-eleventy.md`. Ea
   - `test_link_card.py` — OG metadata extraction
   - `test_editor_routes.py` — Editor save/delete/check-url/data endpoints
   - `test_history_routes.py` — Draft/post lifecycle, link preview, social links
-  - `test_x_client.py` — X platform client (tweepy mocking)
   - `test_data_integrity.py` — Round-trip, schema, showcase sync, backups
 - **Path overrides for testing**: `app.py` uses `_get_path(key)` to read file paths from `app.config` with fallback to module-level constants. Tests set `app.config["BUNDLEDB_PATH"]`, `app.config["SHOWCASE_PATH"]`, etc. to temp directories. For `bwe_list.BWE_FILE`, tests use `monkeypatch.setattr`.
 - **Adding tests**: When adding new services or routes, add corresponding test files. Mock external HTTP with `@responses.activate`. Use the `client` fixture for route tests and `app` fixture to access temp paths.
@@ -308,7 +306,7 @@ The compose page sidebar shows "Sites to Post" from `built-with-eleventy.md`. Ea
 - Alt text is required for all images (enforced client-side on submit).
 - Bluesky images auto-compressed to fit 1MB limit.
 - Character counting is grapheme-aware (`Intl.Segmenter`).
-- Content warnings use radio buttons per platform. Mastodon: None, Sexual, Nudity, Graphic Media, Porn, Political (human-readable strings as spoiler text). Bluesky: same options (API label identifiers). Discord: None or Spoiler (wraps text in `||spoiler||` syntax with `**CW:**` header). X: no content warning support (API limitation).
+- Content warnings use radio buttons per platform. Mastodon: None, Sexual, Nudity, Graphic Media, Porn, Political (human-readable strings as spoiler text). Bluesky: same options (API label identifiers). Discord: None or Spoiler (wraps text in `||spoiler||` syntax with `**CW:**` header).
 - Draft deletion route (`/draft/<id>/delete`) handles drafts, failed posts, and legacy failed entries.
 - Sidebar post cards show badges (DRAFT/FAILED/platform), action buttons, 50-char text preview, and timestamp.
 - Static asset cache-busting: CSS and JS files use `?v={{ css_version }}` / `?v={{ js_version }}` query params (file mtime) via Flask context processor.
@@ -320,11 +318,10 @@ Environment variables in `.env` (see `.env.example`):
 - `MASTODON_INSTANCE_URL` / `MASTODON_ACCESS_TOKEN` (token needs `write:statuses` and `write:media` scopes)
 - `BLUESKY_IDENTIFIER` / `BLUESKY_APP_PASSWORD`
 - `DISCORD_WEBHOOK_URL` / `DISCORD_GUILD_ID` (webhook posts to a channel; guild ID used to construct message jump URLs)
-- `X_API_KEY` / `X_API_SECRET` / `X_ACCESS_TOKEN` / `X_ACCESS_TOKEN_SECRET` (OAuth 1.0a; free tier ~500 posts/month)
 
 ## Tech Stack
 
-- **Backend**: Flask, Mastodon.py, atproto, tweepy, requests, Pillow, BeautifulSoup4, python-dotenv
+- **Backend**: Flask, Mastodon.py, atproto, requests, Pillow, BeautifulSoup4, python-dotenv
 - **Frontend**: Jinja2, Pico CSS (CDN), vanilla JS, Fuse.js (CDN, editor search)
 - **Tooling**: Node.js + Puppeteer (screenshot capture)
 - **Testing**: pytest, responses (HTTP mocking), pytest-flask
