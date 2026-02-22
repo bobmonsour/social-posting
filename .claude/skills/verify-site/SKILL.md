@@ -3,6 +3,7 @@ name: verify-site
 description: Verify that recently added 11ty Bundle entries appear correctly on the local build at localhost:8080. Automatically starts a local build if one isn't already running.
 argument-hint: "[date or 'today' or 'yesterday', default: today]"
 disable-model-invocation: true
+allowed-tools: Bash(python3 *), Bash(curl *), Bash(cd /Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundle.dev && npm run latest), Bash(for *)
 ---
 
 ## Verify Site Build
