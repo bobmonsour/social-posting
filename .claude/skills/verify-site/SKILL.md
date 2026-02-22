@@ -1,13 +1,13 @@
 ---
 name: verify-site
-description: Verify that recently added 11ty Bundle entries appear correctly on the local build at localhost:8080. Use after Run Latest to confirm blog posts, sites, and their images rendered properly.
+description: Verify that recently added 11ty Bundle entries appear correctly on the local build at localhost:8080. Automatically starts a local build if one isn't already running.
 argument-hint: "[date or 'today' or 'yesterday', default: today]"
 disable-model-invocation: true
 ---
 
 ## Verify Site Build
 
-Verify that recently added entries in the 11ty Bundle local build at `http://localhost:8080` rendered correctly.
+Verify that recently added entries in the 11ty Bundle local build at `http://localhost:8080` rendered correctly. The Chrome browser window can be minimized during verification — all checks use JavaScript DOM queries, not visual inspection.
 
 ### Step 1: Identify entries to verify
 
@@ -20,11 +20,34 @@ Group entries by type: blog posts, sites, releases, starters.
 
 If no entries are found for the target date, report that and stop.
 
-### Step 2: Get browser context
+### Step 2: Ensure local server is running
+
+Check if `http://localhost:8080` is responding:
+
+```bash
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8080 --max-time 3
+```
+
+If the server is **not running** (curl fails or returns non-200):
+1. Tell the user you're starting a local build.
+2. Start the Eleventy dev server in the background:
+   ```bash
+   cd /Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundle.dev && npm run latest
+   ```
+   Run this via the Bash tool with `run_in_background: true`.
+3. Poll `http://localhost:8080` every 3 seconds (up to 60 seconds) until it responds with HTTP 200:
+   ```bash
+   for i in $(seq 1 20); do curl -s -o /dev/null -w "%{http_code}" http://localhost:8080 --max-time 3 && break; sleep 3; done
+   ```
+4. If it doesn't come up after 60 seconds, report the failure and stop.
+
+If the server **is already running**, proceed directly to Step 3.
+
+### Step 3: Get browser context
 
 Call `mcp__claude-in-chrome__tabs_context_mcp` (with `createIfEmpty: true`) to get available tabs. Create a new tab with `mcp__claude-in-chrome__tabs_create_mcp` for the verification.
 
-### Step 3: Verify home page
+### Step 4: Verify home page
 
 Navigate to `http://localhost:8080` in the new tab.
 
@@ -71,7 +94,7 @@ function checkSection(headingText, expectedTitles) {
 }
 ```
 
-### Step 4: Verify showcase page (sites only)
+### Step 5: Verify showcase page (sites only)
 
 If there are site entries to verify:
 - Click the "Showcase" link in the navigation header
@@ -119,7 +142,7 @@ function checkShowcase(expectedSites) {
 }
 ```
 
-### Step 5: Report results
+### Step 6: Report results
 
 Output a structured verification report:
 
