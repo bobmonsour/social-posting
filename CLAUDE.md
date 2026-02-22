@@ -250,12 +250,12 @@ The `/editor` page (linked from the main page as "Bundle Editor") provides searc
 **Run Latest flow** (4 endpoints):
 - `POST /editor/end-session` runs three tasks in parallel via `ThreadPoolExecutor`: `generate_issue_records()` (Python, `services/issue_records.py`), `generate_latest_data()` (Python, `services/latest_data.py`), and `generate_insights()` (Python, `services/insights.py`).
 - `POST /editor/run-latest` starts `npm run latest` in the `11tybundle.dev` project (`ELEVENTY_PROJECT_DIR`) via `Popen`, watches stdout for `"Server at"` to detect readiness (30s timeout), then drains stdout in a daemon thread.
-- `POST /editor/verify-site` runs post-build verification (see below). Called automatically after the server starts.
-- Modal shows script results, then "Starting local server...", then verification results, then "View Local Site" button which opens `localhost:8080`.
+- `POST /editor/verify-site` runs post-build verification (see below). Called automatically after the server starts. On success, auto-commits and pushes `11tybundledb` changes via `_commit_and_push_bundledb()`.
+- Modal shows script results, then "Starting local server...", then verification results and git result, then "View Local Site" button which opens `localhost:8080`.
 
 **Deploy flow** (1 endpoint):
 - `POST /editor/deploy` runs `npm run deploy` in `ELEVENTY_PROJECT_DIR` via `subprocess.run()` with 120s timeout, captures full stdout+stderr.
-- On successful deploy, auto-commits and pushes changed files in the `11tybundledb` repo (`BUNDLEDB_DIR`): `git add -A`, `git commit -m "New entries saved"`, `git push`. Git failures don't affect deploy success status.
+- On successful deploy, auto-commits and pushes `11tybundledb` changes via `_commit_and_push_bundledb()`. Git failures don't affect deploy success status.
 - Response includes `git_result` with `success` and `message`. "Nothing to commit" is treated as success.
 - Modal shows deploy output plus git result (success message or failure note), then "View 11tybundle.dev" button which opens `https://11tybundle.dev`.
 
@@ -271,6 +271,7 @@ The `/editor` page (linked from the main page as "Bundle Editor") provides searc
 - Home page sections limited to 11 entries each; entries beyond that are skipped with a note.
 - Also available as a CLI: `python3 -m services.verify_site [YYYY-MM-DD]`.
 - Integrated into the Run Latest flow — runs automatically after the server starts, results shown in the modal before the "View Local Site" button.
+- On successful verification (both Run Latest flow and `/verify-site` skill), `_commit_and_push_bundledb()` auto-commits and pushes all `11tybundledb` changes. Skipped on verification failure.
 
 ## Database Management
 
