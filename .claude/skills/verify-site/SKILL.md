@@ -3,7 +3,7 @@ name: verify-site
 description: Verify that recently added 11ty Bundle entries rendered correctly in the build output. Always runs a fresh build, then checks the static _site directory.
 argument-hint: "[date or 'today' or 'yesterday' or 'latest', default: latest issue]"
 disable-model-invocation: true
-allowed-tools: Bash(python3 *), Bash(cd /Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundle.dev && npm run latest), Bash(lsof *), Bash(kill *)
+allowed-tools: Bash(python3 *), Bash(cd /Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundle.dev && npm run latest), Bash(lsof *), Bash(kill *), Bash(cd /Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundledb && git *)
 ---
 
 ## Verify Site Build
@@ -64,6 +64,18 @@ The script parses `_site/index.html` and `_site/showcase/index.html` to check:
 
 Starters are excluded — they sort by GitHub modification date, not by bundledb date.
 
-### Step 4: Report
+### Step 4: Commit and push on success
 
-Print the script output directly — it produces the formatted verification report.
+If verification passed (exit code 0), commit and push all changes in the 11tybundledb repo:
+
+```bash
+cd /Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundledb && git add -A && git commit -m "New entries saved" && git push
+```
+
+If there is nothing to commit, that's fine — just note it and continue.
+
+If verification failed, skip this step.
+
+### Step 5: Report
+
+Print the verification output and git result. The verification script produces the formatted report.

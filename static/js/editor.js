@@ -352,6 +352,9 @@
                 } else {
                   deployModalOutput.textContent += "\n\n" + verify.report;
                 }
+                if (verify.git_result) {
+                  deployModalOutput.textContent += "\n" + verify.git_result.message;
+                }
                 deployModalTitle.textContent = verify.success ? "Local server ready" : "Verification issues found";
                 deployModalOk.textContent = "View Local Site";
                 deployModalOk.onclick = () => {

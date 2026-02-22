@@ -1140,6 +1140,39 @@ def editor_run_latest():
         return jsonify({"success": False, "error": str(e)})
 
 
+def _commit_and_push_bundledb(commit_message="New entries saved"):
+    """Commit and push all changes in the 11tybundledb repo.
+
+    Returns dict with 'success' (bool) and 'message' (str).
+    """
+    try:
+        subprocess.run(["git", "add", "-A"], cwd=BUNDLEDB_DIR, check=True)
+        commit = subprocess.run(
+            ["git", "commit", "-m", commit_message],
+            cwd=BUNDLEDB_DIR,
+            capture_output=True,
+            text=True,
+        )
+        if commit.returncode == 0:
+            push = subprocess.run(
+                ["git", "push"],
+                cwd=BUNDLEDB_DIR,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            if push.returncode == 0:
+                return {"success": True, "message": "DB files committed and pushed."}
+            else:
+                return {"success": False, "message": f"git push failed: {push.stderr.strip()}"}
+        elif "nothing to commit" in commit.stdout + commit.stderr:
+            return {"success": True, "message": "No DB changes to commit."}
+        else:
+            return {"success": False, "message": f"git commit failed: {commit.stderr.strip()}"}
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+
+
 @app.route("/editor/verify-site", methods=["POST"])
 def editor_verify_site():
     """Run post-build verification for entries in the latest issue."""
@@ -1147,7 +1180,10 @@ def editor_verify_site():
 
     try:
         report, success = verify_latest_issue()
-        return jsonify({"success": success, "report": report})
+        git_result = None
+        if success:
+            git_result = _commit_and_push_bundledb()
+        return jsonify({"success": success, "report": report, "git_result": git_result})
     except Exception as e:
         return jsonify({"success": False, "report": f"Verification error: {e}"})
 
@@ -1166,34 +1202,10 @@ def editor_deploy():
         deploy_output = result.stdout + ("\n" + result.stderr if result.stderr else "")
         deploy_success = result.returncode == 0
 
-        git_result = {"success": False, "message": "Deploy failed, skipping git."}
         if deploy_success:
-            try:
-                subprocess.run(["git", "add", "-A"], cwd=BUNDLEDB_DIR, check=True)
-                commit = subprocess.run(
-                    ["git", "commit", "-m", "New entries saved"],
-                    cwd=BUNDLEDB_DIR,
-                    capture_output=True,
-                    text=True,
-                )
-                if commit.returncode == 0:
-                    push = subprocess.run(
-                        ["git", "push"],
-                        cwd=BUNDLEDB_DIR,
-                        capture_output=True,
-                        text=True,
-                        timeout=30,
-                    )
-                    if push.returncode == 0:
-                        git_result = {"success": True, "message": "DB files committed and pushed."}
-                    else:
-                        git_result = {"success": False, "message": f"git push failed: {push.stderr.strip()}"}
-                elif "nothing to commit" in commit.stdout + commit.stderr:
-                    git_result = {"success": True, "message": "No DB changes to commit."}
-                else:
-                    git_result = {"success": False, "message": f"git commit failed: {commit.stderr.strip()}"}
-            except Exception as e:
-                git_result = {"success": False, "message": str(e)}
+            git_result = _commit_and_push_bundledb()
+        else:
+            git_result = {"success": False, "message": "Deploy failed, skipping git."}
 
         return jsonify({
             "success": deploy_success,
