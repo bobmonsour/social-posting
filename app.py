@@ -17,6 +17,7 @@ from services.link_card import fetch_og_metadata
 from services.social_links import extract_social_links
 from services.bwe_list import get_bwe_lists, mark_bwe_posted, update_bwe_after_post, delete_bwe_posted, delete_bwe_to_post, add_bwe_to_post
 from services.issue_counts import get_latest_issue_counts
+from services.insights import generate_insights
 from services.issue_records import generate_issue_records
 from services.latest_data import generate_latest_data
 from services.blog_post import create_blog_post, blog_post_exists, delete_blog_post, edit_blog_post
@@ -1056,21 +1057,16 @@ def editor_end_session():
             return {"success": False, "error": str(e)}
 
     def run_insights():
-        env = os.environ.copy()
-        env["NODE_PATH"] = os.path.join(DBTOOLS_DIR, "node_modules")
         try:
-            result = subprocess.run(
-                ["node", "generate-insights.js"],
-                cwd=DBTOOLS_DIR,
-                capture_output=True,
-                text=True,
-                timeout=60,
-                env=env,
-                input="1\n",
+            result = generate_insights(
+                bundledb_path=bundledb_path,
+                showcase_path=showcase_path,
+                exclusions_path=os.path.join(DBTOOLS_DIR, "devdata", "insights-exclusions.json"),
+                insights_output_path=os.path.join(bundledb_dir, "insightsdata.json"),
+                csv_entry_output_path=os.path.join(ELEVENTY_PROJECT_DIR, "content", "_data", "charts", "entry-growth.csv"),
+                csv_author_output_path=os.path.join(ELEVENTY_PROJECT_DIR, "content", "_data", "charts", "author-growth.csv"),
             )
-            return {"success": True, "stdout": result.stdout.strip(), "stderr": result.stderr.strip()}
-        except subprocess.TimeoutExpired:
-            return {"success": False, "error": "Timed out"}
+            return {"success": True, "stdout": f"Insights: {result['totalEntries']} entries, {result['blogPosts']} posts, {result['sites']} sites, {result['releases']} releases, {result['totalAuthors']} authors", "stderr": ""}
         except Exception as e:
             return {"success": False, "error": str(e)}
 

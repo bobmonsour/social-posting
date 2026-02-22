@@ -38,6 +38,8 @@ social-posting/
 │   ├── rss_link.py         # RSS/Atom feed URL discovery (mirrors getrsslink.js)
 │   ├── leaderboard.py      # 11ty Speedlify Leaderboard link check
 │   ├── bwe_list.py         # Parse/modify built-with-eleventy.md (to-post/posted lists)
+│   ├── slugify.py          # Python port of @sindresorhus/slugify (shared by editor auto-slugify and insights)
+│   ├── insights.py         # Generate insightsdata.json + CSV files (ported from generate-insights.js)
 │   ├── issue_records.py    # Generate issuerecords.json from bundledb (ported from genissuerecords.js)
 │   └── latest_data.py      # Generate latest-issue filtered data files (ported from generate-latest-data.js)
 ├── scripts/
@@ -50,7 +52,7 @@ social-posting/
 ├── posts/
 │   ├── history.json        # All posts, drafts, and failed posts (newest first)
 │   └── draft_images/       # Persisted images keyed by draft/failed UUID
-├── tests/                  # pytest suite (113 tests, uses responses + pytest-flask)
+├── tests/                  # pytest suite (142 tests, uses responses + pytest-flask)
 │   ├── conftest.py         # Shared fixtures (app, client, sample data, temp paths)
 │   └── test_*.py           # Service, route, and data integrity tests
 ├── pytest.ini              # pytest config (testpaths, warnings)
@@ -125,7 +127,7 @@ The `/editor` page (linked from the main page as "Bundle Editor") provides searc
 
 **Auto-slugify** (create mode, `editor.js`):
 - Title and Author fields auto-compute `slugifiedTitle` and `slugifiedAuthor` on blur.
-- Client-side `slugify()` function matches `@sindresorhus/slugify` behavior: custom replacements map (German umlauts ö→oe/ä→ae/ü→ue, ligatures, special Latin chars), NFD decomposition with diacritic stripping, decamelization, contraction handling (`it's`→`its`), dash normalization.
+- Client-side `slugify()` function matches `@sindresorhus/slugify` behavior: custom replacements map (German umlauts ö→oe/ä→ae/ü→ue, ligatures, special Latin chars), NFD decomposition with diacritic stripping, decamelization, contraction handling (`it's`→`its`), dash normalization. Python equivalent in `services/slugify.py` (used by `services/insights.py`).
 
 **View JSON button** (create and edit modes, `editor.js`):
 - "View JSON" button in the save button row opens a read-only panel showing the pretty-printed JSON entry.
@@ -245,7 +247,7 @@ The `/editor` page (linked from the main page as "Bundle Editor") provides searc
 - JS logic is shared via `runLatestFlow()` and `runDeployFlow()` functions in `editor.js`.
 
 **Run Latest flow** (3 endpoints):
-- `POST /editor/end-session` runs three tasks in parallel via `ThreadPoolExecutor`: `generate_issue_records()` (Python, `services/issue_records.py`), `generate_latest_data()` (Python, `services/latest_data.py`), and `generate-insights.js` (Node subprocess, pipes `"1\n"` to stdin for auto-select).
+- `POST /editor/end-session` runs three tasks in parallel via `ThreadPoolExecutor`: `generate_issue_records()` (Python, `services/issue_records.py`), `generate_latest_data()` (Python, `services/latest_data.py`), and `generate_insights()` (Python, `services/insights.py`).
 - `POST /editor/run-latest` starts `npm run latest` in the `11tybundle.dev` project (`ELEVENTY_PROJECT_DIR`) via `Popen`, watches stdout for `"Server at"` to detect readiness (30s timeout), then drains stdout in a daemon thread.
 - Modal shows script results, then "Starting local server...", then "View Local Site" button which opens `localhost:8080`.
 
@@ -296,7 +298,7 @@ The compose page sidebar shows "Sites to Post" from `built-with-eleventy.md`. Ea
 ## Testing
 
 - **Visual testing via browser**: When making UI or layout changes, use the Claude in Chrome MCP tools to verify the result in the running app at `http://127.0.0.1:5555`. Navigate to the relevant page, interact as needed, and take screenshots to confirm the change looks correct before committing.
-- **pytest suite**: 132 tests in `tests/` covering services, routes, and data integrity. Run with `pytest` (or `pytest -v` for verbose). Uses `responses` to mock HTTP calls and `pytest-flask` for the test client. Tests override file paths via `app.config` so they use temp directories — no production data is touched.
+- **pytest suite**: 142 tests in `tests/` covering services, routes, and data integrity. Run with `pytest` (or `pytest -v` for verbose). Uses `responses` to mock HTTP calls and `pytest-flask` for the test client. Tests override file paths via `app.config` so they use temp directories — no production data is touched.
 - **Test structure**:
   - `conftest.py` — Flask test client, temp file fixtures, sample data
   - `test_description.py` — description extraction + sanitization
@@ -307,6 +309,7 @@ The compose page sidebar shows "Sites to Post" from `built-with-eleventy.md`. Ea
   - `test_link_card.py` — OG metadata extraction
   - `test_editor_routes.py` — Editor save/delete/check-url/data endpoints
   - `test_history_routes.py` — Draft/post lifecycle, link preview, social links
+  - `test_insights.py` — Insights data + CSV generation, compared against JS output; slugify matching
   - `test_issue_records.py` — Issue records generation, compared against JS output
   - `test_latest_data.py` — Latest-issue data filtering, compared against JS output
   - `test_data_integrity.py` — Round-trip, schema, showcase sync, backups
