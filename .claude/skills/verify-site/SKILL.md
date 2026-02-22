@@ -3,7 +3,7 @@ name: verify-site
 description: Verify that recently added 11ty Bundle entries appear correctly on the local build at localhost:8080. Automatically starts a local build if one isn't already running.
 argument-hint: "[date or 'today' or 'yesterday', default: today]"
 disable-model-invocation: true
-allowed-tools: Bash(python3 *), Bash(curl *), Bash(cd /Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundle.dev && npm run latest), Bash(for *)
+allowed-tools: Bash(python3 *), Bash(curl *), Bash(cd /Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundle.dev && npm run latest)
 ---
 
 ## Verify Site Build
@@ -38,7 +38,7 @@ If the server is **not running** (curl fails or returns non-200):
    Run this via the Bash tool with `run_in_background: true`.
 3. Poll `http://localhost:8080` every 3 seconds (up to 60 seconds) until it responds with HTTP 200:
    ```bash
-   for i in $(seq 1 20); do curl -s -o /dev/null -w "%{http_code}" http://localhost:8080 --max-time 3 && break; sleep 3; done
+   python3 -c "import urllib.request, time; [exit(0) for i in range(20) if (lambda: (urllib.request.urlopen('http://localhost:8080', timeout=3), True))() or time.sleep(3)]" 2>/dev/null || true
    ```
 4. If it doesn't come up after 60 seconds, report the failure and stop.
 
