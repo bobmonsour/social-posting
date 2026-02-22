@@ -38,7 +38,18 @@ If the server is **not running** (curl fails or returns non-200):
    Run this via the Bash tool with `run_in_background: true`.
 3. Poll `http://localhost:8080` every 3 seconds (up to 60 seconds) until it responds with HTTP 200:
    ```bash
-   python3 -c "import urllib.request, time; [exit(0) for i in range(20) if (lambda: (urllib.request.urlopen('http://localhost:8080', timeout=3), True))() or time.sleep(3)]" 2>/dev/null || true
+   python3 -c "
+import urllib.request, time, sys
+for i in range(20):
+    try:
+        urllib.request.urlopen('http://localhost:8080', timeout=3)
+        print(f'Server up after {(i+1)*3} seconds')
+        sys.exit(0)
+    except Exception:
+        time.sleep(3)
+print('Timeout waiting for server')
+sys.exit(1)
+"
    ```
 4. If it doesn't come up after 60 seconds, report the failure and stop.
 
