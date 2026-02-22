@@ -1146,6 +1146,15 @@ def _commit_and_push_bundledb(commit_message="New entries saved"):
     Returns dict with 'success' (bool) and 'message' (str).
     """
     try:
+        status = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=BUNDLEDB_DIR,
+            capture_output=True,
+            text=True,
+        )
+        if not status.stdout.strip():
+            return {"success": True, "message": "No DB changes to commit."}
+
         subprocess.run(["git", "add", "-A"], cwd=BUNDLEDB_DIR, check=True)
         commit = subprocess.run(
             ["git", "commit", "-m", commit_message],
@@ -1165,8 +1174,6 @@ def _commit_and_push_bundledb(commit_message="New entries saved"):
                 return {"success": True, "message": "DB files committed and pushed."}
             else:
                 return {"success": False, "message": f"git push failed: {push.stderr.strip()}"}
-        elif "nothing to commit" in commit.stdout + commit.stderr:
-            return {"success": True, "message": "No DB changes to commit."}
         else:
             return {"success": False, "message": f"git commit failed: {commit.stderr.strip()}"}
     except Exception as e:

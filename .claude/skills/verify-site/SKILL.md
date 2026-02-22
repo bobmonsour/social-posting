@@ -66,15 +66,21 @@ Starters are excluded — they sort by GitHub modification date, not by bundledb
 
 ### Step 4: Commit and push on success
 
-If verification passed (exit code 0), commit and push all changes in the 11tybundledb repo:
+If verification failed, skip this step.
+
+If verification passed (exit code 0), check for changes in the 11tybundledb repo first:
+
+```bash
+cd /Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundledb && git status --porcelain
+```
+
+If the output is empty, report "No DB changes to commit" and skip the commit.
+
+If there are changes, commit and push:
 
 ```bash
 cd /Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundledb && git add -A && git commit -m "New entries saved" && git push
 ```
-
-If there is nothing to commit, that's fine — just note it and continue.
-
-If verification failed, skip this step.
 
 ### Step 5: Report
 
