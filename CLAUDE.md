@@ -37,7 +37,9 @@ social-posting/
 │   ├── description.py      # Multi-source meta description extraction (mirrors getdescription.js)
 │   ├── rss_link.py         # RSS/Atom feed URL discovery (mirrors getrsslink.js)
 │   ├── leaderboard.py      # 11ty Speedlify Leaderboard link check
-│   └── bwe_list.py         # Parse/modify built-with-eleventy.md (to-post/posted lists)
+│   ├── bwe_list.py         # Parse/modify built-with-eleventy.md (to-post/posted lists)
+│   ├── issue_records.py    # Generate issuerecords.json from bundledb (ported from genissuerecords.js)
+│   └── latest_data.py      # Generate latest-issue filtered data files (ported from generate-latest-data.js)
 ├── scripts/
 │   └── capture-screenshot.js  # Puppeteer full-page screenshot capture
 ├── templates/              # Jinja2 (base.html, compose.html, result.html, editor.html, db_mgmt.html)
@@ -220,6 +222,7 @@ The `/editor` page (linked from the main page as "Bundle Editor") provides searc
 **Site save side-effects**:
 - On create, site saves call `add_bwe_to_post(title, link)` to append the site to the BWE "TO BE POSTED" list, and prepend an entry to `showcase-data.json` with title, description, link, date, formattedDate, favicon, screenshotpath, and leaderboardLink.
 - On edit, site saves sync the matching `showcase-data.json` entry (matched by link) with current title, description, favicon, screenshotpath, leaderboardLink, date, and formattedDate.
+- Dates written to `showcase-data.json` are normalized to `YYYY-MM-DD` format (truncated from bundledb's full datetime via `[:10]`).
 
 **Custom field labels** (`fieldDisplayNames` and `fieldLabel()` in `editor.js`):
 - `Link` shows as "GitHub repo link" for release/starter types.
@@ -242,7 +245,7 @@ The `/editor` page (linked from the main page as "Bundle Editor") provides searc
 - JS logic is shared via `runLatestFlow()` and `runDeployFlow()` functions in `editor.js`.
 
 **Run Latest flow** (3 endpoints):
-- `POST /editor/end-session` runs three dbtools scripts in parallel via `ThreadPoolExecutor`: `lib/genissuerecords.js`, `generate-insights.js` (pipes `"1\n"` to stdin for auto-select), `generate-latest-data.js`. All run with `cwd=DBTOOLS_DIR` and `NODE_PATH` set.
+- `POST /editor/end-session` runs three tasks in parallel via `ThreadPoolExecutor`: `generate_issue_records()` (Python, `services/issue_records.py`), `generate_latest_data()` (Python, `services/latest_data.py`), and `generate-insights.js` (Node subprocess, pipes `"1\n"` to stdin for auto-select).
 - `POST /editor/run-latest` starts `npm run latest` in the `11tybundle.dev` project (`ELEVENTY_PROJECT_DIR`) via `Popen`, watches stdout for `"Server at"` to detect readiness (30s timeout), then drains stdout in a daemon thread.
 - Modal shows script results, then "Starting local server...", then "View Local Site" button which opens `localhost:8080`.
 
@@ -293,7 +296,7 @@ The compose page sidebar shows "Sites to Post" from `built-with-eleventy.md`. Ea
 ## Testing
 
 - **Visual testing via browser**: When making UI or layout changes, use the Claude in Chrome MCP tools to verify the result in the running app at `http://127.0.0.1:5555`. Navigate to the relevant page, interact as needed, and take screenshots to confirm the change looks correct before committing.
-- **pytest suite**: 121 tests in `tests/` covering services, routes, and data integrity. Run with `pytest` (or `pytest -v` for verbose). Uses `responses` to mock HTTP calls and `pytest-flask` for the test client. Tests override file paths via `app.config` so they use temp directories — no production data is touched.
+- **pytest suite**: 132 tests in `tests/` covering services, routes, and data integrity. Run with `pytest` (or `pytest -v` for verbose). Uses `responses` to mock HTTP calls and `pytest-flask` for the test client. Tests override file paths via `app.config` so they use temp directories — no production data is touched.
 - **Test structure**:
   - `conftest.py` — Flask test client, temp file fixtures, sample data
   - `test_description.py` — description extraction + sanitization
@@ -304,6 +307,8 @@ The compose page sidebar shows "Sites to Post" from `built-with-eleventy.md`. Ea
   - `test_link_card.py` — OG metadata extraction
   - `test_editor_routes.py` — Editor save/delete/check-url/data endpoints
   - `test_history_routes.py` — Draft/post lifecycle, link preview, social links
+  - `test_issue_records.py` — Issue records generation, compared against JS output
+  - `test_latest_data.py` — Latest-issue data filtering, compared against JS output
   - `test_data_integrity.py` — Round-trip, schema, showcase sync, backups
 - **Path overrides for testing**: `app.py` uses `_get_path(key)` to read file paths from `app.config` with fallback to module-level constants. Tests set `app.config["BUNDLEDB_PATH"]`, `app.config["SHOWCASE_PATH"]`, etc. to temp directories. For `bwe_list.BWE_FILE`, tests use `monkeypatch.setattr`.
 - **Adding tests**: When adding new services or routes, add corresponding test files. Mock external HTTP with `@responses.activate`. Use the `client` fixture for route tests and `app` fixture to access temp paths.
