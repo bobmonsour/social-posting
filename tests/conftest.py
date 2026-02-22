@@ -37,7 +37,8 @@ def app(tmp_path):
 
     # Clean up config overrides
     for key in ("BUNDLEDB_PATH", "SHOWCASE_PATH", "HISTORY_FILE",
-                "DRAFT_IMAGES_DIR", "BUNDLEDB_BACKUP_DIR", "SHOWCASE_BACKUP_DIR", "TESTING"):
+                "DRAFT_IMAGES_DIR", "BUNDLEDB_BACKUP_DIR", "SHOWCASE_BACKUP_DIR",
+                "BUNDLEDB_DIR", "TESTING"):
         flask_app.config.pop(key, None)
 
 

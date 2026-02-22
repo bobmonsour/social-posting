@@ -17,6 +17,8 @@ from services.link_card import fetch_og_metadata
 from services.social_links import extract_social_links
 from services.bwe_list import get_bwe_lists, mark_bwe_posted, update_bwe_after_post, delete_bwe_posted, delete_bwe_to_post, add_bwe_to_post
 from services.issue_counts import get_latest_issue_counts
+from services.issue_records import generate_issue_records
+from services.latest_data import generate_latest_data
 from services.blog_post import create_blog_post, blog_post_exists, delete_blog_post, edit_blog_post
 
 app = Flask(__name__)
@@ -68,6 +70,7 @@ def _get_path(key):
         "BUNDLEDB_BACKUP_DIR": BUNDLEDB_BACKUP_DIR,
         "SHOWCASE_BACKUP_DIR": SHOWCASE_BACKUP_DIR,
         "SHOWCASE_PATH": SHOWCASE_PATH,
+        "BUNDLEDB_DIR": BUNDLEDB_DIR,
     }
     return app.config.get(key, defaults.get(key, ""))
 
@@ -771,7 +774,7 @@ def editor_save():
                         "title": title,
                         "description": item.get("description", ""),
                         "link": link,
-                        "date": item.get("Date", ""),
+                        "date": item.get("Date", "")[:10],
                         "formattedDate": item.get("formattedDate", ""),
                         "favicon": item.get("favicon", ""),
                         "screenshotpath": screenshotpath,
@@ -811,7 +814,7 @@ def editor_save():
                                 sc_entry[key] = item.get(bundledb_key, "")
                             sc_entry["screenshotpath"] = screenshotpath
                             sc_entry["leaderboardLink"] = leaderboard_link
-                            sc_entry["date"] = item.get("Date", "")
+                            sc_entry["date"] = item.get("Date", "")[:10]
                             sc_entry["formattedDate"] = item.get("formattedDate", "")
                             break
                     with open(_get_path("SHOWCASE_PATH"), "w") as f:
@@ -1031,19 +1034,39 @@ def editor_end_session():
     """Run post-processing scripts to regenerate derived data files."""
     from concurrent.futures import ThreadPoolExecutor
 
-    env = os.environ.copy()
-    env["NODE_PATH"] = os.path.join(DBTOOLS_DIR, "node_modules")
+    bundledb_path = _get_path("BUNDLEDB_PATH")
+    showcase_path = _get_path("SHOWCASE_PATH")
+    bundledb_dir = _get_path("BUNDLEDB_DIR")
 
-    def run_script(args, stdin_data=None):
+    def run_issue_records():
+        try:
+            output_path = os.path.join(bundledb_dir, "issuerecords.json")
+            records = generate_issue_records(bundledb_path, output_path)
+            return {"success": True, "stdout": f"Wrote {len(records)} issue records to {output_path}", "stderr": ""}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def run_latest_data():
+        try:
+            bundledb_out = os.path.join(bundledb_dir, "bundledb-latest-issue.json")
+            showcase_out = os.path.join(bundledb_dir, "showcase-data-latest-issue.json")
+            result = generate_latest_data(bundledb_path, showcase_path, bundledb_out, showcase_out)
+            return {"success": True, "stdout": f"Latest issue #{result['latest_issue']}: {result['bundledb_count']} bundle entries, {result['showcase_count']} showcase entries", "stderr": ""}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def run_insights():
+        env = os.environ.copy()
+        env["NODE_PATH"] = os.path.join(DBTOOLS_DIR, "node_modules")
         try:
             result = subprocess.run(
-                args,
+                ["node", "generate-insights.js"],
                 cwd=DBTOOLS_DIR,
                 capture_output=True,
                 text=True,
                 timeout=60,
                 env=env,
-                input=stdin_data,
+                input="1\n",
             )
             return {"success": True, "stdout": result.stdout.strip(), "stderr": result.stderr.strip()}
         except subprocess.TimeoutExpired:
@@ -1052,9 +1075,9 @@ def editor_end_session():
             return {"success": False, "error": str(e)}
 
     with ThreadPoolExecutor(max_workers=3) as executor:
-        f_issue = executor.submit(run_script, ["node", "lib/genissuerecords.js"])
-        f_insights = executor.submit(run_script, ["node", "generate-insights.js"], "1\n")
-        f_latest = executor.submit(run_script, ["node", "generate-latest-data.js"])
+        f_issue = executor.submit(run_issue_records)
+        f_insights = executor.submit(run_insights)
+        f_latest = executor.submit(run_latest_data)
 
     return jsonify({
         "success": True,
