@@ -328,6 +328,7 @@ The compose page sidebar shows "Sites to Post" from `built-with-eleventy.md`. Ea
 - Draft deletion route (`/draft/<id>/delete`) handles drafts, failed posts, and legacy failed entries.
 - Sidebar post cards show badges (DRAFT/FAILED/platform), action buttons, 50-char text preview, and timestamp.
 - Static asset cache-busting: CSS and JS files use `?v={{ css_version }}` / `?v={{ js_version }}` query params (file mtime) via Flask context processor.
+- **Git commits on main**: When committing to the `main` branch, always push to GitHub immediately after the commit.
 
 ## Configuration
 
