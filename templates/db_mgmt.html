@@ -18,19 +18,19 @@
             <div>
                 <h4>bundledb.json</h4>
                 <table class="dbmgmt-stats-table">
-                    <tr><td>Total entries</td><td>{{ stats.total }}</td></tr>
-                    <tr><td>Blog Posts</td><td>{{ stats.types.get('blog post', 0) }}</td></tr>
-                    <tr><td>Sites</td><td>{{ stats.types.get('site', 0) }}</td></tr>
-                    <tr><td>Releases</td><td>{{ stats.types.get('release', 0) }}</td></tr>
-                    <tr><td>Starters</td><td>{{ stats.types.get('starter', 0) }}</td></tr>
-                    <tr><td>Unique authors</td><td>{{ stats.authors }}</td></tr>
-                    <tr><td>Categories</td><td>{{ stats.categories }}</td></tr>
+                    <tr><td>Total entries</td><td>{{ "{:,}".format(stats.total) }}</td></tr>
+                    <tr><td>Blog Posts</td><td>{{ "{:,}".format(stats.types.get('blog post', 0)) }}</td></tr>
+                    <tr><td>Sites</td><td>{{ "{:,}".format(stats.types.get('site', 0)) }}</td></tr>
+                    <tr><td>Releases</td><td>{{ "{:,}".format(stats.types.get('release', 0)) }}</td></tr>
+                    <tr><td>Starters</td><td>{{ "{:,}".format(stats.types.get('starter', 0)) }}</td></tr>
+                    <tr><td>Unique authors</td><td>{{ "{:,}".format(stats.authors) }}</td></tr>
+                    <tr><td>Categories</td><td>{{ "{:,}".format(stats.categories) }}</td></tr>
                 </table>
             </div>
             <div>
                 <h4>showcase-data.json</h4>
                 <table class="dbmgmt-stats-table">
-                    <tr><td>Total entries</td><td>{{ stats.showcase_total }}</td></tr>
+                    <tr><td>Total entries</td><td>{{ "{:,}".format(stats.showcase_total) }}</td></tr>
                 </table>
             </div>
         </div>
