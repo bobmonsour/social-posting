@@ -60,6 +60,7 @@ The editor (`/editor`) is the main workspace for managing `bundledb.json`, the d
 
 **Build and deploy**:
 - Save and run the local Eleventy dev server to preview changes.
+- Post-build verification automatically checks that new entries rendered correctly by parsing the static `_site` directory — confirming titles appear in the right sections and that favicon/screenshot assets exist.
 - Deploy directly to production from the editor.
 - End-session scripts generate issue records, insights, and latest-data files.
 

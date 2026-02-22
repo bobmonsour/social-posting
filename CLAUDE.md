@@ -247,16 +247,30 @@ The `/editor` page (linked from the main page as "Bundle Editor") provides searc
 - All workflow results display in a modal overlay (`deploy-modal` in `editor.html`, styled via `.deploy-modal-overlay`/`.deploy-modal` in `style.css`).
 - JS logic is shared via `runLatestFlow()` and `runDeployFlow()` functions in `editor.js`.
 
-**Run Latest flow** (3 endpoints):
+**Run Latest flow** (4 endpoints):
 - `POST /editor/end-session` runs three tasks in parallel via `ThreadPoolExecutor`: `generate_issue_records()` (Python, `services/issue_records.py`), `generate_latest_data()` (Python, `services/latest_data.py`), and `generate_insights()` (Python, `services/insights.py`).
 - `POST /editor/run-latest` starts `npm run latest` in the `11tybundle.dev` project (`ELEVENTY_PROJECT_DIR`) via `Popen`, watches stdout for `"Server at"` to detect readiness (30s timeout), then drains stdout in a daemon thread.
-- Modal shows script results, then "Starting local server...", then "View Local Site" button which opens `localhost:8080`.
+- `POST /editor/verify-site` runs post-build verification (see below). Called automatically after the server starts.
+- Modal shows script results, then "Starting local server...", then verification results, then "View Local Site" button which opens `localhost:8080`.
 
 **Deploy flow** (1 endpoint):
 - `POST /editor/deploy` runs `npm run deploy` in `ELEVENTY_PROJECT_DIR` via `subprocess.run()` with 120s timeout, captures full stdout+stderr.
 - On successful deploy, auto-commits and pushes changed files in the `11tybundledb` repo (`BUNDLEDB_DIR`): `git add -A`, `git commit -m "New entries saved"`, `git push`. Git failures don't affect deploy success status.
 - Response includes `git_result` with `success` and `message`. "Nothing to commit" is treated as success.
 - Modal shows deploy output plus git result (success message or failure note), then "View 11tybundle.dev" button which opens `https://11tybundle.dev`.
+
+**Post-build verification** (`services/verify_site.py`):
+- Parses the static `_site` directory (no browser needed) to confirm recently added entries rendered correctly.
+- `verify_latest_issue()`: finds entries with the highest issue number in bundledb, checks them against the built HTML.
+- `verify_by_date(date_str)`: finds entries matching a `YYYY-MM-DD` date (also accepts "today"/"yesterday").
+- Checks per entry type:
+  - **Blog posts**: title present in "From the firehose" section of `_site/index.html`, favicon file exists in `_site/img/favicons/`.
+  - **Sites**: title in "Recent sites" section, favicon exists, showcase card found in `_site/showcase/index.html`, screenshot file exists in `_site/img/screenshots/`.
+  - **Releases**: title in "Recent releases" section.
+  - **Starters**: excluded (sort by GitHub modification date, not bundledb date).
+- Home page sections limited to 11 entries each; entries beyond that are skipped with a note.
+- Also available as a CLI: `python3 -m services.verify_site [YYYY-MM-DD]`.
+- Integrated into the Run Latest flow — runs automatically after the server starts, results shown in the modal before the "View Local Site" button.
 
 ## Database Management
 
