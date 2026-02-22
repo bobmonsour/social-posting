@@ -41,7 +41,8 @@ social-posting/
 │   ├── slugify.py          # Python port of @sindresorhus/slugify (shared by editor auto-slugify and insights)
 │   ├── insights.py         # Generate insightsdata.json + CSV files (ported from generate-insights.js)
 │   ├── issue_records.py    # Generate issuerecords.json from bundledb (ported from genissuerecords.js)
-│   └── latest_data.py      # Generate latest-issue filtered data files (ported from generate-latest-data.js)
+│   ├── latest_data.py      # Generate latest-issue filtered data files (ported from generate-latest-data.js)
+│   └── verify_site.py      # Post-build verification: checks _site HTML for entry presence and valid assets
 ├── scripts/
 │   └── capture-screenshot.js  # Puppeteer full-page screenshot capture
 ├── templates/              # Jinja2 (base.html, compose.html, result.html, editor.html, db_mgmt.html)

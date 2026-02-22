@@ -334,19 +334,32 @@
         return fetch("/editor/run-latest", { method: "POST" })
           .then((r) => r.json())
           .then((result) => {
-            if (result.success) {
-              deployModalTitle.textContent = "Local server ready";
-              deployModalOutput.textContent += "\n\nServer running at localhost:8080";
-            } else {
+            if (!result.success) {
               deployModalTitle.textContent = "Server failed to start";
               deployModalOutput.textContent += "\n\n" + (result.error || "Unknown error");
+              deployModalOk.textContent = "Ok";
+              deployModalOk.onclick = () => { deployModal.style.display = "none"; };
+              deployModalOk.style.display = "";
+              return;
             }
-            deployModalOk.textContent = "View Local Site";
-            deployModalOk.onclick = () => {
-              deployModal.style.display = "none";
-              if (result.success) window.open("http://localhost:8080", "_blank");
-            };
-            deployModalOk.style.display = "";
+            deployModalTitle.textContent = "Verifying site build...";
+            deployModalOutput.textContent += "\n\nServer running at localhost:8080";
+            return fetch("/editor/verify-site", { method: "POST" })
+              .then((r) => r.json())
+              .then((verify) => {
+                if (verify.success) {
+                  deployModalOutput.textContent += "\n\nSITE VERIFICATION SUCCESSFUL!";
+                } else {
+                  deployModalOutput.textContent += "\n\n" + verify.report;
+                }
+                deployModalTitle.textContent = verify.success ? "Local server ready" : "Verification issues found";
+                deployModalOk.textContent = "View Local Site";
+                deployModalOk.onclick = () => {
+                  deployModal.style.display = "none";
+                  window.open("http://localhost:8080", "_blank");
+                };
+                deployModalOk.style.display = "";
+              });
           });
       })
       .catch((err) => {

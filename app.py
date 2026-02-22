@@ -1140,6 +1140,18 @@ def editor_run_latest():
         return jsonify({"success": False, "error": str(e)})
 
 
+@app.route("/editor/verify-site", methods=["POST"])
+def editor_verify_site():
+    """Run post-build verification for entries in the latest issue."""
+    from services.verify_site import verify_latest_issue
+
+    try:
+        report, success = verify_latest_issue()
+        return jsonify({"success": success, "report": report})
+    except Exception as e:
+        return jsonify({"success": False, "report": f"Verification error: {e}"})
+
+
 @app.route("/editor/deploy", methods=["POST"])
 def editor_deploy():
     """Run 'npm run deploy' in the 11tybundle.dev project and capture output."""
