@@ -962,6 +962,23 @@
       }
     }
 
+    // Auto-update formattedDate when Date changes
+    const dateField = document.getElementById("field-Date");
+    const fmtDateField = document.getElementById("field-formattedDate");
+    if (dateField && fmtDateField) {
+      dateField.addEventListener("blur", () => {
+        const val = dateField.value.trim();
+        if (val) {
+          // Parse YYYY-MM-DD as local time (not UTC) to avoid off-by-one
+          const parts = val.match(/^(\d{4})-(\d{2})-(\d{2})/);
+          if (parts) {
+            const parsed = new Date(+parts[1], +parts[2] - 1, +parts[3]);
+            fmtDateField.value = formatDate(parsed);
+          }
+        }
+      });
+    }
+
     // Check for duplicate Link on blur (create mode only)
     if (isCreate) {
       const linkField = document.getElementById("field-Link");
