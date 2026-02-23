@@ -512,7 +512,8 @@ label:has(#cb-bluesky) {
 
 /* ===== Recent posts sidebar ===== */
 .recent-posts h2 {
-    font-size: 1.75rem;
+    font-family: var(--font-body);
+    font-size: 1.5rem;
     font-weight: 400;
     margin-bottom: 1.25rem;
     padding-bottom: 0.5rem;
@@ -631,7 +632,8 @@ label:has(#cb-bluesky) {
 
 /* ===== BWE queue sidebar ===== */
 .bwe-queue h2 {
-    font-size: 1.75rem;
+    font-family: var(--font-body);
+    font-size: 1.5rem;
     font-weight: 400;
     margin-top: 2rem;
     margin-bottom: 1.25rem;
@@ -756,7 +758,8 @@ label:has(#cb-bluesky) {
 
 /* ===== BWE posted sidebar ===== */
 .bwe-posted h2 {
-    font-size: 1.75rem;
+    font-family: var(--font-body);
+    font-size: 1.5rem;
     font-weight: 400;
     margin-top: 2rem;
     margin-bottom: 1.25rem;
@@ -814,7 +817,8 @@ label:has(#cb-bluesky) {
 }
 
 .latest-issue h2 {
-    font-size: 1.75rem;
+    font-family: var(--font-body);
+    font-size: 1.5rem;
     font-weight: 400;
     margin-bottom: 0.5rem;
     flex: 1;
@@ -848,7 +852,8 @@ label:has(#cb-bluesky) {
     margin-bottom: 1.5rem;
 }
 
-.issue-count-num {
+.issue-count-num,
+h2 .issue-count-num {
     color: var(--pico-primary);
     font-size: 1.35rem;
     font-weight: 400;

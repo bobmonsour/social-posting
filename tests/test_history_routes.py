@@ -173,3 +173,67 @@ def test_social_links_endpoint(client):
 def test_social_links_no_url(client):
     resp = client.post("/social-links", json={"url": ""})
     assert resp.status_code == 400
+
+
+def test_social_links_bundledb_lookup(client, app):
+    """Social links found via AuthorSite match in bundledb skip HTML scraping."""
+    bundledb = [
+        {
+            "Type": "blog post",
+            "Author": "Jane Doe",
+            "AuthorSite": "https://janedoe.dev",
+            "socialLinks": {
+                "mastodon": "https://mastodon.social/@jane",
+                "bluesky": "https://bsky.app/profile/janedoe.dev",
+            },
+        }
+    ]
+    _write_json(app.config["BUNDLEDB_PATH"], bundledb)
+
+    # No HTTP mocking — should not make any requests
+    resp = client.post("/social-links", json={"url": "https://janedoe.dev"})
+    data = resp.get_json()
+    assert data["mastodon"] == "@jane@mastodon.social"
+    assert data["bluesky"] == "@janedoe.dev"
+
+
+def test_social_links_bundledb_lookup_normalized(client, app):
+    """AuthorSite matching normalizes trailing slashes and www."""
+    bundledb = [
+        {
+            "Type": "blog post",
+            "Author": "Jane Doe",
+            "AuthorSite": "https://www.janedoe.dev/",
+            "socialLinks": {
+                "mastodon": "https://mastodon.social/@jane",
+            },
+        }
+    ]
+    _write_json(app.config["BUNDLEDB_PATH"], bundledb)
+
+    resp = client.post("/social-links", json={"url": "https://janedoe.dev"})
+    data = resp.get_json()
+    assert data["mastodon"] == "@jane@mastodon.social"
+
+
+@responses.activate
+def test_social_links_bundledb_no_match_falls_back(client, app):
+    """When no AuthorSite matches, falls back to HTML scraping."""
+    bundledb = [
+        {
+            "Type": "blog post",
+            "Author": "Other Person",
+            "AuthorSite": "https://other.dev",
+            "socialLinks": {"mastodon": "https://mastodon.social/@other"},
+        }
+    ]
+    _write_json(app.config["BUNDLEDB_PATH"], bundledb)
+
+    html = '<html><body><a href="https://mastodon.social/@scraped" rel="me">M</a></body></html>'
+    responses.add(responses.GET, "https://example.com", body=html)
+    responses.add(responses.GET, "https://example.com/about/", body="<html></html>")
+    responses.add(responses.GET, "https://example.com/en/", body="<html></html>")
+
+    resp = client.post("/social-links", json={"url": "https://example.com/page"})
+    data = resp.get_json()
+    assert data["mastodon"] == "@scraped@mastodon.social"

@@ -187,7 +187,7 @@
 {% if issue_counts %}
 <aside class="latest-issue">
     <div class="latest-issue-header">
-        <h2>Next Issue: <span>{{ issue_counts.issue_number }}</span></h2>
+        <h2>Next Issue: <span class="issue-count-num">{{ issue_counts.issue_number }}</span></h2>
         <span class="latest-issue-actions">
             <a href="/editor" class="btn-nav">Bundle Editor</a>
             <button type="button" class="btn-nav btn-create-post" id="btn-create-post"
@@ -251,7 +251,7 @@
 </aside>
 
 <aside class="bwe-queue">
-    <h2>Sites to Post <small>({{ bwe_to_post | length }})</small></h2>
+    <h2>Sites to Post</h2>
     {% if bwe_to_post %}
         {% for site in bwe_to_post %}
         <div class="bwe-queue-item">

@@ -643,9 +643,10 @@ document.addEventListener("DOMContentLoaded", () => {
         draftImages = [];
         renderImagePreviews();
 
-        // Clear BWE hidden fields
+        // Clear BWE hidden fields and sidebar checkboxes
         document.getElementById("bwe-site-name").value = "";
         document.getElementById("bwe-site-url").value = "";
+        document.querySelectorAll(".bwe-plat-cb").forEach(cb => cb.checked = false);
 
         // Reset draft checkbox
         cbDraft.checked = true;
@@ -653,6 +654,8 @@ document.addEventListener("DOMContentLoaded", () => {
         updatePlatformSections();
         updateCharCounters();
         updateMutualExclusivity();
+
+        window.scrollTo({ top: 0, behavior: "smooth" });
     });
 
     // --- Fetch social links and append @-mentions to per-platform textareas ---

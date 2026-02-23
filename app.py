@@ -584,12 +584,62 @@ def link_preview():
     })
 
 
+def _lookup_social_links_from_bundledb(site_url):
+    """Check bundledb for social links matching a site URL via AuthorSite.
+
+    Normalizes URLs (lowercase, strip trailing slash, strip www.) for matching.
+    Returns {"mastodon": "@user@instance", "bluesky": "@handle"} or None if no match.
+    """
+    from services.social_links import _url_to_mastodon_mention, _url_to_bluesky_mention
+
+    def _normalize(u):
+        u = u.lower().rstrip("/")
+        if not u.startswith(("http://", "https://")):
+            u = "https://" + u
+        from urllib.parse import urlparse
+        parsed = urlparse(u)
+        host = (parsed.hostname or "").lstrip("www.")
+        return f"{parsed.scheme}://{host}{parsed.path.rstrip('/')}"
+
+    normalized_site = _normalize(site_url)
+
+    try:
+        with open(_get_path("BUNDLEDB_PATH"), "r") as f:
+            data = json.load(f)
+    except Exception:
+        return None
+
+    for item in data:
+        author_site = item.get("AuthorSite", "")
+        if not author_site:
+            continue
+        if _normalize(author_site) == normalized_site:
+            sl = item.get("socialLinks", {})
+            mastodon_url = sl.get("mastodon", "")
+            bluesky_url = sl.get("bluesky", "")
+            if mastodon_url or bluesky_url:
+                result = {"mastodon": "", "bluesky": ""}
+                if mastodon_url:
+                    result["mastodon"] = _url_to_mastodon_mention(mastodon_url)
+                if bluesky_url:
+                    result["bluesky"] = _url_to_bluesky_mention(bluesky_url)
+                if result["mastodon"] or result["bluesky"]:
+                    return result
+
+    return None
+
+
 @app.route("/social-links", methods=["POST"])
 def social_links():
     data = request.get_json()
     url = data.get("url", "").strip() if data else ""
     if not url:
         return jsonify({"error": "No URL"}), 400
+    # Check bundledb first for existing social links via AuthorSite match
+    links = _lookup_social_links_from_bundledb(url)
+    if links:
+        return jsonify(links)
+    # Fall back to scraping the site's HTML
     links = extract_social_links(url)
     return jsonify(links)
 
