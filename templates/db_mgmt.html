@@ -44,6 +44,7 @@
                 <h4>bundledb backups</h4>
                 <table class="dbmgmt-stats-table">
                     <tr><td>Backup count</td><td>{{ backup_info.bundledb.count }}</td></tr>
+                    <tr><td>Latest backup</td><td>{{ backup_info.bundledb.latest or 'None' }}</td></tr>
                     <tr><td>Oldest backup</td><td>{{ backup_info.bundledb.oldest or 'None' }}</td></tr>
                 </table>
             </div>
@@ -51,6 +52,7 @@
                 <h4>showcase-data backups</h4>
                 <table class="dbmgmt-stats-table">
                     <tr><td>Backup count</td><td>{{ backup_info.showcase.count }}</td></tr>
+                    <tr><td>Latest backup</td><td>{{ backup_info.showcase.latest or 'None' }}</td></tr>
                     <tr><td>Oldest backup</td><td>{{ backup_info.showcase.oldest or 'None' }}</td></tr>
                 </table>
             </div>

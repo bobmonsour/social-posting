@@ -1268,15 +1268,20 @@ def _compute_backup_info():
         dir_key = "BUNDLEDB_BACKUP_DIR" if key == "bundledb" else "SHOWCASE_BACKUP_DIR"
         backup_dir = _get_path(dir_key)
         try:
-            files = sorted(f for f in os.listdir(backup_dir) if f.startswith(prefix) and f.endswith(".json"))
+            files = sorted(f for f in os.listdir(backup_dir) if f.startswith(prefix) and f.endswith(".json") and "--" in f)
             oldest = ""
+            latest = ""
             if files:
                 # Parse date from filename: prefix-YYYY-MM-DD--HHMMSS.json
-                name = files[0].replace(prefix + "-", "").replace(".json", "")
-                parts = name.split("--")
-                if len(parts) == 2:
-                    oldest = parts[0]  # YYYY-MM-DD
-            info[key] = {"count": len(files), "oldest": oldest}
+                for fname, target in [(files[0], "oldest"), (files[-1], "latest")]:
+                    name = fname.replace(prefix + "-", "").replace(".json", "")
+                    parts = name.split("--")
+                    if len(parts) == 2:
+                        if target == "oldest":
+                            oldest = parts[0]
+                        else:
+                            latest = parts[0]
+            info[key] = {"count": len(files), "oldest": oldest, "latest": latest}
         except Exception:
             info[key] = {"count": 0, "oldest": ""}
     return info

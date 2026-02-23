@@ -120,6 +120,13 @@
   const deployModalTitle = document.getElementById("deploy-modal-title");
   const deployModalOutput = document.getElementById("deploy-modal-output");
   const deployModalOk = document.getElementById("deploy-modal-ok");
+  const deployModalClose = document.getElementById("deploy-modal-close");
+  deployModalClose.onclick = () => { deployModal.style.display = "none"; };
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && deployModal.style.display !== "none" && deployModalClose.style.display !== "none") {
+      deployModal.style.display = "none";
+    }
+  });
   const btnRunLatest = document.getElementById("btn-run-latest");
   const btnDeploy = document.getElementById("btn-deploy");
   const btnCheckUrlOpen = document.getElementById("btn-check-url-open");
@@ -307,6 +314,7 @@
     deployModalTitle.textContent = "Running end-session scripts...";
     deployModalOutput.textContent = "";
     deployModalOk.style.display = "none";
+    deployModalClose.style.display = "none";
     deployModal.style.display = "";
 
     return fetch("/editor/end-session", { method: "POST" })
@@ -358,10 +366,10 @@
                 deployModalTitle.textContent = verify.success ? "Local server ready" : "Verification issues found";
                 deployModalOk.textContent = "View Local Site";
                 deployModalOk.onclick = () => {
-                  deployModal.style.display = "none";
                   window.open("http://localhost:8080", "_blank");
                 };
                 deployModalOk.style.display = "";
+                deployModalClose.style.display = "";
               });
           });
       })
@@ -378,6 +386,7 @@
     deployModalTitle.textContent = "Deploying...";
     deployModalOutput.textContent = "Running npm run deploy...\n";
     deployModalOk.style.display = "none";
+    deployModalClose.style.display = "none";
     deployModal.style.display = "";
 
     return fetch("/editor/deploy", { method: "POST" })
@@ -394,10 +403,10 @@
         deployModalOutput.scrollTop = deployModalOutput.scrollHeight;
         deployModalOk.textContent = "View 11tybundle.dev";
         deployModalOk.onclick = () => {
-          deployModal.style.display = "none";
           if (data.success) window.open("https://11tybundle.dev", "_blank");
         };
         deployModalOk.style.display = "";
+        deployModalClose.style.display = "";
       })
       .catch((err) => {
         deployModalTitle.textContent = "Deploy Failed";
