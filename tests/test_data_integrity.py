@@ -157,3 +157,52 @@ def test_backup_first_save_only(client, app):
 
     backups = os.listdir(app.config["BUNDLEDB_BACKUP_DIR"])
     assert len(backups) == 1
+
+
+# --- Backup info computation ---
+
+def test_compute_backup_info_with_files(app):
+    from app import _compute_backup_info
+    # Create timestamped backup files
+    for name in [
+        "bundledb-2026-01-10--120000.json",
+        "bundledb-2026-02-15--093000.json",
+        "bundledb-2026-02-22--170000.json",
+    ]:
+        open(os.path.join(app.config["BUNDLEDB_BACKUP_DIR"], name), "w").close()
+    for name in [
+        "showcase-data-2026-01-05--080000.json",
+        "showcase-data-2026-02-20--140000.json",
+    ]:
+        open(os.path.join(app.config["SHOWCASE_BACKUP_DIR"], name), "w").close()
+
+    info = _compute_backup_info()
+    assert info["bundledb"]["count"] == 3
+    assert info["bundledb"]["oldest"] == "2026-01-10"
+    assert info["bundledb"]["latest"] == "2026-02-22"
+    assert info["showcase"]["count"] == 2
+    assert info["showcase"]["oldest"] == "2026-01-05"
+    assert info["showcase"]["latest"] == "2026-02-20"
+
+
+def test_compute_backup_info_empty_dirs(app):
+    from app import _compute_backup_info
+    info = _compute_backup_info()
+    assert info["bundledb"]["count"] == 0
+    assert info["bundledb"]["oldest"] == ""
+    assert info["bundledb"]["latest"] == ""
+    assert info["showcase"]["count"] == 0
+    assert info["showcase"]["oldest"] == ""
+    assert info["showcase"]["latest"] == ""
+
+
+def test_compute_backup_info_ignores_non_timestamped(app):
+    from app import _compute_backup_info
+    # Non-timestamped file should be excluded
+    open(os.path.join(app.config["BUNDLEDB_BACKUP_DIR"], "bundledb-legacy.json"), "w").close()
+    open(os.path.join(app.config["BUNDLEDB_BACKUP_DIR"], "bundledb-2026-02-01--100000.json"), "w").close()
+
+    info = _compute_backup_info()
+    assert info["bundledb"]["count"] == 1
+    assert info["bundledb"]["oldest"] == "2026-02-01"
+    assert info["bundledb"]["latest"] == "2026-02-01"
