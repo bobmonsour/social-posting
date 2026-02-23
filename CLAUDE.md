@@ -92,9 +92,15 @@ Mode behavior:
 
 ## Social Link Tagging
 
-When posting about a BWE site, the app fetches the site's HTML to discover the owner's Mastodon/Bluesky profiles and appends @-mentions to the per-platform textareas.
+When posting about a BWE site, the app looks up the owner's Mastodon/Bluesky profiles and appends @-mentions to the per-platform textareas.
 
-**Backend** (`services/social_links.py`):
+**Bundledb lookup** (`_lookup_social_links_from_bundledb()` in `app.py`):
+- The `/social-links` endpoint first checks `bundledb.json` for blog post entries where `AuthorSite` matches the given URL.
+- URL matching normalizes both sides: lowercase, strip trailing slash, strip `www.` prefix.
+- If a match is found with `socialLinks` containing mastodon/bluesky URLs, converts them to @-mentions and returns immediately (no HTTP requests needed).
+- Falls back to HTML scraping (below) only if no bundledb match is found.
+
+**HTML scraping fallback** (`services/social_links.py`):
 - `extract_social_links(url)` returns `{"mastodon": "@user@instance", "bluesky": "@handle"}` (empty strings if not found).
 - Detection strategies (ported from `getsociallinks.js`): JSON-LD `sameAs` arrays, `<a rel="me">` links, URL pattern matching (`/@` / `/users/` for Mastodon, `bsky` hostname for Bluesky), CSS class/aria-label/title hints.
 - Checks homepage, `/about/`, `/en/` — stops early after `/about/` if links found.
