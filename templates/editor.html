@@ -20,7 +20,11 @@
         <legend>Mode</legend>
         <label><input type="radio" name="editor-mode" value="edit"> Edit</label>
         <label><input type="radio" name="editor-mode" value="create" checked> Create</label>
+        <label><input type="radio" name="editor-mode" value="edit-latest"> Edit latest issue</label>
     </fieldset>
+
+    <!-- Latest issue summary (shown in edit-latest mode) -->
+    <div id="latest-issue-summary" class="issue-counts" style="display:none;"></div>
 
     <!-- Type selector -->
     <fieldset id="type-selector">
@@ -45,6 +49,9 @@
         <h3 class="list-heading">Recent</h3>
         <div id="recent-items-list"></div>
     </div>
+
+    <!-- Latest issue items -->
+    <div id="latest-issue-items" class="item-list" style="display:none;"></div>
 
     <!-- Search results -->
     <div id="search-results" class="item-list" style="display:none;">

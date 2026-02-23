@@ -6,7 +6,7 @@
   let fuse = null;
   let currentType = null;
   let currentIndex = null; // index into allData (null = create mode)
-  let currentMode = "create"; // "edit" or "create"
+  let currentMode = "create"; // "edit", "create", or "edit-latest"
   let backupCreated = false;
   let originalItem = null; // snapshot before editing
   let uniqueAuthors = []; // for autocomplete
@@ -93,10 +93,13 @@
   // DOM refs
   const modeRadios = document.querySelectorAll('input[name="editor-mode"]');
   const typeRadios = document.querySelectorAll('input[name="item-type"]');
+  const typeSelector = document.getElementById("type-selector");
   const searchSection = document.getElementById("search-section");
   const searchInput = document.getElementById("search-input");
   const recentItems = document.getElementById("recent-items");
   const recentItemsList = document.getElementById("recent-items-list");
+  const latestIssueItems = document.getElementById("latest-issue-items");
+  const latestIssueSummary = document.getElementById("latest-issue-summary");
   const searchResults = document.getElementById("search-results");
   const searchResultsList = document.getElementById("search-results-list");
   const editFormContainer = document.getElementById("edit-form-container");
@@ -260,8 +263,20 @@
       searchInput.value = "";
       searchResults.style.display = "none";
       recentItems.style.display = "none";
+      latestIssueItems.style.display = "none";
+      latestIssueSummary.style.display = "none";
       searchSection.style.display = "none";
       testDataBanner.style.display = "none";
+
+      if (currentMode === "edit-latest") {
+        typeSelector.style.display = "none";
+        searchSection.style.display = "";
+        showLatestIssueItems();
+        initFuseAllTypes();
+        searchInput.focus();
+      } else {
+        typeSelector.style.display = "";
+      }
     });
   });
 
@@ -296,11 +311,16 @@
       const query = searchInput.value.trim();
       if (!query) {
         searchResults.style.display = "none";
-        recentItems.style.display = "";
-        showRecentItems();
+        if (currentMode === "edit-latest") {
+          latestIssueItems.style.display = "";
+        } else {
+          recentItems.style.display = "";
+          showRecentItems();
+        }
         return;
       }
       recentItems.style.display = "none";
+      latestIssueItems.style.display = "none";
       runSearch(query);
     }, 200);
   });
@@ -472,13 +492,14 @@
   // Cancel handler
   btnCancel.addEventListener("click", () => {
     hideEditForm();
+    searchInput.value = "";
+    searchResults.style.display = "none";
     if (currentMode === "edit") {
-      if (searchInput.value.trim()) {
-        runSearch(searchInput.value.trim());
-      } else {
-        showRecentItems();
-      }
+      showRecentItems();
+    } else if (currentMode === "edit-latest") {
+      showLatestIssueItems();
     }
+    window.scrollTo({ top: 0, behavior: "smooth" });
   });
 
   // View JSON handler
@@ -691,6 +712,76 @@
     searchResults.style.display = "";
   }
 
+  function showLatestIssueItems() {
+    const maxIssue = getMaxIssue();
+    latestIssueItems.innerHTML = "";
+    const types = ["blog post", "site", "release", "starter"];
+
+    // Count entries per type for the summary line
+    const counts = {};
+    types.forEach((type) => {
+      counts[type] = 0;
+      for (let i = 0; i < allData.length; i++) {
+        if (allData[i].Type === type && parseInt(allData[i].Issue, 10) === maxIssue) {
+          counts[type]++;
+        }
+      }
+    });
+    latestIssueSummary.innerHTML =
+      '<span class="issue-count-num">Issue ' + maxIssue + "</span> " +
+      '<span>Blog Posts:&nbsp; <span class="issue-count-num">' + counts["blog post"] + "</span></span>" +
+      '<span>Sites:&nbsp; <span class="issue-count-num">' + counts["site"] + "</span></span>" +
+      '<span>Releases:&nbsp; <span class="issue-count-num">' + counts["release"] + "</span></span>" +
+      '<span>Starters:&nbsp; <span class="issue-count-num">' + counts["starter"] + "</span></span>";
+    latestIssueSummary.style.display = "";
+    const typeLabels = {
+      "blog post": "Blog Posts",
+      "site": "Sites",
+      "release": "Releases",
+      "starter": "Starters"
+    };
+
+    types.forEach((type) => {
+      const items = [];
+      for (let i = 0; i < allData.length; i++) {
+        if (allData[i].Type === type && parseInt(allData[i].Issue, 10) === maxIssue) {
+          items.push({ item: allData[i], index: i });
+        }
+      }
+
+      const heading = document.createElement("h3");
+      heading.className = "latest-issue-heading";
+      heading.textContent = "Issue " + maxIssue + " " + typeLabels[type] + " (" + items.length + ")";
+      latestIssueItems.appendChild(heading);
+
+      if (items.length === 0) {
+        const p = document.createElement("p");
+        p.className = "muted";
+        p.style.fontSize = "0.85rem";
+        p.style.marginBottom = "1rem";
+        p.textContent = "No " + type + "s in this issue";
+        latestIssueItems.appendChild(p);
+      } else {
+        // Sort by Date descending
+        items.sort((a, b) => (b.item.Date || "").localeCompare(a.item.Date || ""));
+        items.forEach(({ item, index }) => {
+          latestIssueItems.appendChild(createItemCard(item, index));
+        });
+      }
+    });
+
+    latestIssueItems.style.display = "";
+  }
+
+  function initFuseAllTypes() {
+    const items = allData.map((item, index) => ({ item, index }));
+    fuse = new Fuse(items, {
+      keys: ["item.Title", "item.Author"],
+      threshold: 0.4,
+      includeScore: true
+    });
+  }
+
   function createItemCard(item, index) {
     const card = document.createElement("div");
     card.className = "item-card";
@@ -705,7 +796,21 @@
       '<div class="item-card-title">' + escapeHtml(item.Title || "(no title)") + "</div>" +
       (subtitle ? '<div class="item-card-subtitle">' + escapeHtml(subtitle) + "</div>" : "");
 
+    // Source link
+    if (item.Link) {
+      const sourceLink = document.createElement("a");
+      sourceLink.href = item.Link;
+      sourceLink.target = "_blank";
+      sourceLink.className = "item-card-source";
+      sourceLink.textContent = "Source";
+      sourceLink.addEventListener("click", (e) => { e.stopPropagation(); });
+      card.appendChild(sourceLink);
+    }
+
     card.addEventListener("click", () => {
+      if (currentMode === "edit-latest") {
+        currentType = item.Type;
+      }
       showEditForm(item, index);
     });
     return card;
@@ -801,9 +906,10 @@
     editFormFields.innerHTML = "";
     lastFetchedUrl = "";
 
-    // Hide search/recent
+    // Hide search/recent/latest
     recentItems.style.display = "none";
     searchResults.style.display = "none";
+    latestIssueItems.style.display = "none";
 
     // Skip checkbox + Delete button (edit mode only)
     if (!isCreate) {
@@ -1420,6 +1526,12 @@
             } else {
               showRecentItems();
             }
+          } else if (currentMode === "edit-latest") {
+            if (searchInput.value.trim()) {
+              runSearch(searchInput.value.trim());
+            } else {
+              showLatestIssueItems();
+            }
           }
         } else {
           showStatus("Delete failed: " + (data.error || "Unknown error"), true);
@@ -1452,6 +1564,12 @@
               runSearch(searchInput.value.trim());
             } else {
               showRecentItems();
+            }
+          } else if (currentMode === "edit-latest") {
+            if (searchInput.value.trim()) {
+              runSearch(searchInput.value.trim());
+            } else {
+              showLatestIssueItems();
             }
           }
         } else {
@@ -1551,12 +1669,19 @@
           if (!onSuccess) showStatus(msg, false);
           if (onSuccess) onSuccess();
 
-          // Restore search/recent view (edit mode)
+          // Restore search/recent view
           if (currentMode === "edit") {
             if (searchInput.value.trim()) {
               runSearch(searchInput.value.trim());
             } else {
               showRecentItems();
+            }
+          } else if (currentMode === "edit-latest") {
+            initFuseAllTypes();
+            if (searchInput.value.trim()) {
+              runSearch(searchInput.value.trim());
+            } else {
+              showLatestIssueItems();
             }
           }
         } else {

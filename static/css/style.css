@@ -840,6 +840,7 @@ label:has(#cb-bluesky) {
 .issue-counts {
     display: flex;
     flex-wrap: wrap;
+    align-items: baseline;
     gap: 1.25rem;
     font-family: var(--font-body);
     font-size: 1.05rem;
@@ -968,6 +969,32 @@ button.btn-nav {
     font-size: 0.8rem;
     color: var(--pico-muted-color);
     margin-top: 0.15rem;
+}
+
+.item-card-source {
+    font-size: 0.75rem;
+    color: var(--pico-muted-color);
+    text-decoration: underline;
+    float: right;
+    margin-top: -1.2rem;
+}
+
+.item-card-source:hover {
+    color: var(--pico-primary);
+}
+
+/* Latest issue section headings */
+.latest-issue-heading {
+    font-family: var(--font-body);
+    font-weight: 700;
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--pico-color);
+    border-bottom: 2px solid var(--pico-muted-border-color);
+    padding-bottom: 0.4rem;
+    margin-top: 1.25rem;
+    margin-bottom: 0.5rem;
 }
 
 /* Edit form fields */
