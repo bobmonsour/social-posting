@@ -2,9 +2,9 @@
 
 Personal publication management tool for 11tybundle.dev. What started as a social media cross-poster has evolved into the primary editorial interface for managing the 11ty Bundle -- a curated database of blog posts, sites, releases, and starters from the Eleventy community. Single Flask app with three surfaces: a Bundle Entry Editor, a Social Posting page with workflow integrations that tie the two together, and a Database Management page for visibility into the underlying data files.
 
-This app is purpose-built for the sole use of the editor of 11tybundle.dev, running on a local machine with access to sibling project directories (`dbtools/`, `11tybundle.dev/`, etc.) and local Node.js tooling. It is not designed for general-purpose deployment.
+This app is purpose-built for the sole use of the editor of 11tybundle.dev, running on a local machine with access to sibling project directories (`11tybundle.dev/`, `11tybundledb/`, etc.) and local Node.js tooling. It is not designed for general-purpose deployment.
 
-**Reference codebase — dbtools**: The `dbtools/` directory at `/Users/Bob/Dropbox/Docs/Sites/11tybundle/dbtools/` contains the original Node.js tooling that this app is progressively replacing. When asked to port or replicate functionality from dbtools, always read the source files there directly rather than inferring behavior from this project's code.
+**Reference codebase — dbtools**: The `dbtools/` directory at `/Users/Bob/Dropbox/Docs/Sites/11tybundle/dbtools/` contains the original Node.js tooling that this app has replaced. There are no remaining runtime dependencies on dbtools. All ported functionality (insights, issue records, latest data, screenshots, slugify) now runs from this project. When asked to port or replicate additional functionality from dbtools, read the source files there directly rather than inferring behavior from this project's code.
 
 ## Quick Start
 
@@ -43,9 +43,11 @@ social-posting/
 │   ├── issue_records.py    # Generate issuerecords.json from bundledb (ported from genissuerecords.js)
 │   ├── latest_data.py      # Generate latest-issue filtered data files (ported from generate-latest-data.js)
 │   └── verify_site.py      # Post-build verification: checks _site HTML for entry presence and valid assets
+├── data/
+│   └── insights-exclusions.json  # Exclusions for insights missing-data checks
 ├── scripts/
 │   └── capture-screenshot.js  # Puppeteer full-page screenshot capture
-├── templates/              # Jinja2 (base.html, compose.html, result.html, editor.html, db_mgmt.html)
+├── templates/              # Jinja2 (base.html, compose.html, result.html, editor.html, db_mgmt.html, 11ty-bundle-xx.md)
 ├── static/
 │   ├── css/style.css       # Pico CSS overrides, warm color scheme, light/dark
 │   ├── js/compose.js       # Form interactivity, modes, draft/image handling, validation
@@ -57,6 +59,7 @@ social-posting/
 │   ├── conftest.py         # Shared fixtures (app, client, sample data, temp paths)
 │   └── test_*.py           # Service, route, and data integrity tests
 ├── pytest.ini              # pytest config (testpaths, warnings)
+├── package.json            # Node.js deps (Puppeteer, @sindresorhus/slugify for tests)
 ├── uploads/                # Temporary upload dir (cleaned after posting)
 └── docs/                  # Requirements docs for features (retained across sessions)
 ```
@@ -206,7 +209,7 @@ The `/editor` page (linked from the main page as "Bundle Editor") provides searc
 
 **Screenshot capture** (`scripts/capture-screenshot.js`):
 - Puppeteer captures full-page JPEG at 1920x1080 with `networkidle0` + 3s delay. Saves to `11tybundledb/screenshots/` and `content/screenshots/`. Returns JSON with filename and path.
-- `POST /editor/screenshot` runs the script via `subprocess.run()` with 60s timeout and `NODE_PATH` set to `dbtools/node_modules/` (required because the script lives in `social-posting/scripts/` but Puppeteer is installed in `dbtools/`).
+- `POST /editor/screenshot` runs the script via `subprocess.run()` with 60s timeout.
 - `GET /editor/screenshot-preview/<filename>` serves captured screenshots for inline preview.
 
 **Screenshot data separation**:
