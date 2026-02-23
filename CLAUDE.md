@@ -115,10 +115,10 @@ When a post fails on any platform:
 
 ## Bundledb Editor
 
-The `/editor` page (linked from the main page as "Bundle Editor") provides search and edit for `bundledb.json` items, plus a create mode for adding new entries. The editor page has a "Back to Social Posting" button, "Bundle Entry Editor" header, and right-justified "Check URL", "Run Latest", "Deploy", and "DB Mgmt" buttons in the header bar. Mode (Edit/Create/Edit latest issue) is selected via radio buttons at the top, then type is selected. Switching between modes clears the type selection. In edit mode, fuzzy search (Fuse.js) over type-specific keys finds items. In create mode, selecting a type opens a blank form with auto-populated fields and cursor in the Title field. Fields are ordered per `FIELD_ORDER` in `editor.js` with manual-entry fields first, followed by fetch buttons, then auto-generated fields. Saves go to `POST /editor/save`, which creates backups of both `bundledb.json` and `showcase-data.json` on first save per session.
+The `/editor` page (linked from the main page as "Bundle Editor") provides search and edit for `bundledb.json` items, plus a create mode for adding new entries. The editor page has a "Back to Social Posting" button, "Bundle Entry Editor" header, and right-justified "Check URL", "Run Latest", "Deploy", and "DB Mgmt" buttons in the header bar. Mode (Create/Edit/Edit latest issue) is selected via radio buttons at the top, then type is selected. Switching between modes clears the type selection. In edit mode, fuzzy search (Fuse.js) over type-specific keys finds items. In create mode, selecting a type opens a blank form with auto-populated fields and cursor in the Title field. Fields are ordered per `FIELD_ORDER` in `editor.js` with manual-entry fields first, followed by fetch buttons, then auto-generated fields. Saves go to `POST /editor/save`, which creates backups of both `bundledb.json` and `showcase-data.json` on first save per session.
 
-**Edit/Create modes** (`editor.js` + `editor.html`):
-- Mode radio buttons (Edit/Create/Edit latest issue) at top of editor. Create mode is the default.
+**Create/Edit modes** (`editor.js` + `editor.html`):
+- Mode radio buttons (Create/Edit/Edit latest issue) at top of editor. Create mode is the default.
 - Switching between Edit, Create, and Edit latest issue clears the type selection and hides all form elements.
 - Create mode hides search/recent items and shows a blank form for the selected type.
 - New items are auto-populated with `Date` (ISO), `formattedDate` (human-readable), `Issue` (current max from data), and `Type`. The `Type` field is hidden in create mode since it's already selected via the radio button.
