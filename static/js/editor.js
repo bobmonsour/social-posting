@@ -1076,6 +1076,16 @@
             slugAuthorField.value = slugify(authorField.value);
           }
         });
+        // Also re-slugify on change (fires after datalist selection is committed,
+        // fixing partial-value slugs from blur firing mid-autocomplete)
+        authorField.addEventListener("change", () => {
+          if (authorField.value.trim()) {
+            const expected = slugify(authorField.value);
+            if (slugAuthorField.value !== expected) {
+              slugAuthorField.value = expected;
+            }
+          }
+        });
       }
     }
 
@@ -1899,6 +1909,19 @@
         const descEl = document.getElementById("field-description");
         if (descEl && !descEl.value.trim()) {
           descEl.value = result.description;
+        }
+        // Re-slugify Title and Author now that fields are finalized
+        if (currentType === "blog post") {
+          const titleEl = document.getElementById("field-Title");
+          const slugTitleEl = document.getElementById("field-slugifiedTitle");
+          if (titleEl && slugTitleEl && titleEl.value.trim()) {
+            slugTitleEl.value = slugify(titleEl.value);
+          }
+          const authorEl = document.getElementById("field-Author");
+          const slugAuthorEl = document.getElementById("field-slugifiedAuthor");
+          if (authorEl && slugAuthorEl && authorEl.value.trim()) {
+            slugAuthorEl.value = slugify(authorEl.value);
+          }
         }
         showStatus("Description extracted.", false);
       } else {
