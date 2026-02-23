@@ -673,6 +673,13 @@
     return items;
   }
 
+  const typeLabelsPlural = {
+    "blog post": "Blog Posts",
+    "site": "Sites",
+    "release": "Releases",
+    "starter": "Starters"
+  };
+
   function showRecentItems() {
     if (!currentType) return;
     const typed = getItemsOfType(currentType);
@@ -680,6 +687,8 @@
     typed.sort((a, b) => (b.item.Date || "").localeCompare(a.item.Date || ""));
     const recent = typed.slice(0, 5);
     recentItemsList.innerHTML = "";
+    const heading = document.getElementById("recent-items-heading");
+    if (heading) heading.textContent = "Recent " + (typeLabelsPlural[currentType] || currentType);
     recent.forEach(({ item, index }) => {
       recentItemsList.appendChild(createItemCard(item, index));
     });
@@ -734,13 +743,6 @@
       '<span>Releases:&nbsp; <span class="issue-count-num">' + counts["release"] + "</span></span>" +
       '<span>Starters:&nbsp; <span class="issue-count-num">' + counts["starter"] + "</span></span>";
     latestIssueSummary.style.display = "";
-    const typeLabels = {
-      "blog post": "Blog Posts",
-      "site": "Sites",
-      "release": "Releases",
-      "starter": "Starters"
-    };
-
     types.forEach((type) => {
       const items = [];
       for (let i = 0; i < allData.length; i++) {
@@ -751,7 +753,7 @@
 
       const heading = document.createElement("h3");
       heading.className = "latest-issue-heading";
-      heading.textContent = "Issue " + maxIssue + " " + typeLabels[type] + " (" + items.length + ")";
+      heading.textContent = "Issue " + maxIssue + " " + typeLabelsPlural[type] + " (" + items.length + ")";
       latestIssueItems.appendChild(heading);
 
       if (items.length === 0) {
