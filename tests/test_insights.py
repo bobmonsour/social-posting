@@ -14,7 +14,7 @@ import pytest
 
 from services.insights import generate_insights
 
-DBTOOLS_DIR = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/dbtools"
+_PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Inline JS wrapper — extracts the core metric/output logic from
 # generate-insights.js, strips interactive prompts and HTML/CSS generation,
@@ -399,14 +399,14 @@ JS_WRAPPER = textwrap.dedent("""\
 
 
 def _run_js(wrapper_code, tmp_path, args):
-    """Write an inline JS module inside dbtools/ so ESM imports resolve, then run it."""
-    script = os.path.join(DBTOOLS_DIR, "_test_wrapper.mjs")
+    """Write an inline JS module in the project dir so ESM imports resolve, then run it."""
+    script = os.path.join(_PROJECT_DIR, "_test_wrapper.mjs")
     try:
         with open(script, "w") as f:
             f.write(wrapper_code)
         result = subprocess.run(
             ["node", script] + args,
-            capture_output=True, text=True, timeout=30, cwd=DBTOOLS_DIR,
+            capture_output=True, text=True, timeout=30, cwd=_PROJECT_DIR,
         )
         assert result.returncode == 0, f"JS failed: {result.stderr}"
     finally:
@@ -672,7 +672,7 @@ class TestInsightsMatchJS:
         """Run both against the real data files for ultimate confidence."""
         prod_bundle = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundledb/bundledb.json"
         prod_showcase = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundledb/showcase-data.json"
-        prod_exclusions = os.path.join(DBTOOLS_DIR, "devdata", "insights-exclusions.json")
+        prod_exclusions = os.path.join(_PROJECT_DIR, "data", "insights-exclusions.json")
         if not os.path.exists(prod_bundle) or not os.path.exists(prod_showcase):
             pytest.skip("Production data files not available")
 

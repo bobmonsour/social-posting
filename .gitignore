@@ -6,6 +6,8 @@ __pycache__/
 *.pyc
 
 .venv/
+node_modules/
+_test_wrapper.mjs
 
 uploads/
 posts/draft_images/

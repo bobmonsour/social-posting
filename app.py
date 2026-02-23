@@ -56,7 +56,6 @@ BUNDLEDB_PATH = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundledb/bundledb.
 BUNDLEDB_BACKUP_DIR = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundledb/bundledb-backups"
 SHOWCASE_BACKUP_DIR = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundledb/showcase-data-backups"
 SHOWCASE_PATH = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundledb/showcase-data.json"
-DBTOOLS_DIR = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/dbtools"
 BUNDLEDB_DIR = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundledb"
 SCREENSHOT_DIR = os.path.join(BUNDLEDB_DIR, "screenshots")
 SCREENSHOT_SCRIPT = os.path.join(_BASE_DIR, "scripts", "capture-screenshot.js")
@@ -1012,15 +1011,11 @@ def editor_screenshot():
         return jsonify({"success": False, "error": "No URL provided"}), 400
 
     try:
-        env = os.environ.copy()
-        env["NODE_PATH"] = os.path.join(DBTOOLS_DIR, "node_modules")
         result = subprocess.run(
             ["node", SCREENSHOT_SCRIPT, url],
-            cwd=DBTOOLS_DIR,
             capture_output=True,
             text=True,
             timeout=60,
-            env=env,
         )
         output = json.loads(result.stdout.strip())
         return jsonify(output)
@@ -1061,7 +1056,7 @@ def editor_end_session():
             result = generate_insights(
                 bundledb_path=bundledb_path,
                 showcase_path=showcase_path,
-                exclusions_path=os.path.join(DBTOOLS_DIR, "devdata", "insights-exclusions.json"),
+                exclusions_path=os.path.join(_BASE_DIR, "data", "insights-exclusions.json"),
                 insights_output_path=os.path.join(bundledb_dir, "insightsdata.json"),
                 csv_entry_output_path=os.path.join(ELEVENTY_PROJECT_DIR, "content", "_data", "charts", "entry-growth.csv"),
                 csv_author_output_path=os.path.join(ELEVENTY_PROJECT_DIR, "content", "_data", "charts", "author-growth.csv"),

@@ -7,7 +7,6 @@
  * Saves to both 11tybundledb/screenshots/ and content/screenshots/.
  * Outputs JSON to stdout: {success, filename, screenshotpath}
  *
- * Must be run with cwd set to the dbtools directory so Puppeteer resolves.
  */
 
 const puppeteer = require("puppeteer");

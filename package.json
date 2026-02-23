@@ -1,0 +1,29 @@
+{
+  "name": "social-posting",
+  "version": "1.0.0",
+  "description": "![Socially Bundled home page](socially-bundled-home.png)",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bobmonsour/social-posting.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/bobmonsour/social-posting/issues"
+  },
+  "homepage": "https://github.com/bobmonsour/social-posting#readme",
+  "dependencies": {
+    "@sindresorhus/slugify": "^3.0.0",
+    "puppeteer": "^24.37.5"
+  }
+}

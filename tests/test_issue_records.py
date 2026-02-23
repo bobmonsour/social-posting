@@ -13,7 +13,6 @@ import pytest
 
 from services.issue_records import generate_issue_records
 
-DBTOOLS_DIR = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/dbtools"
 
 # Inline JS wrapper that accepts input/output paths as CLI args,
 # bypassing the hardcoded config in genissuerecords.js.

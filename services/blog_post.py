@@ -3,9 +3,9 @@ import re
 import subprocess
 from datetime import date
 
-_DBTOOLS_DIR = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/dbtools"
-_TEMPLATE_PATH = os.path.join(_DBTOOLS_DIR, "11ty-bundle-xx.md")
-_BLOG_BASE_PATH = os.path.join(_DBTOOLS_DIR, "..", "11tybundle.dev", "content", "blog")
+_BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_TEMPLATE_PATH = os.path.join(_BASE_DIR, "templates", "11ty-bundle-xx.md")
+_BLOG_BASE_PATH = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundle.dev/content/blog"
 
 
 def create_blog_post(issue_number, publication_date=None):
