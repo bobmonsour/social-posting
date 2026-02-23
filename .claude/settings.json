@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd /Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundle.dev && npm *)",
+      "Bash(cd /Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundledb && git *)",
+      "Bash(lsof *:8080*)",
+      "Bash(python3 -c *)",
+      "Bash(python3 -c \"*)",
+      "Bash(python3 -m services.verify_site*)",
+      "Read(/Users/Bob/Dropbox/Docs/Sites/11tybundle/**)",
+      "Edit(/Users/Bob/Dropbox/Docs/Sites/11tybundle/**)"
+    ]
+  },
+  "additionalDirectories": [
+    "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundle.dev",
+    "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundledb",
+    "/Users/Bob/Dropbox/Docs/Sites/11tybundle/dbtools"
+  ]
+}
