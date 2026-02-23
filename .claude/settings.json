@@ -9,7 +9,8 @@
       "Bash(python3 -m services.verify_site*)",
       "Bash(source * && pytest*)",
       "Read(/Users/Bob/Dropbox/Docs/Sites/11tybundle/**)",
-      "Edit(/Users/Bob/Dropbox/Docs/Sites/11tybundle/**)"
+      "Edit(/Users/Bob/Dropbox/Docs/Sites/11tybundle/**)",
+      "Edit(CLAUDE.md)"
     ]
   },
   "additionalDirectories": [
