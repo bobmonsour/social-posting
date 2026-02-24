@@ -18,9 +18,10 @@
     <!-- Mode selector -->
     <fieldset id="mode-selector">
         <legend>Mode</legend>
-        <label><input type="radio" name="editor-mode" value="create" checked> Create</label>
-        <label><input type="radio" name="editor-mode" value="edit"> Edit</label>
+        <label><input type="radio" name="editor-mode" value="create" checked> Create Entry</label>
+        <label><input type="radio" name="editor-mode" value="edit"> Edit Entry</label>
         <label><input type="radio" name="editor-mode" value="edit-latest"> Edit Latest Issue</label>
+        <label><input type="radio" name="editor-mode" value="generate"> Generate Bundle Issue</label>
     </fieldset>
 
     <!-- Latest issue summary (shown in edit-latest mode) -->
@@ -52,6 +53,11 @@
 
     <!-- Latest issue items -->
     <div id="latest-issue-items" class="item-list" style="display:none;"></div>
+
+    <!-- Generate issue items -->
+    <div id="generate-issue-container" style="display:none;">
+        <div id="generate-issue-items"></div>
+    </div>
 
     <!-- Search results -->
     <div id="search-results" class="item-list" style="display:none;">

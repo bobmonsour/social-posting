@@ -20,7 +20,7 @@ from services.issue_counts import get_latest_issue_counts
 from services.insights import generate_insights
 from services.issue_records import generate_issue_records
 from services.latest_data import generate_latest_data
-from services.blog_post import create_blog_post, blog_post_exists, delete_blog_post, edit_blog_post
+from services.blog_post import create_blog_post
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16MB upload limit
@@ -145,7 +145,6 @@ def compose():
     recent = load_recent_posts()
     _annotate_bwe_with_drafts(bwe_to_post, recent)
     issue_counts = get_latest_issue_counts()
-    post_exists = blog_post_exists(issue_counts["issue_number"]) if issue_counts else False
     return render_template(
         "compose.html",
         mastodon_available=config.mastodon_configured(),
@@ -156,7 +155,6 @@ def compose():
         bwe_to_post=bwe_to_post,
         bwe_posted=bwe_posted,
         issue_counts=issue_counts,
-        blog_post_exists=post_exists,
     )
 
 
@@ -651,28 +649,10 @@ def create_blog_post_route():
     publication_date = data.get("date") if data else None
     if not issue_number:
         return jsonify({"success": False, "error": "No issue number"}), 400
-    result = create_blog_post(issue_number, publication_date)
+    highlights = data.get("highlights") if data else None
+    result = create_blog_post(issue_number, publication_date, highlights=highlights)
     return jsonify(result)
 
-
-@app.route("/delete-blog-post", methods=["POST"])
-def delete_blog_post_route():
-    data = request.get_json()
-    issue_number = data.get("issue_number") if data else None
-    if not issue_number:
-        return jsonify({"success": False, "error": "No issue number"}), 400
-    result = delete_blog_post(issue_number)
-    return jsonify(result)
-
-
-@app.route("/edit-blog-post", methods=["POST"])
-def edit_blog_post_route():
-    data = request.get_json()
-    issue_number = data.get("issue_number") if data else None
-    if not issue_number:
-        return jsonify({"success": False, "error": "No issue number"}), 400
-    result = edit_blog_post(issue_number)
-    return jsonify(result)
 
 
 @app.route("/bwe-to-post/delete", methods=["POST"])

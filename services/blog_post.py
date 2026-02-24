@@ -8,8 +8,14 @@ _TEMPLATE_PATH = os.path.join(_BASE_DIR, "templates", "11ty-bundle-xx.md")
 _BLOG_BASE_PATH = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundle.dev/content/blog"
 
 
-def create_blog_post(issue_number, publication_date=None):
+def create_blog_post(issue_number, publication_date=None, highlights=None):
     """Create a new 11ty Bundle blog post from the template.
+
+    Args:
+        issue_number: The bundle issue number.
+        publication_date: ISO date string (YYYY-MM-DD). Defaults to today.
+        highlights: Optional list of dicts with 'author', 'author_site', 'title', 'link' keys.
+            Used to populate the Highlights section of the generated markdown.
 
     Returns dict with 'success', 'file_path', and optional 'error'.
     """
@@ -49,6 +55,27 @@ def create_blog_post(issue_number, publication_date=None):
     # Replace placeholders
     content = re.sub(r"^bundleIssue:\s*$", f"bundleIssue: {issue_num}", content, flags=re.MULTILINE)
     content = re.sub(r"^date:\s*$", f"date: {publication_date}", content, flags=re.MULTILINE)
+
+    # Replace highlight placeholders with formatted entries
+    if highlights:
+        highlight_lines = []
+        for h in highlights:
+            author = h.get("author", "")
+            author_site = h.get("author_site", "")
+            title = h.get("title", "")
+            link = h.get("link", "")
+            if author_site:
+                line = f"**.** [{author}]({author_site}) - [{title}]({link})"
+            else:
+                line = f"**.** {author} - [{title}]({link})"
+            highlight_lines.append(line)
+        # Replace the placeholder **.**\n lines between ## Highlights and the next section
+        highlights_text = "\n\n".join(highlight_lines)
+        content = re.sub(
+            r"(## Highlights\n)\n(?:\*\*\.\*\*\n\n)+\*\*\.\*\*\n",
+            r"\1\n" + highlights_text + "\n",
+            content,
+        )
 
     # Create year directory if needed
     os.makedirs(year_dir, exist_ok=True)

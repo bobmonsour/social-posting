@@ -190,15 +190,6 @@
         <h2>Next Issue: <span class="issue-count-num">{{ issue_counts.issue_number }}</span></h2>
         <span class="latest-issue-actions">
             <a href="/editor" class="btn-nav">Bundle Editor</a>
-            <button type="button" class="btn-nav btn-create-post" id="btn-create-post"
-                    data-issue="{{ issue_counts.issue_number }}"
-                    {% if blog_post_exists %}hidden{% endif %}>New Bundle Issue</button>
-            <button type="button" class="btn-del-draft" id="btn-delete-post"
-                    data-issue="{{ issue_counts.issue_number }}"
-                    {% if not blog_post_exists %}hidden{% endif %}>Del</button>
-            <button type="button" class="btn-edit-post" id="btn-edit-post"
-                    data-issue="{{ issue_counts.issue_number }}"
-                    {% if not blog_post_exists %}hidden{% endif %}>Edit Post</button>
         </span>
     </div>
     <div class="issue-counts">

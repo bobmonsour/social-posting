@@ -988,6 +988,36 @@ button.btn-nav {
     color: var(--pico-primary);
 }
 
+/* Generate issue mode */
+.generate-item-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.generate-item-row .generate-highlight-cb {
+    flex-shrink: 0;
+    width: 1.25rem;
+    height: 1.25rem;
+    cursor: pointer;
+}
+
+.generate-item-row .item-card {
+    flex: 1;
+    cursor: pointer;
+}
+
+.item-card.selected {
+    border-color: var(--pico-primary);
+    background: color-mix(in srgb, var(--pico-primary) 8%, transparent);
+}
+
+.btn-generate-issue {
+    font-size: 1.1rem;
+    padding: 0.75rem 1.5rem;
+    margin-bottom: 1rem;
+}
+
 /* Latest issue section headings */
 .latest-issue-heading {
     font-family: var(--font-body);

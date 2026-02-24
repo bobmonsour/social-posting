@@ -99,6 +99,8 @@
   const recentItems = document.getElementById("recent-items");
   const recentItemsList = document.getElementById("recent-items-list");
   const latestIssueItems = document.getElementById("latest-issue-items");
+  const generateIssueContainer = document.getElementById("generate-issue-container");
+  const generateIssueItems = document.getElementById("generate-issue-items");
   const latestIssueSummary = document.getElementById("latest-issue-summary");
   const searchResults = document.getElementById("search-results");
   const searchResultsList = document.getElementById("search-results-list");
@@ -265,6 +267,7 @@
       recentItems.style.display = "none";
       latestIssueItems.style.display = "none";
       latestIssueSummary.style.display = "none";
+      generateIssueContainer.style.display = "none";
       searchSection.style.display = "none";
       testDataBanner.style.display = "none";
 
@@ -274,6 +277,9 @@
         showLatestIssueItems();
         initFuseAllTypes();
         searchInput.focus();
+      } else if (currentMode === "generate") {
+        typeSelector.style.display = "none";
+        showGenerateIssueItems();
       } else {
         typeSelector.style.display = "";
       }
@@ -773,6 +779,173 @@
     });
 
     latestIssueItems.style.display = "";
+  }
+
+  function showGenerateIssueItems() {
+    const maxIssue = getMaxIssue();
+    generateIssueItems.innerHTML = "";
+    const types = ["blog post", "site", "release", "starter"];
+
+    // Count entries per type for the summary line
+    const counts = {};
+    types.forEach((type) => {
+      counts[type] = 0;
+      for (let i = 0; i < allData.length; i++) {
+        if (allData[i].Type === type && parseInt(allData[i].Issue, 10) === maxIssue) {
+          counts[type]++;
+        }
+      }
+    });
+    latestIssueSummary.innerHTML =
+      '<span class="issue-count-num">Issue ' + maxIssue + "</span> " +
+      '<span>Blog Posts:&nbsp; <span class="issue-count-num">' + counts["blog post"] + "</span></span>" +
+      '<span>Sites:&nbsp; <span class="issue-count-num">' + counts["site"] + "</span></span>" +
+      '<span>Releases:&nbsp; <span class="issue-count-num">' + counts["release"] + "</span></span>" +
+      '<span>Starters:&nbsp; <span class="issue-count-num">' + counts["starter"] + "</span></span>";
+    latestIssueSummary.style.display = "";
+
+    // Generate button
+    const btnGenerate = document.createElement("button");
+    btnGenerate.type = "button";
+    btnGenerate.className = "btn-action btn-generate-issue";
+    btnGenerate.textContent = "Generate Bundle Issue";
+    btnGenerate.addEventListener("click", () => {
+      const checked = generateIssueItems.querySelectorAll(".generate-highlight-cb:checked");
+      const highlights = Array.from(checked).map((cb) => {
+        const idx = parseInt(cb.dataset.index, 10);
+        const item = allData[idx];
+        return {
+          author: item.Author || "",
+          author_site: item.AuthorSite || "",
+          title: item.Title || "",
+          link: item.Link || "",
+        };
+      });
+
+      const today = new Date().toISOString().split("T")[0];
+      btnGenerate.disabled = true;
+      btnGenerate.textContent = "Generating...";
+      fetch("/create-blog-post", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          issue_number: maxIssue,
+          date: today,
+          highlights: highlights.length > 0 ? highlights : null,
+        }),
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.success) {
+            showStatus("Bundle issue created and opened in VS Code.", false);
+          } else {
+            showStatus(data.error || "Failed to create bundle issue.", true);
+          }
+        })
+        .catch((err) => {
+          showStatus("Error: " + err.message, true);
+        })
+        .finally(() => {
+          btnGenerate.disabled = false;
+          btnGenerate.textContent = "Generate Bundle Issue";
+        });
+    });
+    generateIssueItems.appendChild(btnGenerate);
+
+    types.forEach((type) => {
+      const items = [];
+      for (let i = 0; i < allData.length; i++) {
+        if (allData[i].Type === type && parseInt(allData[i].Issue, 10) === maxIssue) {
+          items.push({ item: allData[i], index: i });
+        }
+      }
+
+      const heading = document.createElement("h3");
+      heading.className = "latest-issue-heading";
+      heading.textContent = "Issue " + maxIssue + " " + typeLabelsPlural[type] + " (" + items.length + ")";
+      generateIssueItems.appendChild(heading);
+
+      if (items.length === 0) {
+        const p = document.createElement("p");
+        p.className = "muted";
+        p.style.fontSize = "0.85rem";
+        p.style.marginBottom = "1rem";
+        p.textContent = "No " + type + "s in this issue";
+        generateIssueItems.appendChild(p);
+      } else {
+        items.sort((a, b) => (b.item.Date || "").localeCompare(a.item.Date || ""));
+        items.forEach(({ item, index }) => {
+          if (type === "blog post") {
+            // Blog post: checkbox + card row
+            const row = document.createElement("div");
+            row.className = "generate-item-row";
+
+            const cb = document.createElement("input");
+            cb.type = "checkbox";
+            cb.className = "generate-highlight-cb";
+            cb.dataset.index = index;
+
+            // Build read-only card (no edit-form click handler)
+            const readonlyCard = document.createElement("div");
+            readonlyCard.className = "item-card";
+            let subtitle = "";
+            if (item.Author) subtitle = item.Author + " \u00B7 ";
+            if (item.formattedDate) subtitle += item.formattedDate;
+            else if (item.Date) subtitle += item.Date.slice(0, 10);
+            readonlyCard.innerHTML =
+              '<div class="item-card-title">' + escapeHtml(item.Title || "(no title)") + "</div>" +
+              (subtitle ? '<div class="item-card-subtitle">' + escapeHtml(subtitle) + "</div>" : "");
+            if (item.Link) {
+              const sourceLink = document.createElement("a");
+              sourceLink.href = item.Link;
+              sourceLink.target = "_blank";
+              sourceLink.className = "item-card-source";
+              sourceLink.textContent = "Source";
+              sourceLink.addEventListener("click", (e) => { e.stopPropagation(); });
+              readonlyCard.appendChild(sourceLink);
+            }
+
+            // Card click toggles checkbox
+            readonlyCard.addEventListener("click", () => {
+              cb.checked = !cb.checked;
+              readonlyCard.classList.toggle("selected", cb.checked);
+            });
+            // Checkbox click: stop propagation so card handler doesn't double-toggle
+            cb.addEventListener("click", (e) => { e.stopPropagation(); });
+            // Checkbox change syncs highlight
+            cb.addEventListener("change", () => {
+              readonlyCard.classList.toggle("selected", cb.checked);
+            });
+
+            row.appendChild(cb);
+            row.appendChild(readonlyCard);
+            generateIssueItems.appendChild(row);
+          } else {
+            // Non-blog-post: read-only card (no click handler)
+            const card = document.createElement("div");
+            card.className = "item-card";
+            let subtitle = "";
+            if (item.formattedDate) subtitle += item.formattedDate;
+            else if (item.Date) subtitle += item.Date.slice(0, 10);
+            card.innerHTML =
+              '<div class="item-card-title">' + escapeHtml(item.Title || "(no title)") + "</div>" +
+              (subtitle ? '<div class="item-card-subtitle">' + escapeHtml(subtitle) + "</div>" : "");
+            if (item.Link) {
+              const sourceLink = document.createElement("a");
+              sourceLink.href = item.Link;
+              sourceLink.target = "_blank";
+              sourceLink.className = "item-card-source";
+              sourceLink.textContent = "Source";
+              sourceLink.addEventListener("click", (e) => { e.stopPropagation(); });
+              card.appendChild(sourceLink);
+            }
+            generateIssueItems.appendChild(card);
+          }
+        });
+      }
+    });
+
+    generateIssueContainer.style.display = "";
   }
 
   function initFuseAllTypes() {
