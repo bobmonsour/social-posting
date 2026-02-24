@@ -234,6 +234,159 @@ def test_editor_delete_invalid_index(client, app, sample_bundledb):
     assert resp.status_code == 400
 
 
+# --- GET /editor/data (origin tags + showcase_only) ---
+
+def test_editor_data_origin_tags(client, app, sample_bundledb, sample_showcase):
+    _write_json(app.config["BUNDLEDB_PATH"], sample_bundledb)
+    _write_json(app.config["SHOWCASE_PATH"], sample_showcase)
+    resp = client.get("/editor/data")
+    data = resp.get_json()
+    bundledb = data["bundledb"]
+    # Blog post should be "bundledb" origin
+    blog = next(e for e in bundledb if e["Type"] == "blog post")
+    assert blog["_origin"] == "bundledb"
+    # Site in both files should be "both"
+    site = next(e for e in bundledb if e["Type"] == "site")
+    assert site["_origin"] == "both"
+
+
+def test_editor_data_showcase_only(client, app, sample_bundledb):
+    showcase = [
+        {"title": "Cool Eleventy Site", "link": "https://cool11ty.dev",
+         "description": "in both", "date": "2026-01-10"},
+        {"title": "Orphan Site", "link": "https://orphan.dev",
+         "description": "showcase only", "date": "2026-01-05",
+         "formattedDate": "Jan 5, 2026", "favicon": "/fav.png",
+         "screenshotpath": "/ss.jpg", "leaderboardLink": ""},
+    ]
+    _write_json(app.config["BUNDLEDB_PATH"], sample_bundledb)
+    _write_json(app.config["SHOWCASE_PATH"], showcase)
+    resp = client.get("/editor/data")
+    data = resp.get_json()
+    sc_only = data["showcase_only"]
+    assert len(sc_only) == 1
+    assert sc_only[0]["Title"] == "Orphan Site"
+    assert sc_only[0]["Link"] == "https://orphan.dev"
+    assert sc_only[0]["Type"] == "site"
+    assert sc_only[0]["_origin"] == "showcase"
+    assert sc_only[0]["_showcaseIndex"] == 1
+
+
+def test_editor_data_showcase_only_with_skip(client, app):
+    showcase = [
+        {"title": "Skipped Site", "link": "https://skip.dev", "Skip": True},
+    ]
+    _write_json(app.config["BUNDLEDB_PATH"], [])
+    _write_json(app.config["SHOWCASE_PATH"], showcase)
+    resp = client.get("/editor/data")
+    sc_only = resp.get_json()["showcase_only"]
+    assert sc_only[0]["Skip"] is True
+
+
+# --- POST /editor/save (showcase-only) ---
+
+def test_editor_save_showcase_only(client, app):
+    showcase = [
+        {"title": "Old Title", "link": "https://old.dev", "description": "old",
+         "date": "2026-01-01", "formattedDate": "Jan 1, 2026",
+         "favicon": "", "screenshotpath": "", "leaderboardLink": ""},
+    ]
+    _write_json(app.config["SHOWCASE_PATH"], showcase)
+    item = {
+        "Title": "New Title", "Link": "https://old.dev", "Date": "2026-01-01",
+        "formattedDate": "Jan 1, 2026", "description": "updated",
+        "favicon": "/fav.png", "screenshotpath": "/ss.jpg", "leaderboardLink": "",
+    }
+    resp = client.post("/editor/save", json={
+        "item": item, "showcase_only": True, "showcase_index": 0
+    })
+    assert resp.get_json()["success"]
+    saved = _read_json(app.config["SHOWCASE_PATH"])
+    assert saved[0]["title"] == "New Title"
+    assert saved[0]["description"] == "updated"
+    assert saved[0]["favicon"] == "/fav.png"
+
+
+def test_editor_save_showcase_only_skip(client, app):
+    showcase = [
+        {"title": "Site", "link": "https://site.dev", "description": ""},
+    ]
+    _write_json(app.config["SHOWCASE_PATH"], showcase)
+    item = {"Title": "Site", "Link": "https://site.dev", "Skip": True}
+    resp = client.post("/editor/save", json={
+        "item": item, "showcase_only": True, "showcase_index": 0
+    })
+    assert resp.get_json()["success"]
+    saved = _read_json(app.config["SHOWCASE_PATH"])
+    assert saved[0]["Skip"] is True
+
+
+def test_editor_save_showcase_only_remove_skip(client, app):
+    showcase = [
+        {"title": "Site", "link": "https://site.dev", "Skip": True},
+    ]
+    _write_json(app.config["SHOWCASE_PATH"], showcase)
+    item = {"Title": "Site", "Link": "https://site.dev"}
+    resp = client.post("/editor/save", json={
+        "item": item, "showcase_only": True, "showcase_index": 0
+    })
+    assert resp.get_json()["success"]
+    saved = _read_json(app.config["SHOWCASE_PATH"])
+    assert "Skip" not in saved[0]
+
+
+def test_editor_save_showcase_only_invalid_index(client, app):
+    _write_json(app.config["SHOWCASE_PATH"], [])
+    resp = client.post("/editor/save", json={
+        "item": {"Title": "X"}, "showcase_only": True, "showcase_index": 5
+    })
+    assert resp.status_code == 400
+
+
+def test_editor_save_both_entry_syncs_skip(client, app, sample_bundledb, sample_showcase):
+    _write_json(app.config["BUNDLEDB_PATH"], sample_bundledb)
+    _write_json(app.config["SHOWCASE_PATH"], sample_showcase)
+    edited = sample_bundledb[1].copy()
+    edited["Skip"] = True
+    edited["screenshotpath"] = "/screenshots/cool11ty-dev.jpg"
+    edited["leaderboardLink"] = "https://www.11ty.dev/speedlify/cool11ty-dev/"
+    resp = client.post("/editor/save", json={"item": edited, "index": 1})
+    assert resp.get_json()["success"]
+    # Skip should be in bundledb
+    bundledb = _read_json(app.config["BUNDLEDB_PATH"])
+    assert bundledb[1].get("Skip") is True
+    # Skip should also be in showcase-data
+    showcase = _read_json(app.config["SHOWCASE_PATH"])
+    assert showcase[0].get("Skip") is True
+
+
+# --- POST /editor/delete (showcase-only) ---
+
+def test_editor_delete_showcase_only(client, app):
+    showcase = [
+        {"title": "Keep", "link": "https://keep.dev"},
+        {"title": "Delete Me", "link": "https://delete.dev"},
+        {"title": "Also Keep", "link": "https://also.dev"},
+    ]
+    _write_json(app.config["SHOWCASE_PATH"], showcase)
+    resp = client.post("/editor/delete", json={
+        "showcase_only": True, "showcase_index": 1
+    })
+    assert resp.get_json()["success"]
+    saved = _read_json(app.config["SHOWCASE_PATH"])
+    assert len(saved) == 2
+    assert saved[0]["title"] == "Keep"
+    assert saved[1]["title"] == "Also Keep"
+
+
+def test_editor_delete_showcase_only_invalid_index(client, app):
+    _write_json(app.config["SHOWCASE_PATH"], [])
+    resp = client.post("/editor/delete", json={
+        "showcase_only": True, "showcase_index": 5
+    })
+    assert resp.status_code == 400
+
+
 # --- POST /editor/delete-test-entries ---
 
 def test_delete_test_entries(client, app):

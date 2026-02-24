@@ -758,28 +758,78 @@ def editor_data():
     with open(_get_path("BUNDLEDB_PATH"), "r") as f:
         data = json.load(f)
 
-    # For site entries, merge screenshotpath from showcase-data.json
-    try:
-        with open(_get_path("SHOWCASE_PATH"), "r") as f:
-            showcase_data = json.load(f)
-        showcase_by_link = {e["link"]: e for e in showcase_data if e.get("link")}
-        for item in data:
-            if item.get("Type") == "site" and item.get("Link"):
-                sc = showcase_by_link.get(item["Link"])
-                if sc:
-                    item["screenshotpath"] = sc.get("screenshotpath", "")
-                    item["leaderboardLink"] = sc.get("leaderboardLink", "")
-    except Exception:
-        pass
-
-    # Also return showcase data for duplicate link detection
+    # Load showcase data
     try:
         with open(_get_path("SHOWCASE_PATH"), "r") as f:
             showcase_list = json.load(f)
     except Exception:
         showcase_list = []
 
-    return jsonify({"bundledb": data, "showcase": showcase_list})
+    # Build normalized link set from bundledb for matching
+    def _normalize_link(url):
+        s = (url or "").strip().lower().rstrip("/")
+        if s and not s.startswith(("http://", "https://")):
+            s = "https://" + s
+        s = re.sub(r"^(https?://)www\.", r"\1", s)
+        return s
+
+    bundledb_links = set()
+    for item in data:
+        link = _normalize_link(item.get("Link", ""))
+        if link:
+            bundledb_links.add(link)
+
+    # Tag bundledb entries with _origin and merge showcase fields for sites
+    showcase_by_link = {_normalize_link(e.get("link", "")): e for e in showcase_list if e.get("link")}
+    for item in data:
+        if item.get("Type") == "site" and item.get("Link"):
+            sc = showcase_by_link.get(_normalize_link(item["Link"]))
+            if sc:
+                item["screenshotpath"] = sc.get("screenshotpath", "")
+                item["leaderboardLink"] = sc.get("leaderboardLink", "")
+                item["_origin"] = "both"
+            else:
+                item["_origin"] = "bundledb"
+        else:
+            item["_origin"] = "bundledb"
+
+    # Build showcase_only array: entries in showcase not in bundledb
+    showcase_only = []
+    for i, sc in enumerate(showcase_list):
+        sc_link = _normalize_link(sc.get("link", ""))
+        if sc_link and sc_link not in bundledb_links:
+            entry = {
+                "Title": sc.get("title", ""),
+                "Link": sc.get("link", ""),
+                "Date": sc.get("date", ""),
+                "formattedDate": sc.get("formattedDate", ""),
+                "description": sc.get("description", ""),
+                "favicon": sc.get("favicon", ""),
+                "screenshotpath": sc.get("screenshotpath", ""),
+                "leaderboardLink": sc.get("leaderboardLink", ""),
+                "Type": "site",
+                "_origin": "showcase",
+                "_showcaseIndex": i,
+            }
+            if sc.get("Skip"):
+                entry["Skip"] = True
+            showcase_only.append(entry)
+
+    # Load showcase review results for flagged/error badges
+    review_flags = {}
+    try:
+        review_path = os.path.join(_BASE_DIR, "showcase-review-results.json")
+        with open(review_path, "r") as f:
+            review_data = json.load(f)
+        for url, result in review_data.get("reviewed", {}).items():
+            if result.get("flagged"):
+                review_flags[url] = "flagged"
+            elif "error" in result:
+                review_flags[url] = "error"
+    except Exception:
+        pass
+
+    return jsonify({"bundledb": data, "showcase_only": showcase_only, "showcase": showcase_list, "review_flags": review_flags})
 
 
 @app.route("/editor/save", methods=["POST"])
@@ -791,12 +841,10 @@ def editor_save():
     item = payload.get("item")
     is_create = payload.get("create", False)
     backup_created = payload.get("backup_created", False)
+    showcase_only = payload.get("showcase_only", False)
 
     if item is None:
         return jsonify({"success": False, "error": "Missing item"}), 400
-
-    with open(_get_path("BUNDLEDB_PATH"), "r") as f:
-        data = json.load(f)
 
     # Create backup if this is the first save in the session
     if not backup_created:
@@ -804,6 +852,36 @@ def editor_save():
         _create_backup_with_pruning(_get_path("SHOWCASE_PATH"), _get_path("SHOWCASE_BACKUP_DIR"), "showcase-data")
 
     result = {"success": True, "backup_created": True, "propagated": 0}
+
+    # Showcase-only save: update showcase-data.json directly
+    if showcase_only:
+        sc_index = payload.get("showcase_index")
+        if sc_index is None:
+            return jsonify({"success": False, "error": "Missing showcase_index"}), 400
+        with open(_get_path("SHOWCASE_PATH"), "r") as f:
+            showcase_data = json.load(f)
+        if sc_index < 0 or sc_index >= len(showcase_data):
+            return jsonify({"success": False, "error": "Showcase index out of range"}), 400
+        # Convert PascalCase back to lowercase for showcase-data.json
+        sc_entry = showcase_data[sc_index]
+        sc_entry["title"] = item.get("Title", "")
+        sc_entry["link"] = item.get("Link", "")
+        sc_entry["date"] = item.get("Date", "")[:10] if item.get("Date") else ""
+        sc_entry["formattedDate"] = item.get("formattedDate", "")
+        sc_entry["description"] = item.get("description", "")
+        sc_entry["favicon"] = item.get("favicon", "")
+        sc_entry["screenshotpath"] = item.get("screenshotpath", "")
+        sc_entry["leaderboardLink"] = item.get("leaderboardLink", "")
+        if item.get("Skip"):
+            sc_entry["Skip"] = True
+        else:
+            sc_entry.pop("Skip", None)
+        with open(_get_path("SHOWCASE_PATH"), "w") as f:
+            json.dump(showcase_data, f, indent=2)
+        return jsonify(result)
+
+    with open(_get_path("BUNDLEDB_PATH"), "r") as f:
+        data = json.load(f)
 
     if is_create:
         # For site type: add to BWE list and showcase-data.json
@@ -867,6 +945,10 @@ def editor_save():
                             sc_entry["leaderboardLink"] = leaderboard_link
                             sc_entry["date"] = item.get("Date", "")[:10]
                             sc_entry["formattedDate"] = item.get("formattedDate", "")
+                            if item.get("Skip"):
+                                sc_entry["Skip"] = True
+                            else:
+                                sc_entry.pop("Skip", None)
                             break
                     with open(_get_path("SHOWCASE_PATH"), "w") as f:
                         json.dump(showcase_data, f, indent=2)
@@ -906,6 +988,26 @@ def editor_delete():
     payload = request.get_json()
     index = payload.get("index") if payload else None
     backup_created = payload.get("backup_created", False) if payload else False
+    showcase_only = payload.get("showcase_only", False) if payload else False
+
+    # Create backup if this is the first modification in the session
+    if not backup_created:
+        _create_backup_with_pruning(_get_path("BUNDLEDB_PATH"), _get_path("BUNDLEDB_BACKUP_DIR"), "bundledb")
+        _create_backup_with_pruning(_get_path("SHOWCASE_PATH"), _get_path("SHOWCASE_BACKUP_DIR"), "showcase-data")
+
+    # Showcase-only delete: remove from showcase-data.json only
+    if showcase_only:
+        sc_index = payload.get("showcase_index") if payload else None
+        if sc_index is None or not isinstance(sc_index, int):
+            return jsonify({"success": False, "error": "Missing or invalid showcase_index"}), 400
+        with open(_get_path("SHOWCASE_PATH"), "r") as f:
+            showcase_data = json.load(f)
+        if sc_index < 0 or sc_index >= len(showcase_data):
+            return jsonify({"success": False, "error": "Showcase index out of range"}), 400
+        del showcase_data[sc_index]
+        with open(_get_path("SHOWCASE_PATH"), "w") as f:
+            json.dump(showcase_data, f, indent=2)
+        return jsonify({"success": True, "backup_created": True})
 
     if index is None or not isinstance(index, int):
         return jsonify({"success": False, "error": "Missing or invalid index"}), 400
@@ -915,11 +1017,6 @@ def editor_delete():
 
     if index < 0 or index >= len(data):
         return jsonify({"success": False, "error": "Index out of range"}), 400
-
-    # Create backup if this is the first modification in the session
-    if not backup_created:
-        _create_backup_with_pruning(_get_path("BUNDLEDB_PATH"), _get_path("BUNDLEDB_BACKUP_DIR"), "bundledb")
-        _create_backup_with_pruning(_get_path("SHOWCASE_PATH"), _get_path("SHOWCASE_BACKUP_DIR"), "showcase-data")
 
     item = data[index]
 

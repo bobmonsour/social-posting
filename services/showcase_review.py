@@ -215,16 +215,19 @@ def generate_report(results_path=None, output_path=None):
 
     reviewed = data.get("reviewed", {})
     flagged_entries = []
-    error_count = 0
+    error_entries = []
     for url, result in reviewed.items():
         if result.get("flagged"):
             flagged_entries.append({"url": url, **result})
         if "error" in result:
-            error_count += 1
+            error_entries.append({"url": url, **result})
 
     # Sort by confidence: high -> medium -> low
     confidence_order = {"high": 0, "medium": 1, "low": 2}
     flagged_entries.sort(key=lambda e: confidence_order.get(e.get("confidence", "low"), 3))
+
+    # Sort errors by title
+    error_entries.sort(key=lambda e: e.get("title", "").casefold())
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
 
@@ -254,6 +257,15 @@ def generate_report(results_path=None, output_path=None):
             </details>
         </div>""")
 
+    # Build error rows
+    error_rows = []
+    for entry in error_entries:
+        error_rows.append(f"""
+        <div class="error-entry">
+            <h3><a href="{entry['url']}" target="_blank">{entry.get('title', entry['url'])}</a></h3>
+            <p class="error-msg">{entry['error']}</p>
+        </div>""")
+
     html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -276,6 +288,11 @@ def generate_report(results_path=None, output_path=None):
   details ul {{ margin: 0.5rem 0; padding-left: 1.5rem; }}
   details li {{ word-break: break-all; }}
   .none {{ color: #6c757d; font-style: italic; }}
+  .error-entry {{ border: 1px solid #ddd; border-radius: 8px; padding: 0.75rem 1rem; margin: 0.5rem 0; }}
+  .error-entry h3 {{ margin-top: 0; margin-bottom: 0.25rem; font-size: 1rem; }}
+  .error-entry h3 a {{ color: #0969da; text-decoration: none; }}
+  .error-entry h3 a:hover {{ text-decoration: underline; }}
+  .error-msg {{ color: #6c757d; font-size: 0.85em; margin: 0; word-break: break-all; }}
 </style>
 </head>
 <body>
@@ -284,9 +301,12 @@ def generate_report(results_path=None, output_path=None):
   <span><strong>Generated:</strong> {now}</span>
   <span><strong>Sites reviewed:</strong> {len(reviewed)}</span>
   <span><strong>Flagged:</strong> {len(flagged_entries)}</span>
-  <span><strong>Errors:</strong> {error_count}</span>
+  <span><strong>Errors:</strong> {len(error_entries)}</span>
 </div>
+<h2>Flagged Sites</h2>
 {"".join(rows) if rows else '<p class="none">No flagged sites found.</p>'}
+<h2>Errors ({len(error_entries)})</h2>
+{"".join(error_rows) if error_rows else '<p class="none">No errors.</p>'}
 </body>
 </html>"""
 
@@ -294,7 +314,7 @@ def generate_report(results_path=None, output_path=None):
         f.write(html)
 
     print(f"Report written to {o_path}")
-    print(f"  {len(reviewed)} sites reviewed, {len(flagged_entries)} flagged, {error_count} errors")
+    print(f"  {len(reviewed)} sites reviewed, {len(flagged_entries)} flagged, {len(error_entries)} errors")
 
 
 def main():

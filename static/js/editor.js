@@ -3,6 +3,7 @@
 
   let allData = [];
   let showcaseData = [];
+  let reviewFlags = {}; // normalized URL -> "flagged" | "error"
   let fuse = null;
   let currentType = null;
   let currentIndex = null; // index into allData (null = create mode)
@@ -78,16 +79,20 @@
     starter: [
       "Issue", "Type", "Title", "Link", "Demo",
       "description", "screenshotpath"
+    ],
+    showcase: [
+      "Title", "Link", "Date", "formattedDate",
+      "description", "favicon", "screenshotpath", "leaderboardLink"
     ]
   };
 
   const SOCIAL_LINK_FIELDS = ["mastodon", "bluesky", "youtube", "github", "linkedin"];
 
   const SEARCH_KEYS = {
-    "blog post": ["Title", "Author"],
-    site: ["Title"],
-    release: ["Title"],
-    starter: ["Title"]
+    "blog post": ["Title", "Author", "Link", "description"],
+    site: ["Title", "Link", "description"],
+    release: ["Title", "Link", "description"],
+    starter: ["Title", "Link", "description"]
   };
 
   // DOM refs
@@ -159,6 +164,10 @@
     .then((data) => {
       allData = data.bundledb;
       showcaseData = data.showcase || [];
+      reviewFlags = data.review_flags || {};
+      // Append showcase-only entries so they're searchable/editable
+      const showcaseOnly = data.showcase_only || [];
+      showcaseOnly.forEach((entry) => allData.push(entry));
       buildUniqueAuthors();
       buildUniqueCategories();
     })
@@ -509,6 +518,46 @@
       showRecentItems();
     } else if (currentMode === "edit-latest") {
       showLatestIssueItems();
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
+  // Escape key to reset editor to initial state (skip if a modal is open)
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    if (editFormContainer.style.display === "none") return;
+    // Don't intercept if a modal is visible
+    if (deleteConfirmModal.style.display !== "none") return;
+    if (dupLinkModal.style.display !== "none") return;
+    if (checkUrlModal.style.display !== "none") return;
+    if (deployModal.style.display !== "none") return;
+    if (testWarnModal.style.display !== "none") return;
+    if (testDeployModal.style.display !== "none") return;
+    if (contentReviewModal && contentReviewModal.style.display !== "none") return;
+    // Reset to initial editor state (same as mode change handler)
+    hideEditForm();
+    currentType = null;
+    typeRadios.forEach((r) => { r.checked = false; });
+    searchInput.value = "";
+    searchResults.style.display = "none";
+    recentItems.style.display = "none";
+    latestIssueItems.style.display = "none";
+    latestIssueSummary.style.display = "none";
+    generateIssueContainer.style.display = "none";
+    searchSection.style.display = "none";
+    testDataBanner.style.display = "none";
+    contentReviewBanner.style.display = "none";
+    // Re-apply current mode's default view
+    if (currentMode === "edit-latest") {
+      typeSelector.style.display = "none";
+      searchSection.style.display = "";
+      showLatestIssueItems();
+      initFuseAllTypes();
+    } else if (currentMode === "generate") {
+      typeSelector.style.display = "none";
+      showGenerateIssueItems();
+    } else {
+      typeSelector.style.display = "";
     }
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
@@ -1006,7 +1055,7 @@
   function initFuseAllTypes() {
     const items = allData.map((item, index) => ({ item, index }));
     fuse = new Fuse(items, {
-      keys: ["item.Title", "item.Author"],
+      keys: ["item.Title", "item.Author", "item.Link", "item.description"],
       threshold: 0.4,
       includeScore: true
     });
@@ -1026,15 +1075,48 @@
       '<div class="item-card-title">' + escapeHtml(item.Title || "(no title)") + "</div>" +
       (subtitle ? '<div class="item-card-subtitle">' + escapeHtml(subtitle) + "</div>" : "");
 
-    // Source link
-    if (item.Link) {
-      const sourceLink = document.createElement("a");
-      sourceLink.href = item.Link;
-      sourceLink.target = "_blank";
-      sourceLink.className = "item-card-source";
-      sourceLink.textContent = "Source";
-      sourceLink.addEventListener("click", (e) => { e.stopPropagation(); });
-      card.appendChild(sourceLink);
+    // Origin badges + Source link container
+    if (item._origin || item.Link) {
+      const metaRow = document.createElement("div");
+      metaRow.className = "item-card-meta";
+      if (item._origin === "both" || item._origin === "bundledb") {
+        const badge = document.createElement("span");
+        badge.className = "origin-badge origin-bundledb";
+        badge.textContent = "bundledb";
+        metaRow.appendChild(badge);
+      }
+      if (item._origin === "both" || item._origin === "showcase") {
+        const badge = document.createElement("span");
+        badge.className = "origin-badge origin-showcase";
+        badge.textContent = "showcase";
+        metaRow.appendChild(badge);
+      }
+      // Review flag badge (flagged content or access error)
+      if (item.Link) {
+        const normLink = item.Link.trim().toLowerCase().replace(/\/+$/, "");
+        const flag = reviewFlags[normLink];
+        if (flag === "flagged") {
+          const badge = document.createElement("span");
+          badge.className = "origin-badge review-flagged";
+          badge.textContent = "flagged";
+          metaRow.appendChild(badge);
+        } else if (flag === "error") {
+          const badge = document.createElement("span");
+          badge.className = "origin-badge review-error";
+          badge.textContent = "error";
+          metaRow.appendChild(badge);
+        }
+      }
+      if (item.Link) {
+        const sourceLink = document.createElement("a");
+        sourceLink.href = item.Link;
+        sourceLink.target = "_blank";
+        sourceLink.className = "item-card-source";
+        sourceLink.textContent = "Source";
+        sourceLink.addEventListener("click", (e) => { e.stopPropagation(); });
+        metaRow.appendChild(sourceLink);
+      }
+      card.appendChild(metaRow);
     }
 
     card.addEventListener("click", () => {
@@ -1125,7 +1207,9 @@
     if (index !== null) {
       originalItem = JSON.parse(JSON.stringify(item));
     }
-    const fields = FIELD_ORDER[currentType] || Object.keys(item);
+    // Showcase-only entries use the "showcase" field order
+    const fieldOrderKey = (item._origin === "showcase") ? "showcase" : currentType;
+    const fields = FIELD_ORDER[fieldOrderKey] || Object.keys(item);
     const isCreate = index === null;
 
     editFormTitle.textContent = (isCreate ? "Create: " : "Edit: ") +
@@ -1649,7 +1733,10 @@
 
   function collectFormValues() {
     const item = {};
-    const fields = FIELD_ORDER[currentType] || [];
+    // Use showcase field order for showcase-only entries
+    const editingItem = currentIndex !== null ? allData[currentIndex] : null;
+    const fieldOrderKey = (editingItem && editingItem._origin === "showcase") ? "showcase" : currentType;
+    const fields = FIELD_ORDER[fieldOrderKey] || [];
 
     fields.forEach((field) => {
       if (field === "socialLinks") {
@@ -1747,19 +1834,38 @@
   }
 
   function deleteEntry(index) {
+    const entry = allData[index];
+    const isShowcaseOnly = entry && entry._origin === "showcase";
+    const body = isShowcaseOnly
+      ? { showcase_only: true, showcase_index: entry._showcaseIndex, backup_created: backupCreated }
+      : { index: index, backup_created: backupCreated };
+
     fetch("/editor/delete", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ index: index, backup_created: backupCreated })
+      body: JSON.stringify(body)
     })
       .then((r) => r.json())
       .then((data) => {
         if (data.success) {
           backupCreated = data.backup_created;
+          // Decrement _showcaseIndex for remaining showcase-only entries with higher indices
+          if (isShowcaseOnly) {
+            const deletedScIdx = entry._showcaseIndex;
+            for (let i = 0; i < allData.length; i++) {
+              if (allData[i]._origin === "showcase" && allData[i]._showcaseIndex > deletedScIdx) {
+                allData[i]._showcaseIndex--;
+              }
+            }
+          }
           allData.splice(index, 1);
           hideEditForm();
           initFuse();
-          showStatus("Entry deleted.", false);
+          const origin = entry ? entry._origin : "bundledb";
+          const files = origin === "showcase" ? "showcase-data.json"
+            : origin === "both" ? "bundledb.json and showcase-data.json"
+            : "bundledb.json";
+          showStatus("Entry deleted from " + files + ".", false);
           if (currentMode === "edit") {
             if (searchInput.value.trim()) {
               runSearch(searchInput.value.trim());
@@ -1773,6 +1879,7 @@
               showLatestIssueItems();
             }
           }
+          window.scrollTo({ top: 0, behavior: "smooth" });
         } else {
           showStatus("Delete failed: " + (data.error || "Unknown error"), true);
         }
@@ -1858,12 +1965,18 @@
     btnSaveDeploy.disabled = true;
     btnSave.textContent = "Saving...";
 
+    const editingEntry = currentIndex !== null ? allData[currentIndex] : null;
+    const isShowcaseOnly = editingEntry && editingEntry._origin === "showcase";
+
     const payload = {
       item: item,
       backup_created: backupCreated
     };
 
-    if (isCreate) {
+    if (isShowcaseOnly) {
+      payload.showcase_only = true;
+      payload.showcase_index = editingEntry._showcaseIndex;
+    } else if (isCreate) {
       payload.create = true;
     } else {
       payload.index = currentIndex;

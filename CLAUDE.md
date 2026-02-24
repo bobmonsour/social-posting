@@ -123,7 +123,18 @@ When a post fails on any platform:
 
 ## Bundledb Editor
 
-The `/editor` page (linked from the main page as "Bundle Editor") provides search and edit for `bundledb.json` items, plus a create mode for adding new entries and a generate mode for creating the bundle issue markdown file. The editor page has a "Back to Social Posting" button, "Bundle Entry Editor" header, and right-justified "Check URL", "Run Latest", "Deploy", and "DB Mgmt" buttons in the header bar. Mode (Create Entry/Edit Entry/Edit Latest Issue/Generate Bundle Issue) is selected via radio buttons at the top, then type is selected (except in Edit Latest Issue and Generate Bundle Issue modes which hide the type selector). Switching between modes clears the type selection. In edit mode, fuzzy search (Fuse.js) over type-specific keys finds items. In create mode, selecting a type opens a blank form with auto-populated fields and cursor in the Title field. Fields are ordered per `FIELD_ORDER` in `editor.js` with manual-entry fields first, followed by fetch buttons, then auto-generated fields. Saves go to `POST /editor/save`, which creates backups of both `bundledb.json` and `showcase-data.json` on first save per session.
+The `/editor` page (linked from the main page as "Bundle Editor") provides search and edit for entries across both `bundledb.json` and `showcase-data.json`, plus a create mode for adding new entries and a generate mode for creating the bundle issue markdown file. The editor page has a "Back to Social Posting" button, "Bundle Entry Editor" header, and right-justified "Check URL", "Run Latest", "Deploy", and "DB Mgmt" buttons in the header bar. Mode (Create Entry/Edit Entry/Edit Latest Issue/Generate Bundle Issue) is selected via radio buttons at the top, then type is selected (except in Edit Latest Issue and Generate Bundle Issue modes which hide the type selector). Switching between modes clears the type selection. In edit mode, fuzzy search (Fuse.js) over type-specific keys finds items. In create mode, selecting a type opens a blank form with auto-populated fields and cursor in the Title field. Fields are ordered per `FIELD_ORDER` in `editor.js` with manual-entry fields first, followed by fetch buttons, then auto-generated fields. Saves go to `POST /editor/save`, which creates backups of both `bundledb.json` and `showcase-data.json` on first save per session.
+
+**Unified data with origin tracking**:
+- `/editor/data` tags every entry with `_origin`: `"bundledb"` (bundledb only), `"both"` (site in both files), or `"showcase"` (showcase-data only).
+- Showcase-only entries (in showcase-data.json but not bundledb.json) are normalized to PascalCase (`title`→`Title`, `link`→`Link`, etc.), given `Type: "site"`, and returned in a separate `showcase_only` array with `_showcaseIndex` pointing to their position in showcase-data.json.
+- The frontend appends `showcase_only` entries to `allData`, making them searchable and editable alongside bundledb entries. Bundledb indices stay stable.
+- Item cards show origin badges ("bundledb", "showcase", or both) to indicate where each entry lives.
+- Search keys include `description` for all types, and cross-type search includes `Link` and `description`.
+- Showcase-only entries use a dedicated `FIELD_ORDER["showcase"]`: Title, Link, Date, formattedDate, description, favicon, screenshotpath, leaderboardLink.
+- Saving a showcase-only entry sends `{showcase_only: true, showcase_index: N}` — the backend converts PascalCase back to lowercase and updates showcase-data.json directly.
+- Deleting a showcase-only entry removes it from showcase-data.json only. Remaining showcase-only entries in allData have their `_showcaseIndex` decremented.
+- Saving a "both" entry syncs the `Skip` field to both bundledb.json and showcase-data.json.
 
 **Create/Edit modes** (`editor.js` + `editor.html`):
 - Mode radio buttons (Create Entry/Edit Entry/Edit Latest Issue/Generate Bundle Issue) at top of editor. Create Entry is the default.
@@ -160,6 +171,7 @@ The `/editor` page (linked from the main page as "Bundle Editor") provides searc
 - **Site**: Issue, Type, Title, Link, Date, formattedDate, [Fetch/Refresh Description, Favicon, Screenshot & Leaderboard button], description, favicon, screenshotpath, leaderboardLink.
 - **Release**: Issue, Type, Title, Link, Date, formattedDate, [Fetch/Refresh Description button], description.
 - **Starter**: Issue, Type, Title, Link, Demo, [Fetch/Refresh Description & Screenshot button], description, screenshotpath.
+- **Showcase** (showcase-only entries): Title, Link, Date, formattedDate, description, favicon, screenshotpath, leaderboardLink.
 
 **Auto-slugify** (create mode, `editor.js`):
 - Title and Author fields auto-compute `slugifiedTitle` and `slugifiedAuthor` on blur.

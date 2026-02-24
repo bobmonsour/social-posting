@@ -976,12 +976,46 @@ button.btn-nav {
     margin-top: 0.15rem;
 }
 
+.item-card-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: 0.2rem;
+}
+
+.origin-badge {
+    font-size: 0.65rem;
+    padding: 0.05rem 0.35rem;
+    border-radius: 3px;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+.origin-bundledb {
+    background: color-mix(in srgb, var(--pico-primary) 15%, transparent);
+    color: var(--pico-primary);
+}
+
+.origin-showcase {
+    background: color-mix(in srgb, var(--pico-ins-color) 15%, transparent);
+    color: var(--pico-ins-color);
+}
+
+.review-flagged {
+    background: color-mix(in srgb, var(--pico-del-color) 15%, transparent);
+    color: var(--pico-del-color);
+}
+
+.review-error {
+    background: color-mix(in srgb, #fd7e14 15%, transparent);
+    color: #fd7e14;
+}
+
 .item-card-source {
     font-size: 0.75rem;
     color: var(--pico-muted-color);
     text-decoration: underline;
-    float: right;
-    margin-top: -1.2rem;
+    margin-left: auto;
 }
 
 .item-card-source:hover {
