@@ -5,6 +5,7 @@ Run as: python -m services.showcase_review [--test | --full | --site=URL | --rep
 
 import argparse
 import json
+import random
 import sys
 import time
 from datetime import date, datetime
@@ -81,7 +82,7 @@ def _handle_rate_limit(attempt):
     return False
 
 
-def run_review(delay=2.0, results_path=None, ignore_allowlist=False, limit=None):
+def run_review(delay=2.0, results_path=None, ignore_allowlist=False, limit=None, randomize=False):
     """Main loop: iterate sites, call review_content(), save progress.
 
     Args:
@@ -89,6 +90,7 @@ def run_review(delay=2.0, results_path=None, ignore_allowlist=False, limit=None)
         results_path: Path to progress/results JSON file.
         ignore_allowlist: If True, review all sites regardless of allowlist.
         limit: Max sites to review. None = unlimited, 10 = test mode.
+        randomize: If True, randomly select sites to review (used with test mode).
     """
     r_path = Path(results_path) if results_path else DEFAULT_RESULTS_PATH
 
@@ -96,17 +98,21 @@ def run_review(delay=2.0, results_path=None, ignore_allowlist=False, limit=None)
     allowlist = {} if ignore_allowlist else load_allowlist()
     progress = load_progress(r_path)
     reviewed_count = 0
-    total_to_review = 0
 
-    # Count sites to review
+    # Build list of eligible sites
+    eligible = []
     for site in sites:
         url = _normalize_url(site["link"])
         if url in allowlist and not ignore_allowlist:
             continue
         if url in progress["reviewed"]:
             continue
-        total_to_review += 1
+        eligible.append(site)
 
+    if randomize:
+        random.shuffle(eligible)
+
+    total_to_review = len(eligible)
     if limit is not None:
         total_to_review = min(total_to_review, limit)
 
@@ -118,13 +124,9 @@ def run_review(delay=2.0, results_path=None, ignore_allowlist=False, limit=None)
         print("Nothing to review.")
         return progress
 
-    for site in sites:
+    for site in eligible:
         url = _normalize_url(site["link"])
 
-        if not ignore_allowlist and url in allowlist:
-            continue
-        if url in progress["reviewed"]:
-            continue
         if limit is not None and reviewed_count >= limit:
             break
 
@@ -298,7 +300,7 @@ def generate_report(results_path=None, output_path=None):
 def main():
     parser = argparse.ArgumentParser(description="Showcase Content Review Scanner")
     mode_group = parser.add_mutually_exclusive_group()
-    mode_group.add_argument("--test", action="store_true", help="Review first 10 non-allowlisted sites")
+    mode_group.add_argument("--test", action="store_true", help="Review 10 randomly selected non-allowlisted sites")
     mode_group.add_argument("--full", action="store_true", help="Review all remaining sites")
     mode_group.add_argument("--site", type=str, help="Review a single URL (ad-hoc, not saved)")
     mode_group.add_argument("--report-only", action="store_true", help="Generate report from existing results")
@@ -320,8 +322,10 @@ def main():
 
     if args.test:
         limit = 10
+        randomize = True
     elif args.full:
         limit = None
+        randomize = False
     else:
         # Interactive prompt
         sites = load_sites()
@@ -341,15 +345,17 @@ def main():
         print(f"{to_review} sites to review")
         print()
         print("Run mode:")
-        print("  [T] Test run - review first 10 sites only")
+        print("  [T] Test run - review 10 randomly selected sites")
         print("  [F] Full run - review all remaining sites")
         print()
 
         choice = input("Choose [T/F]: ").strip().upper()
         if choice == "T":
             limit = 10
+            randomize = True
         elif choice == "F":
             limit = None
+            randomize = False
         else:
             print("Invalid choice. Exiting.")
             sys.exit(1)
@@ -359,6 +365,7 @@ def main():
         results_path=args.results,
         ignore_allowlist=args.ignore_allowlist,
         limit=limit,
+        randomize=randomize,
     )
     generate_report(args.results, args.output)
 

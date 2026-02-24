@@ -217,9 +217,30 @@ class TestRunReview:
 
         with patch("services.showcase_review.load_allowlist", return_value={}), \
              patch("services.showcase_review.save_allowlist"):
-            progress = run_review(delay=0, results_path=results_file, limit=10)
+            progress = run_review(delay=0, results_path=results_file, limit=10, randomize=True)
 
         assert len(progress["reviewed"]) == 10
+
+    @patch("services.showcase_review.load_sites")
+    @patch("services.showcase_review.review_content")
+    @patch("services.showcase_review.time")
+    def test_randomize_selects_different_sites(self, mock_time, mock_review, mock_load, results_file):
+        """With randomize=True, the selected sites should not always be the first N."""
+        sites = [{"title": f"Site {i}", "link": f"https://site-{i}.com"} for i in range(50)]
+        mock_load.return_value = sites
+        mock_review.side_effect = self._mock_review
+
+        # Run multiple times and collect which sites were reviewed
+        all_selected = []
+        for _ in range(5):
+            r_path = results_file.parent / f"results-{len(all_selected)}.json"
+            with patch("services.showcase_review.load_allowlist", return_value={}), \
+                 patch("services.showcase_review.save_allowlist"):
+                progress = run_review(delay=0, results_path=r_path, limit=5, randomize=True)
+            all_selected.append(set(progress["reviewed"].keys()))
+
+        # At least two runs should have different site selections
+        assert len(set(frozenset(s) for s in all_selected)) > 1
 
     @patch("services.showcase_review.load_sites")
     @patch("services.showcase_review.review_content")
