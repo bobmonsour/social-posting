@@ -44,6 +44,7 @@ social-posting/
 │   ├── insights.py         # Generate insightsdata.json + CSV files (ported from generate-insights.js)
 │   ├── issue_records.py    # Generate issuerecords.json from bundledb (ported from genissuerecords.js)
 │   ├── latest_data.py      # Generate latest-issue filtered data files (ported from generate-latest-data.js)
+│   ├── blog_post.py        # Create bundle issue markdown from template with optional highlights
 │   └── verify_site.py      # Post-build verification: checks _site HTML for entry presence and valid assets
 ├── data/
 │   └── insights-exclusions.json  # Exclusions for insights missing-data checks
@@ -57,7 +58,7 @@ social-posting/
 ├── posts/
 │   ├── history.json        # All posts, drafts, and failed posts (newest first)
 │   └── draft_images/       # Persisted images keyed by draft/failed UUID
-├── tests/                  # pytest suite (145 tests, uses responses + pytest-flask)
+├── tests/                  # pytest suite (148 tests, uses responses + pytest-flask)
 │   ├── conftest.py         # Shared fixtures (app, client, sample data, temp paths)
 │   └── test_*.py           # Service, route, and data integrity tests
 ├── pytest.ini              # pytest config (testpaths, warnings)
@@ -121,11 +122,11 @@ When a post fails on any platform:
 
 ## Bundledb Editor
 
-The `/editor` page (linked from the main page as "Bundle Editor") provides search and edit for `bundledb.json` items, plus a create mode for adding new entries. The editor page has a "Back to Social Posting" button, "Bundle Entry Editor" header, and right-justified "Check URL", "Run Latest", "Deploy", and "DB Mgmt" buttons in the header bar. Mode (Create/Edit/Edit latest issue) is selected via radio buttons at the top, then type is selected. Switching between modes clears the type selection. In edit mode, fuzzy search (Fuse.js) over type-specific keys finds items. In create mode, selecting a type opens a blank form with auto-populated fields and cursor in the Title field. Fields are ordered per `FIELD_ORDER` in `editor.js` with manual-entry fields first, followed by fetch buttons, then auto-generated fields. Saves go to `POST /editor/save`, which creates backups of both `bundledb.json` and `showcase-data.json` on first save per session.
+The `/editor` page (linked from the main page as "Bundle Editor") provides search and edit for `bundledb.json` items, plus a create mode for adding new entries and a generate mode for creating the bundle issue markdown file. The editor page has a "Back to Social Posting" button, "Bundle Entry Editor" header, and right-justified "Check URL", "Run Latest", "Deploy", and "DB Mgmt" buttons in the header bar. Mode (Create Entry/Edit Entry/Edit Latest Issue/Generate Bundle Issue) is selected via radio buttons at the top, then type is selected (except in Edit Latest Issue and Generate Bundle Issue modes which hide the type selector). Switching between modes clears the type selection. In edit mode, fuzzy search (Fuse.js) over type-specific keys finds items. In create mode, selecting a type opens a blank form with auto-populated fields and cursor in the Title field. Fields are ordered per `FIELD_ORDER` in `editor.js` with manual-entry fields first, followed by fetch buttons, then auto-generated fields. Saves go to `POST /editor/save`, which creates backups of both `bundledb.json` and `showcase-data.json` on first save per session.
 
 **Create/Edit modes** (`editor.js` + `editor.html`):
-- Mode radio buttons (Create/Edit/Edit latest issue) at top of editor. Create mode is the default.
-- Switching between Edit, Create, and Edit latest issue clears the type selection and hides all form elements.
+- Mode radio buttons (Create Entry/Edit Entry/Edit Latest Issue/Generate Bundle Issue) at top of editor. Create Entry is the default.
+- Switching between modes clears the type selection and hides all form elements.
 - Create mode hides search/recent items and shows a blank form for the selected type.
 - New items are auto-populated with `Date` (ISO), `formattedDate` (human-readable), `Issue` (current max from data), and `Type`. The `Type` field is hidden in create mode since it's already selected via the radio button.
 - On create, cursor is auto-focused on the Title field.
@@ -138,6 +139,16 @@ The `/editor` page (linked from the main page as "Bundle Editor") provides searc
 - Clicking an item card sets `currentType` to the item's type before opening the edit form, so field order and save logic work correctly.
 - Cancel clears search, restores the grouped view, and scrolls to top.
 - After save/delete, the grouped view and Fuse index are refreshed.
+
+**Generate Bundle Issue mode** (`editor.js` + `editor.html` + `services/blog_post.py`):
+- Fourth mode radio button. Hides the type selector and shows the same issue summary line as Edit Latest Issue.
+- Displays a large "Generate Bundle Issue" button at the top, followed by all entries for the latest issue grouped by type (Blog Posts, Sites, Releases, Starters).
+- Blog post entries have checkboxes on the left for selecting highlights. Clicking the card toggles the checkbox. Selected cards get a highlighted border and background tint (`.item-card.selected`).
+- Non-blog-post entries are read-only cards (no checkboxes, no click handlers).
+- Clicking "Generate Bundle Issue" POSTs to `/create-blog-post` with `{ issue_number, date, highlights }`. The `highlights` array contains `{ author, author_site, title, link }` for each checked blog post.
+- `create_blog_post()` in `services/blog_post.py` accepts an optional `highlights` parameter. When provided, replaces the `**.**` placeholder lines in the `## Highlights` section of the template with formatted entries: `**.** [Author](author_site) - [Title](link)`.
+- The generated file opens in VS Code automatically.
+- CSS styles: `.generate-item-row` (flex row for checkbox + card), `.generate-highlight-cb` (checkbox sizing), `.btn-generate-issue` (large button).
 
 **Item card Source links** (`editor.js` + `style.css`):
 - All item cards (edit, edit-latest, search results) show a "Source" link (float right, underlined, muted color) that opens the entry's URL in a new tab.
@@ -337,7 +348,7 @@ The compose page sidebar shows "Sites to Post" from `built-with-eleventy.md`. Ea
 ## Testing
 
 - **Visual testing via browser**: When making UI or layout changes, use the Claude in Chrome MCP tools to verify the result in the running app at `http://127.0.0.1:5555`. Navigate to the relevant page, interact as needed, and take screenshots to confirm the change looks correct before committing.
-- **pytest suite**: 145 tests in `tests/` covering services, routes, and data integrity. Run with `pytest` (or `pytest -v` for verbose). Uses `responses` to mock HTTP calls and `pytest-flask` for the test client. Tests override file paths via `app.config` so they use temp directories — no production data is touched.
+- **pytest suite**: 148 tests in `tests/` covering services, routes, and data integrity. Run with `pytest` (or `pytest -v` for verbose). Uses `responses` to mock HTTP calls and `pytest-flask` for the test client. Tests override file paths via `app.config` so they use temp directories — no production data is touched.
 - **Test structure**:
   - `conftest.py` — Flask test client, temp file fixtures, sample data
   - `test_description.py` — description extraction + sanitization
