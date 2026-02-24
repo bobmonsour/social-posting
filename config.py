@@ -12,6 +12,8 @@ BLUESKY_APP_PASSWORD = os.getenv("BLUESKY_APP_PASSWORD", "")
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "")
 DISCORD_GUILD_ID = os.getenv("DISCORD_GUILD_ID", "")
 
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
 MAX_IMAGES = 4
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}

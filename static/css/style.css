@@ -1203,6 +1203,59 @@ button.btn-nav {
     }
 }
 
+/* Content review banner */
+.content-review-banner {
+    border: 2px solid #e65100;
+    border-radius: var(--pico-border-radius);
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+.content-review-banner.flagged {
+    background: #fbe9e7;
+    border-color: #d32f2f;
+}
+.content-review-banner.flagged .content-review-message {
+    color: #c62828;
+    font-weight: 600;
+    flex: 1;
+}
+.content-review-banner.clear {
+    background: #e8f5e9;
+    border-color: #388e3c;
+}
+.content-review-banner.clear .content-review-message {
+    color: #2e7d32;
+    flex: 1;
+}
+.content-review-banner .btn-dismiss {
+    background: transparent;
+    border: 1px solid currentColor;
+    border-radius: var(--pico-border-radius);
+    padding: 0.25rem 0.75rem;
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: inherit;
+}
+
+@media (prefers-color-scheme: dark) {
+    .content-review-banner.flagged {
+        background: #3e2723;
+        border-color: #ef5350;
+    }
+    .content-review-banner.flagged .content-review-message {
+        color: #ef9a9a;
+    }
+    .content-review-banner.clear {
+        background: #1b5e20;
+        border-color: #66bb6a;
+    }
+    .content-review-banner.clear .content-review-message {
+        color: #a5d6a7;
+    }
+}
+
 .delete-confirm-buttons {
     display: flex;
     gap: 0.75rem;

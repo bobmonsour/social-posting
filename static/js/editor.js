@@ -141,6 +141,7 @@
   const checkUrlResult = document.getElementById("check-url-result");
   const checkUrlModalClose = document.getElementById("check-url-modal-close");
   const testDataBanner = document.getElementById("test-data-banner");
+  const contentReviewBanner = document.getElementById("content-review-banner");
   const testWarnModal = document.getElementById("test-warn-modal");
   const testWarnProceed = document.getElementById("test-warn-proceed");
   const testWarnCancel = document.getElementById("test-warn-cancel");
@@ -1884,6 +1885,50 @@
       });
   }
 
+  // --- Content review helpers ---
+
+  const contentReviewModal = document.getElementById("content-review-modal");
+  const contentReviewModalBody = document.getElementById("content-review-modal-body");
+  const contentReviewModalClose = document.getElementById("content-review-modal-close");
+
+  contentReviewModalClose.addEventListener("click", () => { contentReviewModal.style.display = "none"; });
+  contentReviewModal.addEventListener("click", (e) => { if (e.target === contentReviewModal) contentReviewModal.style.display = "none"; });
+
+  let lastContentReviewResult = null;
+
+  function clearContentReviewEntry() {
+    contentReviewBanner.style.display = "none";
+    contentReviewBanner.className = "content-review-banner";
+    lastFetchedUrl = "";
+    // Same behavior as the Cancel button, plus clear type selection
+    btnCancel.click();
+    typeRadios.forEach((r) => { r.checked = false; });
+    currentType = null;
+  }
+
+  function showContentReviewModal() {
+    const cr = lastContentReviewResult;
+    if (!cr) return;
+    const pages = cr.pages || [];
+    const blogCount = cr.blog_titles_checked || 0;
+    let html = "<strong>Pages fetched and reviewed:</strong><ul>";
+    for (const u of pages) {
+      let display;
+      try { display = new URL(u).pathname || "/"; } catch { display = u; }
+      html += `<li><a href="${u}" target="_blank">${display}</a></li>`;
+    }
+    html += "</ul>";
+    if (blogCount > 0) html += `<p>${blogCount} blog post title${blogCount === 1 ? " was" : "s were"} also checked.</p>`;
+    if (cr.flagged) {
+      html += `<p><strong>Result:</strong> Flagged (${cr.confidence || "unknown"} confidence)</p>`;
+      html += `<p>${cr.summary || ""}</p>`;
+    } else {
+      html += `<p><strong>Result:</strong> No concerns found.</p>`;
+    }
+    contentReviewModalBody.innerHTML = html;
+    contentReviewModal.style.display = "flex";
+  }
+
   // --- Site create: fetch favicon, screenshot & description ---
 
   let lastFetchedUrl = "";
@@ -1905,6 +1950,9 @@
       btn.disabled = true;
       btn.textContent = "Fetching...";
     }
+
+    contentReviewBanner.style.display = "none";
+    contentReviewBanner.className = "content-review-banner";
 
     showStatus("Fetching site data...", false);
 
@@ -1933,7 +1981,13 @@
       body: JSON.stringify({ url: url })
     }).then((r) => r.json()).catch(() => ({ success: false }));
 
-    Promise.all([faviconPromise, screenshotPromise, descriptionPromise, leaderboardPromise]).then(([favResult, ssResult, descResult, lbResult]) => {
+    const contentReviewPromise = fetch("/editor/content-review", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: url })
+    }).then((r) => r.json()).catch(() => ({ success: false }));
+
+    Promise.all([faviconPromise, screenshotPromise, descriptionPromise, leaderboardPromise, contentReviewPromise]).then(([favResult, ssResult, descResult, lbResult, crResult]) => {
       if (favResult.success && favResult.favicon) {
         const favEl = document.getElementById("field-favicon");
         if (favEl) favEl.value = favResult.favicon;
@@ -1977,6 +2031,41 @@
       if (lbResult.success && lbResult.leaderboard_link) msgs.push("Leaderboard found");
       else if (lbResult.success) msgs.push("No leaderboard entry");
       else msgs.push("Leaderboard check failed");
+
+      // Content review result
+      lastContentReviewResult = crResult.success ? crResult : null;
+      if (crResult.success && crResult.flagged) {
+        const conf = crResult.confidence || "unknown";
+        const summary = crResult.summary || "No details provided";
+        const n = crResult.pages_checked || "?";
+        contentReviewBanner.className = "content-review-banner flagged";
+        contentReviewBanner.innerHTML =
+          `<span class="content-review-message">Content Review Warning (${conf} confidence): ${summary}</span>` +
+          `<button class="btn-dismiss btn-cr-details">Details (${n} pages)</button>` +
+          `<button class="btn-dismiss btn-cr-clear">Cancel Entry</button>` +
+          `<button class="btn-dismiss" onclick="this.parentElement.style.display='none'">Dismiss</button>`;
+        contentReviewBanner.querySelector(".btn-cr-details").addEventListener("click", showContentReviewModal);
+        contentReviewBanner.querySelector(".btn-cr-clear").addEventListener("click", clearContentReviewEntry);
+        contentReviewBanner.style.display = "flex";
+        contentReviewBanner.scrollIntoView({ behavior: "smooth", block: "start" });
+        msgs.push("Content review: flagged");
+      } else if (crResult.success && !crResult.error) {
+        const n = crResult.pages_checked || "?";
+        contentReviewBanner.className = "content-review-banner clear";
+        contentReviewBanner.innerHTML =
+          `<span class="content-review-message">Content review: no concerns</span>` +
+          `<button class="btn-dismiss btn-cr-details">Details (${n} pages)</button>` +
+          `<button class="btn-dismiss btn-cr-clear">Cancel Entry</button>` +
+          `<button class="btn-dismiss" onclick="this.parentElement.style.display='none'">Dismiss</button>`;
+        contentReviewBanner.querySelector(".btn-cr-details").addEventListener("click", showContentReviewModal);
+        contentReviewBanner.querySelector(".btn-cr-clear").addEventListener("click", clearContentReviewEntry);
+        contentReviewBanner.style.display = "flex";
+        contentReviewBanner.scrollIntoView({ behavior: "smooth", block: "start" });
+        msgs.push("Content review: clear");
+      } else {
+        msgs.push("Content review: unavailable");
+      }
+
       showStatus(msgs.join(". ") + ".", !favResult.success && !ssResult.success && !descResult.success);
     }).finally(() => {
       if (btn) {

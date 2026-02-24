@@ -1021,6 +1021,18 @@ def editor_description():
     return jsonify({"success": False, "error": "Could not extract description"})
 
 
+@app.route("/editor/content-review", methods=["POST"])
+def editor_content_review():
+    data = request.get_json()
+    url = data.get("url", "").strip() if data else ""
+    if not url:
+        return jsonify({"success": False, "error": "No URL provided"}), 400
+
+    from services.content_review import review_content
+    result = review_content(url)
+    return jsonify({"success": True, **result})
+
+
 @app.route("/editor/leaderboard", methods=["POST"])
 def editor_leaderboard():
     data = request.get_json()
