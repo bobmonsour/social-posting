@@ -27,3 +27,10 @@ Also, the search label and the search box should be removed and replaced with a 
 3. While there are 7 lines for entries in the template, more should be added if more than 7 items are selected for inclusion in the bundle issue.
 4. The existing function can be extended for this use as there will not be another way to generate a blog post through the interface.
 5. Yes, open the resulting file in VS Code.
+
+## An update to this feature
+
+I want to update the Generate Bundle Issue feature to do the following:
+
+- default to checking all of the boxes for all of the blog posts present in the latest issue
+- fetch the contents of each blog post and write one sentence that captures the essential point being made in the post; or the essential concept being explained or taught; add this sentence to the end of each line in the Highlights section of the generated issue, following the format of the existing lines in that section. This will require fetching the content of each blog post and using an AI model to generate the sentence for each post.
