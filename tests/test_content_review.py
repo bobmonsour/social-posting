@@ -283,7 +283,9 @@ class TestContentReviewEndpoint:
 
     def test_endpoint_calls_review_content(self, client):
         mock_result = {"flagged": False, "pages_checked": 2}
-        with patch("services.content_review.review_content", return_value=mock_result):
+        with patch("services.content_review.review_content", return_value=mock_result), \
+             patch("services.showcase_review.load_allowlist", return_value={}), \
+             patch("services.showcase_review.save_allowlist"):
             resp = client.post("/editor/content-review",
                               json={"url": "https://example.com"},
                               content_type="application/json")
@@ -307,3 +309,28 @@ class TestContentReviewEndpoint:
             assert data["success"] is True
             assert data["flagged"] is True
             assert data["confidence"] == "medium"
+
+    def test_endpoint_adds_cleared_site_to_allowlist(self, client):
+        mock_result = {"flagged": False, "pages_checked": 2}
+        saved = {}
+        def capture_save(al):
+            saved.update(al)
+        with patch("services.content_review.review_content", return_value=mock_result), \
+             patch("services.showcase_review.load_allowlist", return_value={}), \
+             patch("services.showcase_review.save_allowlist", side_effect=capture_save):
+            resp = client.post("/editor/content-review",
+                              json={"url": "https://newsite.dev", "title": "New Site"},
+                              content_type="application/json")
+            data = resp.get_json()
+            assert data["success"] is True
+            assert "https://newsite.dev" in saved
+            assert saved["https://newsite.dev"]["title"] == "New Site"
+
+    def test_endpoint_does_not_add_flagged_site_to_allowlist(self, client):
+        mock_result = {"flagged": True, "confidence": "high", "summary": "Bad", "pages_checked": 1}
+        with patch("services.content_review.review_content", return_value=mock_result):
+            resp = client.post("/editor/content-review",
+                              json={"url": "https://badsite.dev"},
+                              content_type="application/json")
+            data = resp.get_json()
+            assert data["flagged"] is True

@@ -2035,10 +2035,11 @@
       body: JSON.stringify({ url: url })
     }).then((r) => r.json()).catch(() => ({ success: false }));
 
+    const titleEl = document.getElementById("field-Title");
     const contentReviewPromise = fetch("/editor/content-review", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: url })
+      body: JSON.stringify({ url: url, title: titleEl ? titleEl.value.trim() : "" })
     }).then((r) => r.json()).catch(() => ({ success: false }));
 
     Promise.all([faviconPromise, screenshotPromise, descriptionPromise, leaderboardPromise, contentReviewPromise]).then(([favResult, ssResult, descResult, lbResult, crResult]) => {

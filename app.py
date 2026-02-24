@@ -4,7 +4,7 @@ import re
 import shutil
 import subprocess
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from flask import Flask, redirect, render_template, request, jsonify, url_for, send_from_directory
 
@@ -1046,11 +1046,20 @@ def editor_description():
 def editor_content_review():
     data = request.get_json()
     url = data.get("url", "").strip() if data else ""
+    title = data.get("title", "").strip() if data else ""
     if not url:
         return jsonify({"success": False, "error": "No URL provided"}), 400
 
     from services.content_review import review_content
     result = review_content(url)
+
+    # Add to allowlist if cleared (not flagged, no error)
+    if not result.get("flagged") and not result.get("error"):
+        from services.showcase_review import load_allowlist, save_allowlist
+        allowlist = load_allowlist()
+        allowlist[url] = {"cleared": date.today().isoformat(), "title": title or url}
+        save_allowlist(allowlist)
+
     return jsonify({"success": True, **result})
 
 
