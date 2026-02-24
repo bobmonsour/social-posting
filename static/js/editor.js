@@ -148,6 +148,10 @@
   const testDeployModal = document.getElementById("test-deploy-modal");
   const testDeployDelete = document.getElementById("test-deploy-delete");
   const testDeployClose = document.getElementById("test-deploy-close");
+  const overwriteModal = document.getElementById("overwrite-modal");
+  const overwriteModalMessage = document.getElementById("overwrite-modal-message");
+  const overwriteModalCancel = document.getElementById("overwrite-modal-cancel");
+  const overwriteModalOk = document.getElementById("overwrite-modal-ok");
 
   // Load data on page load
   fetch("/editor/data")
@@ -810,7 +814,7 @@
     btnGenerate.type = "button";
     btnGenerate.className = "btn-action btn-generate-issue";
     btnGenerate.textContent = "Generate Bundle Issue";
-    btnGenerate.addEventListener("click", () => {
+    btnGenerate.addEventListener("click", async () => {
       const checked = generateIssueItems.querySelectorAll(".generate-highlight-cb:checked");
       const highlights = Array.from(checked).map((cb) => {
         const idx = parseInt(cb.dataset.index, 10);
@@ -825,31 +829,80 @@
 
       const today = new Date().toISOString().split("T")[0];
       btnGenerate.disabled = true;
-      btnGenerate.textContent = "Generating...";
-      fetch("/create-blog-post", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          issue_number: maxIssue,
-          date: today,
-          highlights: highlights.length > 0 ? highlights : null,
-        }),
-      })
-        .then((r) => r.json())
-        .then((data) => {
-          if (data.success) {
-            showStatus("Bundle issue created and opened in VS Code.", false);
-          } else {
-            showStatus(data.error || "Failed to create bundle issue.", true);
-          }
-        })
-        .catch((err) => {
-          showStatus("Error: " + err.message, true);
-        })
-        .finally(() => {
-          btnGenerate.disabled = false;
-          btnGenerate.textContent = "Generate Bundle Issue";
+      let overwrite = false;
+
+      try {
+        // Phase 1: Check if file already exists
+        btnGenerate.textContent = "Checking...";
+        const checkResp = await fetch("/create-blog-post/check", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ issue_number: maxIssue }),
         });
+        const checkData = await checkResp.json();
+        if (checkData.exists) {
+          overwriteModalMessage.textContent =
+            "The blog post file for issue " + maxIssue + " already exists. Overwrite it?";
+          overwriteModal.style.display = "";
+          overwriteModalCancel.focus();
+          const confirmed = await new Promise((resolve) => {
+            function cleanup() {
+              overwriteModalOk.removeEventListener("click", onOverwrite);
+              overwriteModalCancel.removeEventListener("click", onCancel);
+              overwriteModal.style.display = "none";
+            }
+            function onOverwrite() { cleanup(); resolve(true); }
+            function onCancel() { cleanup(); resolve(false); }
+            overwriteModalOk.addEventListener("click", onOverwrite);
+            overwriteModalCancel.addEventListener("click", onCancel);
+          });
+          if (!confirmed) return;
+          overwrite = true;
+        }
+
+        // Phase 2: Fetch summaries for checked blog posts
+        if (highlights.length > 0) {
+          btnGenerate.textContent = "Summarizing " + highlights.length + " posts...";
+          const posts = highlights.map((h) => ({ link: h.link, title: h.title }));
+          const sumResp = await fetch("/create-blog-post/summarize", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ posts }),
+          });
+          const sumData = await sumResp.json();
+          if (sumData.summaries) {
+            highlights.forEach((h) => {
+              if (sumData.summaries[h.link]) {
+                h.summary = sumData.summaries[h.link];
+              }
+            });
+          }
+        }
+
+        // Phase 3: Create the blog post
+        btnGenerate.textContent = "Creating issue...";
+        const resp = await fetch("/create-blog-post", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            issue_number: maxIssue,
+            date: today,
+            highlights: highlights.length > 0 ? highlights : null,
+            overwrite: overwrite,
+          }),
+        });
+        const data = await resp.json();
+        if (data.success) {
+          showStatus("Bundle issue created and opened in VS Code.", false);
+        } else {
+          showStatus(data.error || "Failed to create bundle issue.", true);
+        }
+      } catch (err) {
+        showStatus("Error: " + err.message, true);
+      } finally {
+        btnGenerate.disabled = false;
+        btnGenerate.textContent = "Generate Bundle Issue";
+      }
     });
     generateIssueItems.appendChild(btnGenerate);
 
@@ -885,10 +938,11 @@
             cb.type = "checkbox";
             cb.className = "generate-highlight-cb";
             cb.dataset.index = index;
+            cb.checked = true;
 
             // Build read-only card (no edit-form click handler)
             const readonlyCard = document.createElement("div");
-            readonlyCard.className = "item-card";
+            readonlyCard.className = "item-card selected";
             let subtitle = "";
             if (item.Author) subtitle = item.Author + " \u00B7 ";
             if (item.formattedDate) subtitle += item.formattedDate;

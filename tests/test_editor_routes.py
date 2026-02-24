@@ -268,3 +268,59 @@ def test_delete_test_entries_none_found(client, app, sample_bundledb):
     resp = client.post("/editor/delete-test-entries", json={})
     result = resp.get_json()
     assert result["deleted"] == 0
+
+
+# --- POST /create-blog-post/check ---
+
+def test_check_blog_post_exists_true(client):
+    from unittest.mock import patch
+    with patch("app.blog_post_exists", return_value=True):
+        resp = client.post("/create-blog-post/check", json={"issue_number": 100})
+    assert resp.get_json()["exists"] is True
+
+
+def test_check_blog_post_exists_false(client):
+    from unittest.mock import patch
+    with patch("app.blog_post_exists", return_value=False):
+        resp = client.post("/create-blog-post/check", json={"issue_number": 100})
+    assert resp.get_json()["exists"] is False
+
+
+def test_check_blog_post_no_issue(client):
+    resp = client.post("/create-blog-post/check", json={})
+    assert resp.get_json()["exists"] is False
+
+
+# --- POST /create-blog-post/summarize ---
+
+def test_summarize_returns_summaries(client):
+    from unittest.mock import patch
+    with patch("app.summarize_blog_post", return_value="A great summary."):
+        resp = client.post("/create-blog-post/summarize", json={
+            "posts": [
+                {"link": "https://example.com/post1", "title": "Post 1"},
+                {"link": "https://example.com/post2", "title": "Post 2"},
+            ]
+        })
+    data = resp.get_json()
+    assert "summaries" in data
+    assert data["summaries"]["https://example.com/post1"] == "A great summary."
+    assert data["summaries"]["https://example.com/post2"] == "A great summary."
+
+
+def test_summarize_empty_posts(client):
+    resp = client.post("/create-blog-post/summarize", json={"posts": []})
+    data = resp.get_json()
+    assert data["summaries"] == {}
+
+
+def test_summarize_skips_empty_links(client):
+    from unittest.mock import patch
+    with patch("app.summarize_blog_post", return_value="Summary.") as mock_sum:
+        resp = client.post("/create-blog-post/summarize", json={
+            "posts": [{"link": "", "title": "No Link"}, {"link": "https://a.com", "title": "A"}]
+        })
+    data = resp.get_json()
+    assert "" not in data["summaries"]
+    assert data["summaries"]["https://a.com"] == "Summary."
+    mock_sum.assert_called_once_with("https://a.com")

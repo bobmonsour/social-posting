@@ -20,7 +20,7 @@ from services.issue_counts import get_latest_issue_counts
 from services.insights import generate_insights
 from services.issue_records import generate_issue_records
 from services.latest_data import generate_latest_data
-from services.blog_post import create_blog_post
+from services.blog_post import create_blog_post, summarize_blog_post, blog_post_exists
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16MB upload limit
@@ -642,6 +642,15 @@ def social_links():
     return jsonify(links)
 
 
+@app.route("/create-blog-post/check", methods=["POST"])
+def check_blog_post_exists_route():
+    data = request.get_json()
+    issue_number = data.get("issue_number") if data else None
+    if not issue_number:
+        return jsonify({"exists": False})
+    return jsonify({"exists": blog_post_exists(issue_number)})
+
+
 @app.route("/create-blog-post", methods=["POST"])
 def create_blog_post_route():
     data = request.get_json()
@@ -650,9 +659,21 @@ def create_blog_post_route():
     if not issue_number:
         return jsonify({"success": False, "error": "No issue number"}), 400
     highlights = data.get("highlights") if data else None
-    result = create_blog_post(issue_number, publication_date, highlights=highlights)
+    overwrite = data.get("overwrite", False) if data else False
+    result = create_blog_post(issue_number, publication_date, highlights=highlights, overwrite=overwrite)
     return jsonify(result)
 
+
+@app.route("/create-blog-post/summarize", methods=["POST"])
+def summarize_blog_posts_route():
+    data = request.get_json()
+    posts = data.get("posts", []) if data else []
+    summaries = {}
+    for post in posts:
+        link = post.get("link", "")
+        if link:
+            summaries[link] = summarize_blog_post(link)
+    return jsonify({"summaries": summaries})
 
 
 @app.route("/bwe-to-post/delete", methods=["POST"])
