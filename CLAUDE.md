@@ -45,6 +45,7 @@ social-posting/
 │   ├── issue_records.py    # Generate issuerecords.json from bundledb (ported from genissuerecords.js)
 │   ├── latest_data.py      # Generate latest-issue filtered data files (ported from generate-latest-data.js)
 │   ├── blog_post.py        # Create bundle issue markdown from template with optional highlights
+│   ├── content_review.py   # AI content review for site entries (Claude Haiku via anthropic SDK)
 │   └── verify_site.py      # Post-build verification: checks _site HTML for entry presence and valid assets
 ├── data/
 │   └── insights-exclusions.json  # Exclusions for insights missing-data checks
@@ -58,7 +59,7 @@ social-posting/
 ├── posts/
 │   ├── history.json        # All posts, drafts, and failed posts (newest first)
 │   └── draft_images/       # Persisted images keyed by draft/failed UUID
-├── tests/                  # pytest suite (148 tests, uses responses + pytest-flask)
+├── tests/                  # pytest suite (165 tests, uses responses + pytest-flask)
 │   ├── conftest.py         # Shared fixtures (app, client, sample data, temp paths)
 │   └── test_*.py           # Service, route, and data integrity tests
 ├── pytest.ini              # pytest config (testpaths, warnings)
@@ -256,6 +257,19 @@ The `/editor` page (linked from the main page as "Bundle Editor") provides searc
 - `leaderboardLink` is stored only in `showcase-data.json` (same pattern as `screenshotpath`).
 - Fetched in parallel with favicon, screenshot, and description in the site fetch flow.
 
+**Content review** (`services/content_review.py`):
+- When adding a site, AI reviews the site's content for hateful, discriminatory, or extremist opinions using Claude Haiku via the `anthropic` SDK.
+- Runs in parallel with favicon, screenshot, description, and leaderboard fetches as a 5th promise in `fetchSiteData()`.
+- `fetch_page_text(url)` fetches a page and extracts visible body text (strips nav, header, footer, aside, script, style elements), truncated to ~3000 chars.
+- `find_subpages(url, soup)` identifies /about, /author, /beliefs pages and up to 10 blog post title links from the homepage.
+- `review_content(url)` fetches homepage + subpages, concatenates text, sends to Claude Haiku. Returns `{"flagged": bool, "confidence": str, "summary": str, "pages_checked": int, "pages": [...]}`.
+- On any error (no API key, network failure, unparseable response), returns `{"flagged": false, "error": "..."}` — the fetch flow continues normally.
+- `POST /editor/content-review` endpoint — same pattern as `/editor/description`.
+- Results shown in a banner (`#content-review-banner`) between the test-data-banner and search section: green for clear, red for flagged.
+- Banner has three buttons: **Details** (opens modal showing pages fetched and review result), **Cancel Entry** (clears banner, form, and type selection), **Dismiss** (hides banner only).
+- Banner auto-scrolls to top of page when displayed.
+- Requires `ANTHROPIC_API_KEY` env var in `.env`.
+
 **Site save side-effects**:
 - On create, site saves call `add_bwe_to_post(title, link)` to append the site to the BWE "TO BE POSTED" list, and prepend an entry to `showcase-data.json` with title, description, link, date, formattedDate, favicon, screenshotpath, and leaderboardLink.
 - On edit, site saves sync the matching `showcase-data.json` entry (matched by link) with current title, description, favicon, screenshotpath, leaderboardLink, date, and formattedDate.
@@ -348,7 +362,7 @@ The compose page sidebar shows "Sites to Post" from `built-with-eleventy.md`. Ea
 ## Testing
 
 - **Visual testing via browser**: When making UI or layout changes, use the Claude in Chrome MCP tools to verify the result in the running app at `http://127.0.0.1:5555`. Navigate to the relevant page, interact as needed, and take screenshots to confirm the change looks correct before committing.
-- **pytest suite**: 148 tests in `tests/` covering services, routes, and data integrity. Run with `pytest` (or `pytest -v` for verbose). Uses `responses` to mock HTTP calls and `pytest-flask` for the test client. Tests override file paths via `app.config` so they use temp directories — no production data is touched.
+- **pytest suite**: 165 tests in `tests/` covering services, routes, and data integrity. Run with `pytest` (or `pytest -v` for verbose). Uses `responses` to mock HTTP calls and `pytest-flask` for the test client. Tests override file paths via `app.config` so they use temp directories — no production data is touched.
 - **Test structure**:
   - `conftest.py` — Flask test client, temp file fixtures, sample data
   - `test_description.py` — description extraction + sanitization
@@ -362,6 +376,7 @@ The compose page sidebar shows "Sites to Post" from `built-with-eleventy.md`. Ea
   - `test_insights.py` — Insights data + CSV generation, compared against JS output; slugify matching
   - `test_issue_records.py` — Issue records generation, compared against JS output
   - `test_latest_data.py` — Latest-issue data filtering, compared against JS output
+  - `test_content_review.py` — AI content review service + endpoint (mocked Anthropic API)
   - `test_data_integrity.py` — Round-trip, schema, showcase sync, backups
 - **Path overrides for testing**: `app.py` uses `_get_path(key)` to read file paths from `app.config` with fallback to module-level constants. Tests set `app.config["BUNDLEDB_PATH"]`, `app.config["SHOWCASE_PATH"]`, etc. to temp directories. For `bwe_list.BWE_FILE`, tests use `monkeypatch.setattr`.
 - **Adding tests**: When adding new services or routes, add corresponding test files. Mock external HTTP with `@responses.activate`. Use the `client` fixture for route tests and `app` fixture to access temp paths.
@@ -387,10 +402,11 @@ Environment variables in `.env` (see `.env.example`):
 - `MASTODON_INSTANCE_URL` / `MASTODON_ACCESS_TOKEN` (token needs `write:statuses` and `write:media` scopes)
 - `BLUESKY_IDENTIFIER` / `BLUESKY_APP_PASSWORD`
 - `DISCORD_WEBHOOK_URL` / `DISCORD_GUILD_ID` (webhook posts to a channel; guild ID used to construct message jump URLs)
+- `ANTHROPIC_API_KEY` (for AI content review of site entries; optional — review is skipped if not set)
 
 ## Tech Stack
 
-- **Backend**: Flask, Mastodon.py, atproto, requests, Pillow, BeautifulSoup4, python-dotenv
+- **Backend**: Flask, Mastodon.py, atproto, anthropic, requests, Pillow, BeautifulSoup4, python-dotenv
 - **Frontend**: Jinja2, Pico CSS (CDN), vanilla JS, Fuse.js (CDN, editor search)
 - **Tooling**: Node.js + Puppeteer (screenshot capture)
 - **Testing**: pytest, responses (HTTP mocking), pytest-flask
