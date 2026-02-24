@@ -24,7 +24,9 @@ IMPORTANT distinctions:
 - Technical blog posts discussing web development, programming, or technology are NOT concerning, even if they use terms like "master/slave" in technical contexts.
 - Personal opinions on non-hateful political topics (taxes, regulation, etc.) are NOT concerning.
 - Religious content is NOT concerning unless it advocates hatred or discrimination.
-- Satire or humor is NOT concerning unless it promotes genuine hatred.
+- Satire, humor, strong language, or profanity is NOT concerning unless it targets protected groups or promotes genuine hatred.
+- Negative opinions about AI, AI-generated content, or AI tools are NOT concerning, even if expressed strongly or harshly.
+- Dead sites, parked domains, placeholder pages, and domain-for-sale pages are NOT concerning.
 
 Respond with ONLY a JSON object (no markdown, no code fences):
 - If concerning content is found: {"flagged": true, "confidence": "low" or "medium" or "high", "summary": "brief explanation of the specific concerns"}
@@ -54,10 +56,12 @@ def fetch_page_text(url):
 
 
 def find_subpages(url, soup):
-    """Find /about, /author, /beliefs pages and blog post links from homepage HTML.
+    """Find subpages and blog post links from homepage HTML.
 
-    Returns (subpage_urls, blog_titles) where blog_titles is a list of
-    (title, url) tuples for blog post links found on the page.
+    Returns (subpage_urls, blog_posts_to_fetch, blog_titles_only) where:
+    - subpage_urls: list of URLs for /about, /author, /beliefs, /values, /now pages
+    - blog_posts_to_fetch: first 3 blog post (title, url) tuples (full text will be fetched)
+    - blog_titles_only: remaining blog post (title, url) tuples (titles only)
     """
     parsed = urlparse(url)
     base = f"{parsed.scheme}://{parsed.netloc}"
@@ -65,7 +69,10 @@ def find_subpages(url, soup):
     blog_links = []
 
     # Look for known subpages
-    known_paths = ["/about", "/about/", "/author", "/author/", "/beliefs", "/beliefs/"]
+    known_paths = [
+        "/about", "/about/", "/author", "/author/", "/beliefs", "/beliefs/",
+        "/values", "/values/", "/now", "/now/",
+    ]
     for link in soup.find_all("a", href=True):
         href = link["href"]
         full_url = urljoin(url, href)
@@ -107,7 +114,9 @@ def find_subpages(url, soup):
             seen.add(link_url)
             unique_blog_links.append((title, link_url))
 
-    return subpage_urls[:3], unique_blog_links[:10]
+    blog_posts_to_fetch = unique_blog_links[:3]
+    blog_titles_only = unique_blog_links[3:10]
+    return subpage_urls[:5], blog_posts_to_fetch, blog_titles_only
 
 
 def review_content(url):
@@ -136,8 +145,10 @@ def review_content(url):
         pages_fetched = [url]
         all_text = [f"=== HOMEPAGE ({url}) ===\n{homepage_text}"]
 
-        # Find subpages and blog post titles
-        subpage_urls, blog_links = find_subpages(url, homepage_soup)
+        # Find subpages and blog post links
+        subpage_urls, blog_posts_to_fetch, blog_titles_only = find_subpages(
+            url, homepage_soup
+        )
 
         # Fetch subpages
         for sub_url in subpage_urls:
@@ -146,15 +157,22 @@ def review_content(url):
                 pages_fetched.append(sub_url)
                 all_text.append(f"=== SUBPAGE ({sub_url}) ===\n{text}")
 
-        # Include blog post titles for the model to assess
-        if blog_links:
-            titles_text = "\n".join(f"- {title}" for title, _ in blog_links)
+        # Fetch full text for up to 3 blog posts
+        for title, post_url in blog_posts_to_fetch:
+            text = fetch_page_text(post_url)
+            if text:
+                pages_fetched.append(post_url)
+                all_text.append(f"=== BLOG POST ({post_url}) ===\n{text}")
+
+        # Include remaining blog post titles for the model to assess
+        if blog_titles_only:
+            titles_text = "\n".join(f"- {title}" for title, _ in blog_titles_only)
             all_text.append(f"=== BLOG POST TITLES ===\n{titles_text}")
 
         # Send to Claude Haiku
         combined = "\n\n".join(all_text)
-        # Truncate combined text to ~12000 chars to stay within reasonable token limits
-        combined = combined[:12000]
+        # Truncate combined text to ~18000 chars to stay within reasonable token limits
+        combined = combined[:18000]
 
         client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
         message = client.messages.create(
@@ -180,8 +198,8 @@ def review_content(url):
         result = json.loads(response_text)
         result["pages_checked"] = len(pages_fetched)
         result["pages"] = pages_fetched
-        if blog_links:
-            result["blog_titles_checked"] = len(blog_links)
+        if blog_titles_only:
+            result["blog_titles_checked"] = len(blog_titles_only)
         return result
 
     except json.JSONDecodeError:

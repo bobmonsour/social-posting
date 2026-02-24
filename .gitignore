@@ -13,3 +13,7 @@ uploads/
 posts/draft_images/
 posts/history.json
 built-with-eleventy.md
+
+showcase-review-results.json
+showcase-review-report.html
+data/showcase-cleared-sites.json

@@ -65,42 +65,82 @@ class TestFetchPageText:
 class TestFindSubpages:
     def test_finds_about_page(self):
         soup = BeautifulSoup(SAMPLE_HTML, "html.parser")
-        subpages, blog_links = find_subpages("https://example.com", soup)
+        subpages, blog_posts_to_fetch, blog_titles_only = find_subpages("https://example.com", soup)
         assert any("/about" in url for url in subpages)
+
+    def test_finds_values_and_now_pages(self):
+        html = """<html><body>
+        <a href="/about">About</a>
+        <a href="/values">Values</a>
+        <a href="/now">Now</a>
+        </body></html>"""
+        soup = BeautifulSoup(html, "html.parser")
+        subpages, _, _ = find_subpages("https://example.com", soup)
+        assert any("/values" in url for url in subpages)
+        assert any("/now" in url for url in subpages)
+
+    def test_returns_three_elements(self):
+        soup = BeautifulSoup(SAMPLE_HTML, "html.parser")
+        result = find_subpages("https://example.com", soup)
+        assert len(result) == 3
 
     def test_finds_blog_post_links(self):
         soup = BeautifulSoup(SAMPLE_HTML, "html.parser")
-        subpages, blog_links = find_subpages("https://example.com", soup)
-        urls = [url for _, url in blog_links]
+        subpages, blog_posts_to_fetch, blog_titles_only = find_subpages("https://example.com", soup)
+        all_blogs = blog_posts_to_fetch + blog_titles_only
+        urls = [url for _, url in all_blogs]
         assert any("my-first-post" in url for url in urls)
         assert any("second-post" in url for url in urls)
 
-    def test_limits_blog_links_to_10(self):
+    def test_blog_posts_to_fetch_limited_to_3(self):
         html = "<html><body><main>"
         for i in range(20):
             html += f'<a href="/posts/post-{i}">Blog Post Number {i} Title</a>'
         html += "</main></body></html>"
         soup = BeautifulSoup(html, "html.parser")
-        _, blog_links = find_subpages("https://example.com", soup)
-        assert len(blog_links) <= 10
+        _, blog_posts_to_fetch, blog_titles_only = find_subpages("https://example.com", soup)
+        assert len(blog_posts_to_fetch) <= 3
+        assert len(blog_titles_only) <= 7
+        assert len(blog_posts_to_fetch) + len(blog_titles_only) <= 10
 
-    def test_limits_subpages_to_3(self):
+    def test_limits_subpages_to_5(self):
         html = """<html><body>
         <a href="/about">About</a>
         <a href="/author">Author</a>
         <a href="/beliefs">Beliefs</a>
         <a href="/values">Values</a>
+        <a href="/now">Now</a>
+        <a href="/extra">Extra</a>
         </body></html>"""
         soup = BeautifulSoup(html, "html.parser")
-        subpages, _ = find_subpages("https://example.com", soup)
-        assert len(subpages) <= 3
+        subpages, _, _ = find_subpages("https://example.com", soup)
+        assert len(subpages) == 5
+        assert not any("/extra" in url for url in subpages)
 
     def test_ignores_external_links(self):
         html = '<html><body><a href="https://other.com/about">External About</a></body></html>'
         soup = BeautifulSoup(html, "html.parser")
-        subpages, blog_links = find_subpages("https://example.com", soup)
+        subpages, blog_posts, blog_titles = find_subpages("https://example.com", soup)
         assert len(subpages) == 0
-        assert len(blog_links) == 0
+        assert len(blog_posts) == 0
+        assert len(blog_titles) == 0
+
+
+class TestReviewPrompt:
+    def test_prompt_includes_anti_ai_carveout(self):
+        from services.content_review import REVIEW_PROMPT
+        assert "AI" in REVIEW_PROMPT
+        assert "AI-generated content" in REVIEW_PROMPT
+
+    def test_prompt_includes_dead_sites_carveout(self):
+        from services.content_review import REVIEW_PROMPT
+        assert "Dead sites" in REVIEW_PROMPT
+        assert "parked domains" in REVIEW_PROMPT
+
+    def test_prompt_includes_strong_language_carveout(self):
+        from services.content_review import REVIEW_PROMPT
+        assert "strong language" in REVIEW_PROMPT.lower() or "Strong language" in REVIEW_PROMPT
+        assert "profanity" in REVIEW_PROMPT
 
 
 class TestReviewContent:
@@ -157,6 +197,44 @@ class TestReviewContent:
             assert result["flagged"] is True
             assert result["confidence"] == "high"
             assert "discriminatory" in result["summary"]
+
+    @responses.activate
+    def test_fetches_blog_post_text(self):
+        """Blog posts in blog_posts_to_fetch should have their text fetched."""
+        html_with_posts = """<html><body><main>
+        <p>Homepage content here for testing.</p>
+        <a href="/posts/post-one">First Blog Post Title Here</a>
+        <a href="/posts/post-two">Second Blog Post Title Here</a>
+        <a href="/posts/post-three">Third Blog Post Title Here</a>
+        <a href="/posts/post-four">Fourth Blog Post Title Here</a>
+        </main></body></html>"""
+        responses.add(responses.GET, "https://example.com", body=html_with_posts)
+        responses.add(responses.GET, "https://example.com/posts/post-one",
+                       body="<html><body>Blog post one content</body></html>")
+        responses.add(responses.GET, "https://example.com/posts/post-two",
+                       body="<html><body>Blog post two content</body></html>")
+        responses.add(responses.GET, "https://example.com/posts/post-three",
+                       body="<html><body>Blog post three content</body></html>")
+
+        mock_message = MagicMock()
+        mock_message.content = [MagicMock(text='{"flagged": false}')]
+        mock_client = MagicMock()
+        mock_client.messages.create.return_value = mock_message
+
+        with patch("services.content_review.config") as mock_config, \
+             patch("services.content_review.anthropic") as mock_anthropic:
+            mock_config.ANTHROPIC_API_KEY = "test-key"
+            mock_anthropic.Anthropic.return_value = mock_client
+
+            result = review_content("https://example.com")
+            # Should have fetched homepage + 3 blog posts
+            assert result["pages_checked"] >= 4
+            # The API call should contain blog post sections
+            call_args = mock_client.messages.create.call_args
+            content = call_args[1]["messages"][0]["content"]
+            assert "=== BLOG POST (" in content
+            # Fourth post should be in titles only
+            assert "=== BLOG POST TITLES ===" in content
 
     @responses.activate
     def test_handles_api_error_gracefully(self):
