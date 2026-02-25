@@ -46,9 +46,13 @@ social-posting/
 │   ├── latest_data.py      # Generate latest-issue filtered data files (ported from generate-latest-data.js)
 │   ├── blog_post.py        # Create bundle issue markdown from template with optional highlights
 │   ├── content_review.py   # AI content review for site entries (Claude Haiku via anthropic SDK)
+│   ├── showcase_review.py  # Bulk content review scanner for all showcase-data.json sites (CLI tool)
 │   └── verify_site.py      # Post-build verification: checks _site HTML for entry presence and valid assets
 ├── data/
-│   └── insights-exclusions.json  # Exclusions for insights missing-data checks
+│   ├── insights-exclusions.json  # Exclusions for insights missing-data checks
+│   └── showcase-cleared-sites.json  # Allowlist of sites that passed content review
+├── showcase-review-results.json  # Full review results keyed by URL (flagged/error/clean)
+├── showcase-review-report.html   # Generated HTML report of flagged and error sites
 ├── scripts/
 │   └── capture-screenshot.js  # Puppeteer full-page screenshot capture
 ├── templates/              # Jinja2 (base.html, compose.html, result.html, editor.html, db_mgmt.html, 11ty-bundle-xx.md)
@@ -282,6 +286,16 @@ The `/editor` page (linked from the main page as "Bundle Editor") provides searc
 - Banner auto-scrolls to top of page when displayed.
 - Requires `ANTHROPIC_API_KEY` env var in `.env`.
 
+**Showcase review** (`services/showcase_review.py`):
+- Bulk scanner that reviews all sites in `showcase-data.json` using `review_content()` from `content_review.py`.
+- Run as CLI: `python -m services.showcase_review [--test | --full | --site=URL | --report-only]`.
+- `--test`: reviews 10 randomly selected non-allowlisted sites. `--full`: reviews all remaining. `--site=URL`: single ad-hoc review (not saved). `--report-only`: regenerates HTML report from existing results.
+- **Results file** (`showcase-review-results.json`): dict with `reviewed` mapping normalized URLs to `{title, flagged, confidence, summary, pages_checked, pages}` or `{title, error}`.
+- **Allowlist** (`data/showcase-cleared-sites.json`): dict of normalized URLs → `{cleared, title}`. Sites that pass review (not flagged, no error) are automatically added. Allowlisted sites are skipped on subsequent runs.
+- **HTML report** (`showcase-review-report.html`): generated via `generate_report()`, shows flagged sites (sorted by confidence) and error sites (sorted by title).
+- Review flags are surfaced in the editor: `/editor/data` includes a `review_flags` dict (URL → `"flagged"` or `"error"`), and item cards show red "flagged" or orange "error" badges.
+- Rate limit handling: retries up to 3 times with exponential backoff (30s, 60s, 120s).
+
 **Site save side-effects**:
 - On create, site saves call `add_bwe_to_post(title, link)` to append the site to the BWE "TO BE POSTED" list, and prepend an entry to `showcase-data.json` with title, description, link, date, formattedDate, favicon, screenshotpath, and leaderboardLink.
 - On edit, site saves sync the matching `showcase-data.json` entry (matched by link) with current title, description, favicon, screenshotpath, leaderboardLink, date, and formattedDate.
@@ -389,6 +403,7 @@ The compose page sidebar shows "Sites to Post" from `built-with-eleventy.md`. Ea
   - `test_issue_records.py` — Issue records generation, compared against JS output
   - `test_latest_data.py` — Latest-issue data filtering, compared against JS output
   - `test_content_review.py` — AI content review service + endpoint (mocked Anthropic API)
+  - `test_showcase_review.py` — Bulk showcase review scanner (load/save/allowlist/progress)
   - `test_data_integrity.py` — Round-trip, schema, showcase sync, backups
 - **Path overrides for testing**: `app.py` uses `_get_path(key)` to read file paths from `app.config` with fallback to module-level constants. Tests set `app.config["BUNDLEDB_PATH"]`, `app.config["SHOWCASE_PATH"]`, etc. to temp directories. For `bwe_list.BWE_FILE`, tests use `monkeypatch.setattr`.
 - **Adding tests**: When adding new services or routes, add corresponding test files. Mock external HTTP with `@responses.activate`. Use the `client` fixture for route tests and `app` fixture to access temp paths.
