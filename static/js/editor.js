@@ -423,30 +423,54 @@
   }
 
   function runDeployFlow() {
-    deployModalTitle.textContent = "Deploying...";
-    deployModalOutput.textContent = "Running npm run deploy...\n";
+    deployModalTitle.textContent = "Running end-session scripts...";
+    deployModalOutput.textContent = "";
     deployModalOk.style.display = "none";
     deployModalClose.style.display = "none";
     deployModal.style.display = "";
 
-    return fetch("/editor/deploy", { method: "POST" })
+    return fetch("/editor/end-session", { method: "POST" })
       .then((r) => r.json())
       .then((data) => {
-        deployModalTitle.textContent = data.success ? "Deploy Complete" : "Deploy Failed";
-        let output = data.output || "(no output)";
-        if (data.git_result) {
-          output += data.git_result.success
-            ? "\n\n" + data.git_result.message
-            : "\n\nNote: DB commit/push failed: " + data.git_result.message;
+        if (!data.success) {
+          deployModalTitle.textContent = "End-session scripts failed";
+          deployModalOk.textContent = "Ok";
+          deployModalOk.onclick = () => { deployModal.style.display = "none"; };
+          deployModalOk.style.display = "";
+          return;
         }
-        deployModalOutput.textContent = output;
-        deployModalOutput.scrollTop = deployModalOutput.scrollHeight;
-        deployModalOk.textContent = "View 11tybundle.dev";
-        deployModalOk.onclick = () => {
-          if (data.success) window.open("https://11tybundle.dev", "_blank");
-        };
-        deployModalOk.style.display = "";
-        deployModalClose.style.display = "";
+        const scripts = [
+          ["genissuerecords", "Issue Records"],
+          ["generate_insights", "Insights"],
+          ["generate_latest_data", "Latest Data"]
+        ];
+        const lines = scripts.map(([key, label]) => {
+          const r = data[key];
+          return label + ": " + (r && r.success ? "OK" : "FAILED");
+        });
+        deployModalOutput.textContent = lines.join("\n");
+
+        deployModalTitle.textContent = "Deploying...";
+        deployModalOutput.textContent += "\n\nRunning npm run deploy...\n";
+        return fetch("/editor/deploy", { method: "POST" })
+          .then((r) => r.json())
+          .then((deployData) => {
+            deployModalTitle.textContent = deployData.success ? "Deploy Complete" : "Deploy Failed";
+            let output = deployData.output || "(no output)";
+            if (deployData.git_result) {
+              output += deployData.git_result.success
+                ? "\n\n" + deployData.git_result.message
+                : "\n\nNote: DB commit/push failed: " + deployData.git_result.message;
+            }
+            deployModalOutput.textContent += output;
+            deployModalOutput.scrollTop = deployModalOutput.scrollHeight;
+            deployModalOk.textContent = "View 11tybundle.dev";
+            deployModalOk.onclick = () => {
+              if (deployData.success) window.open("https://11tybundle.dev", "_blank");
+            };
+            deployModalOk.style.display = "";
+            deployModalClose.style.display = "";
+          });
       })
       .catch((err) => {
         deployModalTitle.textContent = "Deploy Failed";
