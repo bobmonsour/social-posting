@@ -5,6 +5,9 @@ from platforms.base import PlatformClient, PostResult
 import config
 
 
+AVATAR_URL = "https://raw.githubusercontent.com/bobmonsour/social-posting/main/static/img/bundle_avatar.png"
+
+
 class DiscordClient(PlatformClient):
     name = "discord"
     char_limit = 2000
@@ -38,7 +41,7 @@ class DiscordClient(PlatformClient):
                         open(attachment.file_path, "rb"),
                         attachment.mime_type,
                     )
-                payload = {"content": text}
+                payload = {"content": text, "avatar_url": AVATAR_URL}
                 resp = requests.post(
                     url,
                     data={"payload_json": json.dumps(payload)},
@@ -50,7 +53,7 @@ class DiscordClient(PlatformClient):
             else:
                 resp = requests.post(
                     url,
-                    json={"content": text},
+                    json={"content": text, "avatar_url": AVATAR_URL},
                 )
 
             if resp.status_code not in (200, 204):
