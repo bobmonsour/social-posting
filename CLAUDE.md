@@ -318,7 +318,7 @@ The `/editor` page (linked from the main page as "Bundle Editor") provides searc
 - Response includes `propagated` count; client syncs changes into local `allData` and shows status message.
 
 **Build & deploy workflows** (`editor.js` + `app.py`):
-- The edit form has three save buttons: **Save** (save only), **Save & Run Latest** (save + end-session scripts + local server), **Save & Deploy** (save + production deploy).
+- The edit form has three save buttons: **Save** (save only), **Save & Run Latest** (save + end-session scripts + local server), **Save & Deploy** (save + end-session scripts + production deploy).
 - The editor header has two standalone buttons: **Run Latest** and **Deploy** (same workflows without saving).
 - All workflow results display in a modal overlay (`deploy-modal` in `editor.html`, styled via `.deploy-modal-overlay`/`.deploy-modal` in `style.css`).
 - JS logic is shared via `runLatestFlow()` and `runDeployFlow()` functions in `editor.js`.
@@ -329,11 +329,12 @@ The `/editor` page (linked from the main page as "Bundle Editor") provides searc
 - `POST /editor/verify-site` runs post-build verification (see below). Called automatically after the server starts. On success, auto-commits and pushes `11tybundledb` changes via `_commit_and_push_bundledb()`.
 - Modal shows script results, then "Starting local server...", then verification results and git result, then "View Local Site" button which opens `localhost:8080`.
 
-**Deploy flow** (1 endpoint):
-- `POST /editor/deploy` runs `npm run deploy` in `ELEVENTY_PROJECT_DIR` via `subprocess.run()` with 120s timeout, captures full stdout+stderr.
+**Deploy flow** (2 steps, same end-session + deploy endpoints):
+- First calls `POST /editor/end-session` to run the same three parallel tasks as Run Latest (issue records, insights, latest data). Modal shows script results before proceeding.
+- Then calls `POST /editor/deploy` which runs `npm run deploy` in `ELEVENTY_PROJECT_DIR` via `subprocess.run()` with 120s timeout, captures full stdout+stderr.
 - On successful deploy, auto-commits and pushes `11tybundledb` changes via `_commit_and_push_bundledb()`. Git failures don't affect deploy success status.
 - Response includes `git_result` with `success` and `message`. "Nothing to commit" is treated as success.
-- Modal shows deploy output plus git result (success message or failure note), then "View 11tybundle.dev" button which opens `https://11tybundle.dev`.
+- Modal shows end-session results, then deploy output plus git result (success message or failure note), then "View 11tybundle.dev" button which opens `https://11tybundle.dev`.
 
 **Post-build verification** (`services/verify_site.py`):
 - Parses the static `_site` directory (no browser needed) to confirm recently added entries rendered correctly.
