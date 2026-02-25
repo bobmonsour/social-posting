@@ -7,6 +7,18 @@ MODES = {
             "bluesky": "\n\n@11ty.dev",
         },
     },
+    "11ty-bundle-issue": {
+        "label": "11ty Bundle Issue",
+        "platforms": ["mastodon", "bluesky"],
+        "prefixes": {
+            "mastodon": "11ty Bundle Issue {issue_number}",
+            "bluesky": "11ty Bundle Issue {issue_number}",
+        },
+        "suffixes": {
+            "mastodon": "\n\n#11ty @11ty@neighborhood.11ty.dev",
+            "bluesky": "\n\n@11ty.dev",
+        },
+    },
     "11ty-bwe": {
         "label": "11ty BWE",
         "platforms": ["mastodon", "bluesky"],
@@ -14,6 +26,7 @@ MODES = {
             "mastodon": "Built with Eleventy: ",
             "bluesky": "Built with Eleventy: ",
             "discord": "Built with Eleventy: ",
+            "discord_content": "Built with Eleventy: ",
         },
         "suffixes": {
             "mastodon": "\n\n#11ty @11ty@neighborhood.11ty.dev",

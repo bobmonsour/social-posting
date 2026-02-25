@@ -5,7 +5,7 @@ from datetime import date
 _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BWE_FILE = os.path.join(_BASE_DIR, "built-with-eleventy.md")
 
-ALL_PLATFORMS = ["M", "B", "D"]
+ALL_PLATFORMS = ["B", "C", "D", "M"]
 DEFAULT_PLATFORMS = []
 
 _LINK_RE = re.compile(r"^\[(.+?)\]\((.+?)\)(?:\s+\{([A-Z,]+)\})?$")
@@ -25,7 +25,7 @@ def _extract_platforms_from_status(status):
     """Extract platform letters from legacy status strings like 'Posted to Mastodon, Posted to Bluesky'."""
     if not status:
         return []
-    platform_map = {"mastodon": "M", "bluesky": "B", "discord": "D"}
+    platform_map = {"mastodon": "M", "bluesky": "B", "discord": "D", "discord_content": "C"}
     platforms = []
     for name, letter in platform_map.items():
         if name in status.lower():

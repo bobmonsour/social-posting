@@ -8,6 +8,8 @@ from datetime import date, datetime, timezone
 
 from flask import Flask, redirect, render_template, request, jsonify, url_for, send_from_directory
 
+import copy
+
 import config
 from modes import all_modes, get_mode
 from platforms import get_platform
@@ -139,19 +141,33 @@ def _annotate_bwe_with_drafts(bwe_to_post, history):
                 break
 
 
+def _resolve_modes(issue_number):
+    """Deep-copy modes and substitute {issue_number} placeholder in prefixes/suffixes."""
+    modes = copy.deepcopy(all_modes())
+    for mode in modes.values():
+        for key in ("prefixes", "suffixes"):
+            mapping = mode.get(key)
+            if mapping:
+                for platform, text in mapping.items():
+                    mapping[platform] = text.replace("{issue_number}", str(issue_number))
+    return modes
+
+
 @app.route("/")
 def compose():
     bwe_to_post, bwe_posted = get_bwe_lists()
     recent = load_recent_posts()
     _annotate_bwe_with_drafts(bwe_to_post, recent)
     issue_counts = get_latest_issue_counts()
+    issue_number = issue_counts["issue_number"] if issue_counts else ""
     return render_template(
         "compose.html",
         mastodon_available=config.mastodon_configured(),
         bluesky_available=config.bluesky_configured(),
         discord_available=config.discord_configured(),
+        discord_content_available=config.discord_content_configured(),
         recent_posts=recent,
-        modes=all_modes(),
+        modes=_resolve_modes(issue_number),
         bwe_to_post=bwe_to_post,
         bwe_posted=bwe_posted,
         issue_counts=issue_counts,
@@ -170,7 +186,7 @@ def post():
     platform_texts = None
     if mode and get_mode(mode):
         platform_texts = {}
-        for pname in ["mastodon", "bluesky", "discord"]:
+        for pname in ["mastodon", "bluesky", "discord", "discord_content"]:
             pt = request.form.get(f"text_{pname}", "").strip()
             if pt:
                 platform_texts[pname] = pt
@@ -339,6 +355,8 @@ def post():
                 cw = request.form.get("cw_bluesky", "").strip() or None
             elif platform_name == "discord":
                 cw = request.form.get("cw_discord", "").strip() or None
+            elif platform_name == "discord_content":
+                cw = request.form.get("cw_discord_content", "").strip() or None
 
             # For Bluesky, compress images if needed
             media = attachments
@@ -464,7 +482,7 @@ def post():
     bwe_name = request.form.get("bwe_site_name", "").strip()
     bwe_url = request.form.get("bwe_site_url", "").strip()
     if mode == "11ty-bwe" and bwe_name and bwe_url:
-        platform_letter_map = {"mastodon": "M", "bluesky": "B", "discord": "D"}
+        platform_letter_map = {"mastodon": "M", "bluesky": "B", "discord": "D", "discord_content": "C"}
         posted_platforms = [
             platform_letter_map[r["platform"]]
             for r in results
@@ -500,14 +518,17 @@ def use_draft(draft_id):
     bwe_to_post, bwe_posted = get_bwe_lists()
     recent = load_recent_posts()
     _annotate_bwe_with_drafts(bwe_to_post, recent)
+    issue_counts = get_latest_issue_counts()
+    issue_number = issue_counts["issue_number"] if issue_counts else ""
     return render_template(
         "compose.html",
         mastodon_available=config.mastodon_configured(),
         bluesky_available=config.bluesky_configured(),
         discord_available=config.discord_configured(),
+        discord_content_available=config.discord_content_configured(),
         recent_posts=recent,
         draft=draft,
-        modes=all_modes(),
+        modes=_resolve_modes(issue_number),
         bwe_to_post=bwe_to_post,
         bwe_posted=bwe_posted,
     )
@@ -530,14 +551,17 @@ def retry_post(post_id):
     bwe_to_post, bwe_posted = get_bwe_lists()
     recent = load_recent_posts()
     _annotate_bwe_with_drafts(bwe_to_post, recent)
+    issue_counts = get_latest_issue_counts()
+    issue_number = issue_counts["issue_number"] if issue_counts else ""
     return render_template(
         "compose.html",
         mastodon_available=config.mastodon_configured(),
         bluesky_available=config.bluesky_configured(),
         discord_available=config.discord_configured(),
+        discord_content_available=config.discord_content_configured(),
         recent_posts=recent,
         draft=failed,
-        modes=all_modes(),
+        modes=_resolve_modes(issue_number),
         bwe_to_post=bwe_to_post,
         bwe_posted=bwe_posted,
     )

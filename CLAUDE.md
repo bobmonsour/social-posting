@@ -30,7 +30,8 @@ social-posting/
 │   ├── base.py             # MediaAttachment, LinkCard, PostResult, PlatformClient ABC
 │   ├── mastodon_client.py  # Mastodon API via Mastodon.py
 │   ├── bluesky_client.py   # Bluesky AT Protocol via atproto
-│   └── discord_client.py   # Discord webhook API via requests
+│   ├── discord_client.py   # Discord webhook API via requests (Showcase channel)
+│   └── discord_content_client.py  # Discord Content channel (subclass of DiscordClient)
 ├── services/
 │   ├── media.py            # process_uploads, cleanup_uploads, compress_for_bluesky
 │   ├── link_card.py        # Open Graph metadata fetching
@@ -86,10 +87,11 @@ Modes switch the UI from a single shared textarea to per-platform textareas, eac
 
 Current modes:
 - **11ty**: Adds `#11ty @11ty@neighborhood.11ty.dev` (Mastodon) and `@11ty.dev` (Bluesky) as suffixes. Cursor at start.
+- **11ty Bundle Issue**: Same suffixes as 11ty, with `11ty Bundle Issue {issue_number}` prefix (dynamically resolved with the latest issue number from bundledb). Cursor placed after the prefix. Uses `{issue_number}` placeholder in `modes.py`, resolved via `_resolve_modes()` in `app.py`.
 - **11ty BWE**: Same suffixes as 11ty, but with `Built with Eleventy: ` prefix. Cursor placed after the prefix.
 
 Mode behavior:
-- Selecting a mode auto-checks and locks the mode's platform checkboxes (currently Mastodon and Bluesky; Discord is not auto-selected by any mode).
+- Selecting a mode auto-checks and locks the mode's platform checkboxes (currently Mastodon and Bluesky; Discord Showcase and Discord Content are not auto-selected by any mode).
 - Per-platform textareas appear with prefix+suffix pre-filled.
 - Switching between modes (including None) resets all textareas to their initial state — user text is not carried over.
 - "Mirror across platforms" checkbox (default unchecked) enables cross-sync: typing in one platform textarea mirrors the body (preserving per-platform prefix/suffix) to the other. Checkbox is shown only when a mode is active and resets to unchecked on every mode switch.
@@ -371,19 +373,19 @@ The `/db-mgmt` page (linked from the editor header as "DB Mgmt") provides read-o
 ## BWE Sites to Post Management
 
 The compose page sidebar shows "Sites to Post" from `built-with-eleventy.md`. Each entry has:
-- **M/B/D checkboxes**: per-platform selection (Mastodon/Bluesky/Discord). All unchecked by default. Clicking **Post** reads these checkboxes to set the main platform checkboxes and activate 11ty-bwe mode.
+- **M/B/D/C checkboxes**: per-platform selection (Mastodon/Bluesky/Discord Showcase/Discord Content). All unchecked by default. Clicking **Post** reads these checkboxes to set the main platform checkboxes and activate 11ty-bwe mode.
 - **Post** button (or **Use** link if a draft exists): populates the compose form in 11ty-bwe mode with the selected platforms.
 - **Del** button: removes the entry from the TO BE POSTED list via `POST /bwe-to-post/delete`. Shows a confirmation modal with Cancel focused by default.
 
 **Per-platform tracking** (`services/bwe_list.py`):
-- `ALL_PLATFORMS = ["M", "B", "D"]`, `DEFAULT_PLATFORMS = []` (all unchecked).
-- Markdown format uses optional `{PLATFORMS}` suffix: `[Name](url) {M,B}` or `[Name](url) {D}`. No suffix = default (empty).
+- `ALL_PLATFORMS = ["B", "C", "D", "M"]`, `DEFAULT_PLATFORMS = []` (all unchecked). `C` = Discord Content channel.
+- Markdown format uses optional `{PLATFORMS}` suffix: `[Name](url) {M,B}` or `[Name](url) {D}` or `[Name](url) {C}`. No suffix = default (empty).
 - Posted entries: `2026-02-21 [Name](url) {M,B}`. Legacy `— status` format parsed for backward compat via `_extract_platforms_from_status()`.
 - `_write_bwe_file(to_post, posted)` consolidates all file-writing (previously duplicated 5x).
 - `update_bwe_after_post(name, url, posted_platforms, timestamp)`: partial posting support — remaining platforms stay in to_post, posted platforms merge with existing posted entry if present.
 - `mark_bwe_posted()` retained as legacy wrapper calling `update_bwe_after_post()`.
 
-**Sites Posted** sidebar shows colored platform badges (M=purple, B=blue, D=blurple) for each posted entry.
+**Sites Posted** sidebar shows colored platform badges (M=purple, B=blue, D=blurple, C=teal) for each posted entry.
 
 ## Testing
 
@@ -428,7 +430,8 @@ Environment variables in `.env` (see `.env.example`):
 
 - `MASTODON_INSTANCE_URL` / `MASTODON_ACCESS_TOKEN` (token needs `write:statuses` and `write:media` scopes)
 - `BLUESKY_IDENTIFIER` / `BLUESKY_APP_PASSWORD`
-- `DISCORD_WEBHOOK_URL` / `DISCORD_GUILD_ID` (webhook posts to a channel; guild ID used to construct message jump URLs)
+- `DISCORD_WEBHOOK_URL` / `DISCORD_GUILD_ID` (Showcase channel webhook; guild ID used to construct message jump URLs)
+- `DISCORD_WEBHOOK_URL_CONTENT` / `DISCORD_GUILD_ID_CONTENT` (Content channel webhook)
 - `ANTHROPIC_API_KEY` (for AI content review of site entries; optional — review is skipped if not set)
 
 ## Tech Stack

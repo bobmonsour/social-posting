@@ -12,6 +12,9 @@ BLUESKY_APP_PASSWORD = os.getenv("BLUESKY_APP_PASSWORD", "")
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "")
 DISCORD_GUILD_ID = os.getenv("DISCORD_GUILD_ID", "")
 
+DISCORD_WEBHOOK_URL_CONTENT = os.getenv("DISCORD_WEBHOOK_URL_CONTENT", "")
+DISCORD_GUILD_ID_CONTENT = os.getenv("DISCORD_GUILD_ID_CONTENT", "")
+
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
@@ -30,3 +33,7 @@ def bluesky_configured():
 
 def discord_configured():
     return bool(DISCORD_WEBHOOK_URL and DISCORD_GUILD_ID)
+
+
+def discord_content_configured():
+    return bool(DISCORD_WEBHOOK_URL_CONTENT and DISCORD_GUILD_ID_CONTENT)

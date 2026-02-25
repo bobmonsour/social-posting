@@ -453,7 +453,8 @@ label:has(#cb-bluesky) {
 
 /* ===== CW radio buttons inline ===== */
 #cw-mastodon-section label,
-#cw-bluesky-section label {
+#cw-bluesky-section label,
+#cw-discord_content-section label {
     display: inline-flex;
     align-items: center;
     gap: 0.3rem;
@@ -461,7 +462,8 @@ label:has(#cb-bluesky) {
 }
 
 #cw-mastodon-section input[type="radio"],
-#cw-bluesky-section input[type="radio"] {
+#cw-bluesky-section input[type="radio"],
+#cw-discord_content-section input[type="radio"] {
     margin: 0;
 }
 
@@ -754,6 +756,10 @@ label:has(#cb-bluesky) {
 
 .bwe-plat-D {
     background: #5865f2;
+}
+
+.bwe-plat-C {
+    background: #2d9b83;
 }
 
 /* ===== BWE posted sidebar ===== */

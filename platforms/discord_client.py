@@ -9,12 +9,14 @@ class DiscordClient(PlatformClient):
     name = "discord"
     char_limit = 2000
 
-    def __init__(self):
-        self.webhook_url = config.DISCORD_WEBHOOK_URL
-        self.guild_id = config.DISCORD_GUILD_ID
+    def __init__(self, webhook_url=None, guild_id=None, name=None):
+        self.webhook_url = webhook_url or config.DISCORD_WEBHOOK_URL
+        self.guild_id = guild_id or config.DISCORD_GUILD_ID
+        if name:
+            self.name = name
 
     def validate_credentials(self):
-        return config.discord_configured()
+        return bool(self.webhook_url and self.guild_id)
 
     def post(self, text, media=None, content_warning=None, link_card=None):
         try:

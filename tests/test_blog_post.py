@@ -85,8 +85,9 @@ class TestSummarizeBlogPost:
         assert result == "[summary unavailable]"
 
 
+@patch("services.blog_post.subprocess.Popen")
 class TestCreateBlogPostHighlights:
-    def test_highlight_with_summary(self, tmp_path):
+    def test_highlight_with_summary(self, mock_popen, tmp_path):
         # Create template
         template = tmp_path / "template.md"
         template.write_text(
@@ -118,7 +119,7 @@ class TestCreateBlogPostHighlights:
             bp._TEMPLATE_PATH = orig_template
             bp._BLOG_BASE_PATH = orig_blog
 
-    def test_highlight_without_summary(self, tmp_path):
+    def test_highlight_without_summary(self, mock_popen, tmp_path):
         template = tmp_path / "template.md"
         template.write_text(
             "---\nbundleIssue:\ndate:\n---\n\n## Highlights\n\n**.**\n\n**.**\n\n**.**\n"
@@ -151,8 +152,9 @@ class TestCreateBlogPostHighlights:
             bp._BLOG_BASE_PATH = orig_blog
 
 
+@patch("services.blog_post.subprocess.Popen")
 class TestCreateBlogPostOverwrite:
-    def test_exists_returns_error_with_exists_flag(self, tmp_path):
+    def test_exists_returns_error_with_exists_flag(self, mock_popen, tmp_path):
         template = tmp_path / "template.md"
         template.write_text("---\nbundleIssue:\ndate:\n---\n")
         blog_dir = tmp_path / "blog" / "2026"
@@ -173,7 +175,7 @@ class TestCreateBlogPostOverwrite:
             bp._TEMPLATE_PATH = orig_template
             bp._BLOG_BASE_PATH = orig_blog
 
-    def test_overwrite_replaces_existing_file(self, tmp_path):
+    def test_overwrite_replaces_existing_file(self, mock_popen, tmp_path):
         template = tmp_path / "template.md"
         template.write_text("---\nbundleIssue:\ndate:\n---\n")
         blog_dir = tmp_path / "blog" / "2026"

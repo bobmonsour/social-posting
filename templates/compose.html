@@ -27,6 +27,11 @@
                    {% if not discord_available %}disabled{% endif %}>
             Discord Showcase channel (2000 chars){% if not discord_available %} <small class="not-configured">— not configured</small>{% endif %}
         </label>
+        <label>
+            <input type="checkbox" name="platforms" value="discord_content" id="cb-discord-content"
+                   {% if not discord_content_available %}disabled{% endif %}>
+            Discord Content channel (2000 chars){% if not discord_content_available %} <small class="not-configured">— not configured</small>{% endif %}
+        </label>
     </fieldset>
 
     <!-- Mode selector -->
@@ -73,6 +78,12 @@
         <label><input type="radio" name="cw_discord" value="Spoiler" {% if draft and draft.cw_discord == 'Spoiler' %}checked{% endif %}> Spoiler</label>
     </fieldset>
 
+    <fieldset id="cw-discord_content-section" class="platform-section" hidden>
+        <legend>Content Warning (Discord Content channel)</legend>
+        <label><input type="radio" name="cw_discord_content" value="" {% if not draft or not draft.cw_discord_content %}checked{% endif %}> None</label>
+        <label><input type="radio" name="cw_discord_content" value="Spoiler" {% if draft and draft.cw_discord_content == 'Spoiler' %}checked{% endif %}> Spoiler</label>
+    </fieldset>
+
     <!-- Shared post text (hidden when mode active) -->
     <fieldset id="shared-text-section">
         <legend>Post</legend>
@@ -82,6 +93,7 @@
             <span id="counter-mastodon" class="counter" hidden>Mastodon: <span class="count">0</span>/500</span>
             <span id="counter-bluesky" class="counter" hidden>Bluesky: <span class="count">0</span>/300</span>
             <span id="counter-discord" class="counter" hidden>Discord Showcase channel: <span class="count">0</span>/2000</span>
+            <span id="counter-discord_content" class="counter" hidden>Discord Content channel: <span class="count">0</span>/2000</span>
         </div>
     </fieldset>
 
@@ -113,6 +125,14 @@
                 <span id="counter-discord-mode" class="counter">Discord Showcase channel: <span class="count">0</span>/2000</span>
             </div>
         </div>
+        <div class="platform-text-group" id="group-discord_content">
+            <label class="platform-text-label" for="text-discord_content">Discord Content channel</label>
+            <textarea name="text_discord_content" id="text-discord_content" rows="5"
+                      placeholder="Discord Content channel text">{{ draft.platform_texts.discord_content if draft and draft.platform_texts else '' }}</textarea>
+            <div class="char-counters">
+                <span id="counter-discord_content-mode" class="counter">Discord Content channel: <span class="count">0</span>/2000</span>
+            </div>
+        </div>
     </fieldset>
 
     <!-- Preview (shown when mode active) -->
@@ -131,6 +151,10 @@
             <div class="preview-panel">
                 <div class="preview-panel-header">Discord Showcase channel</div>
                 <div class="preview-panel-body" id="preview-discord"></div>
+            </div>
+            <div class="preview-panel">
+                <div class="preview-panel-header">Discord Content channel</div>
+                <div class="preview-panel-body" id="preview-discord_content"></div>
             </div>
         </div>
     </fieldset>
@@ -252,6 +276,7 @@
                     <label class="bwe-platform-cb"><input type="checkbox" class="bwe-plat-cb" data-platform="M" {% if "M" in site.platforms %}checked{% endif %}>M</label>
                     <label class="bwe-platform-cb"><input type="checkbox" class="bwe-plat-cb" data-platform="B" {% if "B" in site.platforms %}checked{% endif %}>B</label>
                     <label class="bwe-platform-cb"><input type="checkbox" class="bwe-plat-cb" data-platform="D" {% if "D" in site.platforms %}checked{% endif %}>D</label>
+                    <label class="bwe-platform-cb"><input type="checkbox" class="bwe-plat-cb" data-platform="C" {% if "C" in site.platforms %}checked{% endif %}>C</label>
                 </span>
                 {% if site.draft_id %}
                 <a href="/draft/{{ site.draft_id }}" class="btn-use-draft">Use</a>

@@ -4,12 +4,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const cbMastodon = document.getElementById("cb-mastodon");
     const cbBluesky = document.getElementById("cb-bluesky");
     const cbDiscord = document.getElementById("cb-discord");
+    const cbDiscordContent = document.getElementById("cb-discord-content");
     const cwMastodonSection = document.getElementById("cw-mastodon-section");
     const cwBlueskySection = document.getElementById("cw-bluesky-section");
     const cwDiscordSection = document.getElementById("cw-discord-section");
+    const cwDiscordContentSection = document.getElementById("cw-discord_content-section");
     const counterMastodon = document.getElementById("counter-mastodon");
     const counterBluesky = document.getElementById("counter-bluesky");
     const counterDiscord = document.getElementById("counter-discord");
+    const counterDiscordContent = document.getElementById("counter-discord_content");
     const linkCardSection = document.getElementById("link-card-section");
     const linkUrl = document.getElementById("link-url");
     const btnPreviewLink = document.getElementById("btn-preview-link");
@@ -29,17 +32,21 @@ document.addEventListener("DOMContentLoaded", () => {
     const textMastodon = document.getElementById("text-mastodon");
     const textBluesky = document.getElementById("text-bluesky");
     const textDiscord = document.getElementById("text-discord");
+    const textDiscordContent = document.getElementById("text-discord_content");
     const groupMastodon = document.getElementById("group-mastodon");
     const groupBluesky = document.getElementById("group-bluesky");
     const groupDiscord = document.getElementById("group-discord");
+    const groupDiscordContent = document.getElementById("group-discord_content");
     const counterMastodonMode = document.getElementById("counter-mastodon-mode");
     const counterBlueskyMode = document.getElementById("counter-bluesky-mode");
     const counterDiscordMode = document.getElementById("counter-discord-mode");
+    const counterDiscordContentMode = document.getElementById("counter-discord_content-mode");
     const btnShowPreview = document.getElementById("btn-show-preview");
     const previewPanels = document.getElementById("preview-panels");
     const previewMastodon = document.getElementById("preview-mastodon");
     const previewBluesky = document.getElementById("preview-bluesky");
     const previewDiscord = document.getElementById("preview-discord");
+    const previewDiscordContent = document.getElementById("preview-discord_content");
     const modeRadios = document.querySelectorAll('input[name="mode"]');
     const cbMirror = document.getElementById("cb-mirror");
     const mirrorLabel = document.getElementById("mirror-label");
@@ -100,21 +107,25 @@ document.addEventListener("DOMContentLoaded", () => {
         const mastodonChecked = cbMastodon.checked;
         const blueskyChecked = cbBluesky.checked;
         const discordChecked = cbDiscord.checked;
+        const discordContentChecked = cbDiscordContent.checked;
 
         cwMastodonSection.hidden = !mastodonChecked;
         cwBlueskySection.hidden = !blueskyChecked;
         cwDiscordSection.hidden = !discordChecked;
+        cwDiscordContentSection.hidden = !discordContentChecked;
 
         if (activeMode) {
             // Show/hide per-platform textarea groups based on checkbox state
             groupMastodon.hidden = !mastodonChecked;
             groupBluesky.hidden = !blueskyChecked;
             groupDiscord.hidden = !discordChecked;
+            groupDiscordContent.hidden = !discordContentChecked;
         } else {
             // Only show shared-text counters when no mode is active
             counterMastodon.hidden = !mastodonChecked;
             counterBluesky.hidden = !blueskyChecked;
             counterDiscord.hidden = !discordChecked;
+            counterDiscordContent.hidden = !discordContentChecked;
             updateCharCounters();
         }
     }
@@ -122,6 +133,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (cbMastodon) cbMastodon.addEventListener("change", updatePlatformSections);
     if (cbBluesky) cbBluesky.addEventListener("change", updatePlatformSections);
     if (cbDiscord) cbDiscord.addEventListener("change", updatePlatformSections);
+    if (cbDiscordContent) cbDiscordContent.addEventListener("change", updatePlatformSections);
     // --- Character counters (shared textarea) ---
     function updateCharCounters() {
         const len = countGraphemes(textarea.value);
@@ -142,6 +154,12 @@ document.addEventListener("DOMContentLoaded", () => {
             const countEl = counterDiscord.querySelector(".count");
             countEl.textContent = len;
             counterDiscord.classList.toggle("over-limit", len > 2000);
+        }
+
+        if (!counterDiscordContent.hidden) {
+            const countEl = counterDiscordContent.querySelector(".count");
+            countEl.textContent = len;
+            counterDiscordContent.classList.toggle("over-limit", len > 2000);
         }
 
     }
@@ -165,11 +183,17 @@ document.addEventListener("DOMContentLoaded", () => {
         discordCountEl.textContent = discordLen;
         counterDiscordMode.classList.toggle("over-limit", discordLen > 2000);
 
+        const discordContentLen = countGraphemes(textDiscordContent.value);
+        const discordContentCountEl = counterDiscordContentMode.querySelector(".count");
+        discordContentCountEl.textContent = discordContentLen;
+        counterDiscordContentMode.classList.toggle("over-limit", discordContentLen > 2000);
+
     }
 
     textMastodon.addEventListener("input", updateModeCharCounters);
     textBluesky.addEventListener("input", updateModeCharCounters);
     textDiscord.addEventListener("input", updateModeCharCounters);
+    textDiscordContent.addEventListener("input", updateModeCharCounters);
 
     // --- Cross-sync platform textareas ---
     // When user types in one box, mirror the body (minus prefix/suffix) to the other
@@ -201,7 +225,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!mode) return;
         const prefixes = mode.prefixes || {};
         const suffixes = mode.suffixes || {};
-        const targets = {mastodon: textMastodon, bluesky: textBluesky, discord: textDiscord};
+        const targets = {mastodon: textMastodon, bluesky: textBluesky, discord: textDiscord, discord_content: textDiscordContent};
         for (const [platform, el] of Object.entries(targets)) {
             if (platform === sourcePlatform) continue;
             syncFrom(sourceEl, el,
@@ -213,6 +237,7 @@ document.addEventListener("DOMContentLoaded", () => {
     textMastodon.addEventListener("input", () => mirrorFromPlatform("mastodon", textMastodon));
     textBluesky.addEventListener("input", () => mirrorFromPlatform("bluesky", textBluesky));
     textDiscord.addEventListener("input", () => mirrorFromPlatform("discord", textDiscord));
+    textDiscordContent.addEventListener("input", () => mirrorFromPlatform("discord_content", textDiscordContent));
     // --- Mode activation/deactivation ---
     function applyModeToTextarea(el, oldMode, newMode, platform) {
         const newPrefixes = newMode.prefixes || {};
@@ -237,6 +262,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 mastodon: cbMastodon.checked,
                 bluesky: cbBluesky.checked,
                 discord: cbDiscord.checked,
+                discord_content: cbDiscordContent.checked,
             };
         }
 
@@ -244,6 +270,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (mode.platforms.includes("mastodon")) cbMastodon.checked = true;
         if (mode.platforms.includes("bluesky")) cbBluesky.checked = true;
         if (mode.platforms.includes("discord")) cbDiscord.checked = true;
+        if (mode.platforms.includes("discord_content")) cbDiscordContent.checked = true;
         // Show per-platform textareas, hide shared
         sharedTextSection.hidden = true;
         platformTextsSection.hidden = false;
@@ -256,6 +283,7 @@ document.addEventListener("DOMContentLoaded", () => {
             applyModeToTextarea(textMastodon, oldMode, mode, "mastodon");
             applyModeToTextarea(textBluesky, oldMode, mode, "bluesky");
             applyModeToTextarea(textDiscord, oldMode, mode, "discord");
+            applyModeToTextarea(textDiscordContent, oldMode, mode, "discord_content");
         }
 
         updatePlatformSections();
@@ -270,6 +298,7 @@ document.addEventListener("DOMContentLoaded", () => {
             cbMastodon.checked = savedPlatformState.mastodon;
             cbBluesky.checked = savedPlatformState.bluesky;
             cbDiscord.checked = savedPlatformState.discord;
+            cbDiscordContent.checked = savedPlatformState.discord_content;
             savedPlatformState = null;
         }
 
@@ -278,6 +307,7 @@ document.addEventListener("DOMContentLoaded", () => {
         textMastodon.value = "";
         textBluesky.value = "";
         textDiscord.value = "";
+        textDiscordContent.value = "";
 
         // Show shared textarea, hide per-platform
         sharedTextSection.hidden = false;
@@ -329,6 +359,8 @@ document.addEventListener("DOMContentLoaded", () => {
             previewBluesky.parentElement.hidden = !cbBluesky.checked;
             previewDiscord.innerHTML = highlightText(textDiscord.value);
             previewDiscord.parentElement.hidden = !cbDiscord.checked;
+            previewDiscordContent.innerHTML = highlightText(textDiscordContent.value);
+            previewDiscordContent.parentElement.hidden = !cbDiscordContent.checked;
             previewPanels.hidden = false;
         });
     }
@@ -525,7 +557,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Skip platform validation for drafts
         if (!isDraft) {
-            if (!cbMastodon.checked && !cbBluesky.checked && !cbDiscord.checked) {
+            if (!cbMastodon.checked && !cbBluesky.checked && !cbDiscord.checked && !cbDiscordContent.checked) {
                 e.preventDefault();
                 alert("Please select at least one platform.");
                 return;
@@ -534,7 +566,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Validate text: when mode active, check per-platform; otherwise check shared
         if (activeMode) {
-            if (!textMastodon.value.trim() && !textBluesky.value.trim() && !textDiscord.value.trim()) {
+            if (!textMastodon.value.trim() && !textBluesky.value.trim() && !textDiscord.value.trim() && !textDiscordContent.value.trim()) {
                 e.preventDefault();
                 alert("Please enter text for at least one platform.");
                 return;
@@ -551,6 +583,7 @@ document.addEventListener("DOMContentLoaded", () => {
             textMastodon.disabled = true;
             textBluesky.disabled = true;
             textDiscord.disabled = true;
+            textDiscordContent.disabled = true;
         }
 
         // Validate: alt text is filled for all images
@@ -625,6 +658,7 @@ document.addEventListener("DOMContentLoaded", () => {
         textMastodon.value = "";
         textBluesky.value = "";
         textDiscord.value = "";
+        textDiscordContent.value = "";
         linkUrl.value = "";
         linkPreview.hidden = true;
 
@@ -632,11 +666,13 @@ document.addEventListener("DOMContentLoaded", () => {
         cbMastodon.checked = false;
         cbBluesky.checked = false;
         cbDiscord.checked = false;
+        cbDiscordContent.checked = false;
 
         // Reset content warnings
         document.querySelectorAll('input[name="cw_mastodon"][value=""]').forEach(r => r.checked = true);
         document.querySelectorAll('input[name="cw_bluesky"][value=""]').forEach(r => r.checked = true);
         document.querySelectorAll('input[name="cw_discord"][value=""]').forEach(r => r.checked = true);
+        document.querySelectorAll('input[name="cw_discord_content"][value=""]').forEach(r => r.checked = true);
 
         // Clear images
         selectedFiles = new DataTransfer();
@@ -692,13 +728,14 @@ document.addEventListener("DOMContentLoaded", () => {
             // Read M/B/D checkboxes from the BWE queue item
             const queueItem = btn.closest(".bwe-queue-item");
             const platCbs = queueItem ? queueItem.querySelectorAll(".bwe-plat-cb") : [];
-            const platformMap = {M: cbMastodon, B: cbBluesky, D: cbDiscord};
+            const platformMap = {M: cbMastodon, B: cbBluesky, D: cbDiscord, C: cbDiscordContent};
             const checkedPlatforms = [];
 
             // Set main platform checkboxes from BWE entry's selections
             cbMastodon.checked = false;
             cbBluesky.checked = false;
             cbDiscord.checked = false;
+            cbDiscordContent.checked = false;
             platCbs.forEach(cb => {
                 const mainCb = platformMap[cb.dataset.platform];
                 if (mainCb && cb.checked) {
@@ -718,13 +755,14 @@ document.addEventListener("DOMContentLoaded", () => {
             cbMastodon.checked = checkedPlatforms.includes("M");
             cbBluesky.checked = checkedPlatforms.includes("B");
             cbDiscord.checked = checkedPlatforms.includes("D");
+            cbDiscordContent.checked = checkedPlatforms.includes("C");
 
             // Insert site name into per-platform textareas after the prefix
             const mode = modesConfig["11ty-bwe"];
             if (mode) {
                 const prefixes = mode.prefixes || {};
                 const suffixes = mode.suffixes || {};
-                const textareaMap = {mastodon: textMastodon, bluesky: textBluesky, discord: textDiscord};
+                const textareaMap = {mastodon: textMastodon, bluesky: textBluesky, discord: textDiscord, discord_content: textDiscordContent};
                 for (const [platform, el] of Object.entries(textareaMap)) {
                     const pre = prefixes[platform] || "";
                     const suf = suffixes[platform] || "";
