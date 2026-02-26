@@ -1,7 +1,7 @@
 """Slugify text to URL-friendly strings.
 
-Mirrors @sindresorhus/slugify with default options — identical logic to the
-client-side ``slugify()`` in ``static/js/editor.js``.
+Mirrors @sindresorhus/slugify with ``decamelize: false`` — identical logic to
+the client-side ``slugify()`` in ``static/js/editor.js``.
 """
 
 import re
@@ -31,12 +31,6 @@ _DASH_PUNCT_RE = re.compile(r"[\u002D\u058A\u05BE\u1400\u1806\u2010-\u2015"
                             r"\u2E17\u2E1A\u2E3A\u2E3B\u2E40\u301C\u3030"
                             r"\u30A0\uFE31\uFE32\uFE58\uFE63\uFF0D]")
 
-# Decamelize patterns
-_DECAMEL_1 = re.compile(r"([A-Z]{2,})(\d+)")
-_DECAMEL_2 = re.compile(r"([a-z\d]+)([A-Z]{2,})")
-_DECAMEL_3 = re.compile(r"([a-z\d])([A-Z])")
-_DECAMEL_4 = re.compile(r"([A-Z]+)([A-Z][a-rt-z\d]+)")
-
 # Contraction handling: 's → s, 't → t (straight and curly apostrophes)
 _CONTRACTION_RE = re.compile(r"([a-z\d]+)['\u2019]([ts])(\s|$)")
 
@@ -47,8 +41,12 @@ _LEADING_TRAILING_RE = re.compile(r"^-|-$")
 def slugify(text):
     """Convert *text* to a URL-friendly slug.
 
-    Matches the behavior of ``@sindresorhus/slugify`` and the client-side
-    ``slugify()`` in ``static/js/editor.js``.
+    Matches the behavior of ``@sindresorhus/slugify`` with ``decamelize: false``
+    and the client-side ``slugify()`` in ``static/js/editor.js``.
+
+    Decamelization is intentionally disabled — stylized names like "fLaMEd",
+    "CloudCannon", and "GoOz" should slugify as single words, not be split
+    at case transitions.
     """
     # 1. Custom replacements (& → and, etc.)
     for old, new in _REPLACEMENTS:
@@ -62,22 +60,16 @@ def slugify(text):
     # Normalize dash punctuation to ASCII hyphen
     text = _DASH_PUNCT_RE.sub("-", text)
 
-    # 3. Decamelize: split camelCase into separate words
-    text = _DECAMEL_1.sub(r"\1 \2", text)
-    text = _DECAMEL_2.sub(r"\1 \2", text)
-    text = _DECAMEL_3.sub(r"\1 \2", text)
-    text = _DECAMEL_4.sub(r"\1 \2", text)
-
-    # 4. Lowercase
+    # 3. Lowercase
     text = text.lower()
 
-    # 5. Handle contractions
+    # 4. Handle contractions
     text = _CONTRACTION_RE.sub(r"\1\2\3", text)
 
-    # 6. Replace non-alphanumeric runs with separator
+    # 5. Replace non-alphanumeric runs with separator
     text = _NON_ALNUM_RE.sub("-", text)
 
-    # 7. Remove leading/trailing separators
+    # 6. Remove leading/trailing separators
     text = _LEADING_TRAILING_RE.sub("", text)
 
     return text

@@ -199,7 +199,7 @@ JS_WRAPPER = textwrap.dedent("""\
         .map(e => {
           const date = new Date(e.Date).toISOString().slice(0, 10);
           const category = e.Categories && e.Categories.length > 0
-            ? slugify(e.Categories[0])
+            ? slugify(e.Categories[0], {decamelize: false})
             : null;
           const postId = `post-${date}-${e.slugifiedTitle}-${e.slugifiedAuthor}`;
           const categoryLink = category
@@ -693,7 +693,7 @@ class TestSlugifyMatchesJS:
         import fs from "fs";
         const [inputPath, outputPath] = process.argv.slice(2);
         const inputs = JSON.parse(fs.readFileSync(inputPath, "utf8"));
-        const results = inputs.map(s => slugify(s));
+        const results = inputs.map(s => slugify(s, {decamelize: false}));
         fs.writeFileSync(outputPath, JSON.stringify(results, null, 2));
     """)
 

@@ -17,7 +17,7 @@
   const PROPAGATABLE_FIELDS = ["AuthorSiteDescription", "rssLink", "favicon"];
   const PROPAGATABLE_SOCIAL = ["mastodon", "bluesky", "youtube", "github", "linkedin"];
 
-  // Slugify — mirrors @sindresorhus/slugify with default options
+  // Slugify — mirrors @sindresorhus/slugify with decamelize: false
   // Replacements applied before NFD diacritic stripping (mirrors @sindresorhus/transliterate)
   const SLUGIFY_REPLACEMENTS = new Map([
     ["&", " and "], ["\u{1F984}", " unicorn "], ["\u2665", " love "],
@@ -43,12 +43,8 @@
     // Transliterate: NFD decompose, strip diacritics, normalize dashes
     text = text.normalize("NFD").replace(/\p{Diacritic}/gu, "").normalize();
     text = text.replace(/\p{Dash_Punctuation}/gu, "-");
-    // Decamelize: split camelCase into separate words
-    text = text
-      .replaceAll(/([A-Z]{2,})(\d+)/g, "$1 $2")
-      .replaceAll(/([a-z\d]+)([A-Z]{2,})/g, "$1 $2")
-      .replaceAll(/([a-z\d])([A-Z])/g, "$1 $2")
-      .replaceAll(/([A-Z]+)([A-Z][a-rt-z\d]+)/g, "$1 $2");
+    // Decamelization intentionally skipped — stylized names like "fLaMEd",
+    // "CloudCannon", "GoOz" should not be split at case transitions.
     // Lowercase
     text = text.toLowerCase();
     // Handle contractions: 's → s, 't → t (straight and curly apostrophes)
