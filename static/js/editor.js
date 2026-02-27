@@ -2033,6 +2033,9 @@
           }
 
           hideEditForm();
+          if (isCreate) {
+            typeRadios.forEach((r) => (r.checked = false));
+          }
           initFuse();
           let msg = isCreate ? "Created successfully." : "Saved successfully.";
           const propCount = data.propagated || 0;
