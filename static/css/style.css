@@ -80,6 +80,7 @@ main.container {
     font-weight: 400;
     letter-spacing: -0.02em;
     line-height: 1;
+    color: rgba(255, 255, 255, 0.75);
 }
 
 button.theme-toggle {
@@ -149,10 +150,10 @@ fieldset {
 fieldset legend {
     font-family: var(--font-body);
     font-weight: 700;
-    font-size: 0.75rem;
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.75);
     text-transform: uppercase;
     letter-spacing: 0.12em;
-    color: var(--pico-muted-color);
     padding: 0 0.5rem 0 0;
 }
 
@@ -865,10 +866,21 @@ h2 .issue-count-num {
     font-weight: 400;
 }
 
+#next-issue-info {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+#next-issue-info .issue-count-num {
+    font-size: inherit;
+}
+
 /* ===== Results page ===== */
 h2 {
     font-family: var(--font-display);
     font-weight: 400;
+    color: rgba(255, 255, 255, 0.75);
 }
 
 article header strong {

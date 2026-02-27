@@ -2,7 +2,10 @@
 
 {% block content %}
 <div style="display: flex; align-items: center; margin-top: -1.25rem; margin-bottom: 1.25rem">
-    <a href="/" class="btn-nav">Bundle Editor</a>
+    <div style="display: flex; gap: 0.5rem;">
+        <a href="/" class="btn-nav">Bundle Editor</a>
+        <a href="/db-mgmt" class="btn-nav">Database Stats</a>
+    </div>
     <h2 style="margin: 0; flex: 1; text-align: center; font-family: var(--font-body)">Social Media Posting</h2>
     <div style="width: 120px"></div>
 </div>
@@ -214,20 +217,17 @@
 
 <div class="sidebar">
 {% if issue_counts %}
-<aside class="latest-issue">
-    <div class="latest-issue-header">
-        <h2>Next Issue: <span class="issue-count-num">{{ issue_counts.issue_number }}</span></h2>
-    </div>
-    <div class="issue-counts">
-        <span>Blog Posts:&nbsp; <span class="issue-count-num">{{ issue_counts.blog_posts }}</span></span>
-        <span>Sites:&nbsp; <span class="issue-count-num">{{ issue_counts.sites }}</span></span>
-        <span>Releases:&nbsp; <span class="issue-count-num">{{ issue_counts.releases }}</span></span>
-        <span>Starters:&nbsp; <span class="issue-count-num">{{ issue_counts.starters }}</span></span>
-    </div>
-</aside>
+<fieldset id="next-issue-info">
+    <legend>Next Issue</legend>
+    <span>Issue: <span class="issue-count-num">{{ issue_counts.issue_number }}</span></span>
+    <span>Blog Posts: <span class="issue-count-num">{{ issue_counts.blog_posts }}</span></span>
+    <span>Sites: <span class="issue-count-num">{{ issue_counts.sites }}</span></span>
+    <span>Releases: <span class="issue-count-num">{{ issue_counts.releases }}</span></span>
+    <span>Starters: <span class="issue-count-num">{{ issue_counts.starters }}</span></span>
+</fieldset>
 {% endif %}
 <aside class="recent-posts">
-    <h2>Recent Posts</h2>
+    <fieldset><legend>Recent Posts</legend>
     {% if recent_posts %}
         {% for post in recent_posts %}
         {% set is_failed = post.is_failed or (not post.is_draft and not post.platforms) %}
@@ -265,10 +265,11 @@
     {% else %}
         <p class="muted">None</p>
     {% endif %}
+    </fieldset>
 </aside>
 
 <aside class="bwe-queue">
-    <h2>Sites to Post</h2>
+    <fieldset><legend>Sites to Post</legend>
     {% if bwe_to_post %}
         {% for site in bwe_to_post %}
         <div class="bwe-queue-item">
@@ -277,8 +278,8 @@
                 <span class="bwe-platform-cbs">
                     <label class="bwe-platform-cb"><input type="checkbox" class="bwe-plat-cb" data-platform="M" {% if "M" in site.platforms %}checked{% endif %}>M</label>
                     <label class="bwe-platform-cb"><input type="checkbox" class="bwe-plat-cb" data-platform="B" {% if "B" in site.platforms %}checked{% endif %}>B</label>
-                    <label class="bwe-platform-cb"><input type="checkbox" class="bwe-plat-cb" data-platform="D" {% if "D" in site.platforms %}checked{% endif %}>D</label>
-                    <label class="bwe-platform-cb"><input type="checkbox" class="bwe-plat-cb" data-platform="C" {% if "C" in site.platforms %}checked{% endif %}>C</label>
+                    <label class="bwe-platform-cb"><input type="checkbox" class="bwe-plat-cb" data-platform="D" {% if "D" in site.platforms %}checked{% endif %}>DS</label>
+                    <label class="bwe-platform-cb"><input type="checkbox" class="bwe-plat-cb" data-platform="C" {% if "C" in site.platforms %}checked{% endif %}>DC</label>
                 </span>
                 {% if site.draft_id %}
                 <a href="/draft/{{ site.draft_id }}" class="btn-use-draft">Use</a>
@@ -292,10 +293,11 @@
     {% else %}
         <p class="muted">None</p>
     {% endif %}
+    </fieldset>
 </aside>
 
 <aside class="bwe-posted">
-    <h2>Sites Posted</h2>
+    <fieldset><legend>Sites Posted</legend>
     {% if bwe_posted %}
         {% for site in bwe_posted[:10] %}
         <div class="bwe-posted-item">
@@ -318,6 +320,7 @@
     {% else %}
         <p class="muted">None</p>
     {% endif %}
+    </fieldset>
 </aside>
 </div>
 

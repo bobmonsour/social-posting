@@ -4,16 +4,30 @@
 
 {% block content %}
 <div style="display: flex; align-items: center; margin-top: -1.25rem; margin-bottom: 1.25rem">
-    <a href="/social" class="btn-nav">Social Posting</a>
+    <div style="display: flex; gap: 0.5rem;">
+        <a href="/social" class="btn-nav">Social Posting</a>
+        <a href="/db-mgmt" class="btn-nav">Database Stats</a>
+    </div>
     <h2 style="margin: 0; flex: 1; text-align: center; font-family: var(--font-body)">Bundle Editor</h2>
     <div style="display: flex; gap: 0.5rem; align-items: center;">
         <button type="button" id="btn-check-url-open" class="btn-nav">Check URL</button>
         <button type="button" id="btn-run-latest" class="btn-nav">Run Latest</button>
         <button type="button" id="btn-deploy" class="btn-nav">Deploy</button>
-        <a href="/db-mgmt" class="btn-nav">DB Mgmt</a>
     </div>
 </div>
 <div class="editor-container">
+
+    <!-- Next Issue -->
+    {% if issue_counts %}
+    <fieldset id="next-issue-info">
+        <legend>Next Issue</legend>
+        <span>Issue: <span class="issue-count-num">{{ issue_counts.issue_number }}</span></span>
+        <span>Blog Posts: <span class="issue-count-num">{{ issue_counts.blog_posts }}</span></span>
+        <span>Sites: <span class="issue-count-num">{{ issue_counts.sites }}</span></span>
+        <span>Releases: <span class="issue-count-num">{{ issue_counts.releases }}</span></span>
+        <span>Starters: <span class="issue-count-num">{{ issue_counts.starters }}</span></span>
+    </fieldset>
+    {% endif %}
 
     <!-- Mode selector -->
     <fieldset id="mode-selector">

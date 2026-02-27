@@ -720,7 +720,8 @@ def delete_bwe_posted_entry():
 
 @app.route("/")
 def home():
-    return render_template("editor.html")
+    issue_counts = get_latest_issue_counts()
+    return render_template("editor.html", issue_counts=issue_counts)
 
 
 @app.route("/editor/check-url", methods=["POST"])
