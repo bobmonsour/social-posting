@@ -80,7 +80,7 @@ main.container {
     font-weight: 400;
     letter-spacing: -0.02em;
     line-height: 1;
-    color: rgba(255, 255, 255, 0.75);
+    color: var(--pico-muted-color);
 }
 
 button.theme-toggle {
@@ -151,7 +151,7 @@ fieldset legend {
     font-family: var(--font-body);
     font-weight: 700;
     font-size: 1rem;
-    color: rgba(255, 255, 255, 0.75);
+    color: var(--pico-muted-color);
     text-transform: uppercase;
     letter-spacing: 0.12em;
     padding: 0 0.5rem 0 0;
@@ -880,7 +880,7 @@ h2 .issue-count-num {
 h2 {
     font-family: var(--font-display);
     font-weight: 400;
-    color: rgba(255, 255, 255, 0.75);
+    color: var(--pico-muted-color);
 }
 
 article header strong {
