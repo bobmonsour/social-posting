@@ -1,6 +1,11 @@
 {% extends "base.html" %}
 
 {% block content %}
+<div style="display: flex; align-items: center; margin-top: -1.25rem; margin-bottom: 1.25rem">
+    <a href="/" class="btn-nav">Bundle Editor</a>
+    <h2 style="margin: 0; flex: 1; text-align: center; font-family: var(--font-body)">Social Media Posting</h2>
+    <div style="width: 120px"></div>
+</div>
 <div class="page-grid">
 
 <form id="compose-form" action="/post" method="post" enctype="multipart/form-data">
@@ -212,9 +217,6 @@
 <aside class="latest-issue">
     <div class="latest-issue-header">
         <h2>Next Issue: <span class="issue-count-num">{{ issue_counts.issue_number }}</span></h2>
-        <span class="latest-issue-actions">
-            <a href="/editor" class="btn-nav">Bundle Editor</a>
-        </span>
     </div>
     <div class="issue-counts">
         <span>Blog Posts:&nbsp; <span class="issue-count-num">{{ issue_counts.blog_posts }}</span></span>

@@ -153,7 +153,7 @@ def _resolve_modes(issue_number):
     return modes
 
 
-@app.route("/")
+@app.route("/social")
 def compose():
     bwe_to_post, bwe_posted = get_bwe_lists()
     recent = load_recent_posts()
@@ -718,8 +718,8 @@ def delete_bwe_posted_entry():
     return redirect(url_for("compose"))
 
 
-@app.route("/editor")
-def editor():
+@app.route("/")
+def home():
     return render_template("editor.html")
 
 
