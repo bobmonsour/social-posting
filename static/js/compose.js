@@ -114,26 +114,33 @@ document.addEventListener("DOMContentLoaded", () => {
         cwDiscordSection.hidden = !discordChecked;
         cwDiscordContentSection.hidden = !discordContentChecked;
 
-        if (activeMode) {
-            // Show/hide per-platform textarea groups based on checkbox state
-            groupMastodon.hidden = !mastodonChecked;
-            groupBluesky.hidden = !blueskyChecked;
-            groupDiscord.hidden = !discordChecked;
-            groupDiscordContent.hidden = !discordContentChecked;
-        } else {
-            // Only show shared-text counters when no mode is active
-            counterMastodon.hidden = !mastodonChecked;
-            counterBluesky.hidden = !blueskyChecked;
-            counterDiscord.hidden = !discordChecked;
-            counterDiscordContent.hidden = !discordContentChecked;
-            updateCharCounters();
-        }
+        // Always show/hide per-platform textarea groups based on checkbox state
+        groupMastodon.hidden = !mastodonChecked;
+        groupBluesky.hidden = !blueskyChecked;
+        groupDiscord.hidden = !discordChecked;
+        groupDiscordContent.hidden = !discordContentChecked;
+
+        updateMirrorVisibility();
     }
 
     if (cbMastodon) cbMastodon.addEventListener("change", updatePlatformSections);
     if (cbBluesky) cbBluesky.addEventListener("change", updatePlatformSections);
     if (cbDiscord) cbDiscord.addEventListener("change", updatePlatformSections);
     if (cbDiscordContent) cbDiscordContent.addEventListener("change", updatePlatformSections);
+
+    // --- Mirror visibility based on checked platform count ---
+    function updateMirrorVisibility() {
+        const checkedCount = [cbMastodon, cbBluesky, cbDiscord, cbDiscordContent]
+            .filter(cb => cb.checked).length;
+        if (checkedCount >= 2) {
+            mirrorLabel.hidden = false;
+            cbMirror.checked = true;
+        } else {
+            mirrorLabel.hidden = true;
+            cbMirror.checked = false;
+        }
+    }
+
     // --- Character counters (shared textarea) ---
     function updateCharCounters() {
         const len = countGraphemes(textarea.value);
@@ -211,7 +218,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function syncFrom(source, target, sourcePrefix, sourceSuffix, targetPrefix, targetSuffix) {
-        if (syncing || !activeMode) return;
+        if (syncing) return;
         syncing = true;
         const body = getBody(source.value, sourcePrefix, sourceSuffix);
         target.value = (targetPrefix || "") + body + (targetSuffix || "");
@@ -220,11 +227,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function mirrorFromPlatform(sourcePlatform, sourceEl) {
-        if (!activeMode || !cbMirror.checked) return;
-        const mode = modesConfig[activeMode];
-        if (!mode) return;
-        const prefixes = mode.prefixes || {};
-        const suffixes = mode.suffixes || {};
+        if (!cbMirror.checked) return;
+        const mode = activeMode ? modesConfig[activeMode] : null;
+        const prefixes = mode ? (mode.prefixes || {}) : {};
+        const suffixes = mode ? (mode.suffixes || {}) : {};
         const targets = {mastodon: textMastodon, bluesky: textBluesky, discord: textDiscord, discord_content: textDiscordContent};
         for (const [platform, el] of Object.entries(targets)) {
             if (platform === sourcePlatform) continue;
@@ -275,8 +281,6 @@ document.addEventListener("DOMContentLoaded", () => {
         sharedTextSection.hidden = true;
         platformTextsSection.hidden = false;
         previewSection.hidden = false;
-        mirrorLabel.hidden = false;
-        cbMirror.checked = false;
 
         // Apply prefix/suffix — strips old mode's, applies new mode's
         if (!skipTextareas) {
@@ -309,13 +313,11 @@ document.addEventListener("DOMContentLoaded", () => {
         textDiscord.value = "";
         textDiscordContent.value = "";
 
-        // Show shared textarea, hide per-platform
-        sharedTextSection.hidden = false;
-        platformTextsSection.hidden = true;
-        previewSection.hidden = true;
+        // Keep per-platform textareas visible, hide shared
+        sharedTextSection.hidden = true;
+        platformTextsSection.hidden = false;
+        previewSection.hidden = false;
         previewPanels.hidden = true;
-        mirrorLabel.hidden = true;
-        cbMirror.checked = false;
 
         updatePlatformSections();
     }
@@ -564,27 +566,14 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }
 
-        // Validate text: when mode active, check per-platform; otherwise check shared
-        if (activeMode) {
-            if (!textMastodon.value.trim() && !textBluesky.value.trim() && !textDiscord.value.trim() && !textDiscordContent.value.trim()) {
-                e.preventDefault();
-                alert("Please enter text for at least one platform.");
-                return;
-            }
-            // Disable shared textarea so it doesn't submit
-            textarea.disabled = true;
-        } else {
-            if (!textarea.value.trim()) {
-                e.preventDefault();
-                alert("Please enter some text.");
-                return;
-            }
-            // Disable per-platform fields so they don't submit
-            textMastodon.disabled = true;
-            textBluesky.disabled = true;
-            textDiscord.disabled = true;
-            textDiscordContent.disabled = true;
+        // Validate text: always check per-platform textareas
+        if (!textMastodon.value.trim() && !textBluesky.value.trim() && !textDiscord.value.trim() && !textDiscordContent.value.trim()) {
+            e.preventDefault();
+            alert("Please enter text for at least one platform.");
+            return;
         }
+        // Disable shared textarea so it doesn't submit
+        textarea.disabled = true;
 
         // Validate: alt text is filled for all images
         if (totalImageCount() > 0) {
@@ -792,7 +781,10 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
-    // Initialize
+    // Initialize: always show per-platform textareas
+    sharedTextSection.hidden = true;
+    platformTextsSection.hidden = false;
+    previewSection.hidden = false;
     updatePlatformSections();
     if (draftImages.length > 0) {
         renderImagePreviews();
