@@ -51,7 +51,8 @@ social-posting/
 │   └── verify_site.py      # Post-build verification: checks _site HTML for entry presence and valid assets
 ├── data/
 │   ├── insights-exclusions.json  # Exclusions for insights missing-data checks
-│   └── showcase-cleared-sites.json  # Allowlist of sites that passed content review
+│   ├── showcase-cleared-sites.json  # Allowlist of sites that passed content review
+│   └── sveltiacms-sites.json    # Runtime: queued sites from SveltiaCMS showcase check
 ├── showcase-review-results.json  # Full review results keyed by URL (flagged/error/clean)
 ├── showcase-review-report.html   # Generated HTML report of flagged and error sites
 ├── scripts/
@@ -60,7 +61,7 @@ social-posting/
 ├── static/
 │   ├── css/style.css       # Pico CSS overrides, warm color scheme, light/dark
 │   ├── js/compose.js       # Form interactivity, modes, draft/image handling, validation
-│   └── js/db_mgmt.js       # Fetch and render git commit history for DB management page
+│   └── js/db_mgmt.js       # Git commit history + SveltiaCMS showcase check modal
 ├── posts/
 │   ├── history.json        # All posts, drafts, and failed posts (newest first)
 │   └── draft_images/       # Persisted images keyed by draft/failed UUID
@@ -97,10 +98,12 @@ The editor integrates Run Latest (local preview) and Deploy (production) workflo
 
 The `/db-mgmt` page shows database statistics (per-type counts, authors, categories), backup file counts, and the 5 most recent git commits for each data file with newly added entry titles. Backups are created on first save per session (timestamped, auto-pruned to 25 max). For full details see `docs/workflows-reference.md`.
 
+**SveltiaCMS Showcase Check**: The "Check SveltiaCMS" button fetches the SveltiaCMS showcase page (`sveltiacms.app`), extracts Eleventy sites from the VitePress data (hash map + lean.js), and filters out sites already in `showcase-data.json` or `sveltiacms-sites.json` (URL comparison normalizes protocol, `www.`, and trailing slashes). New sites appear in a modal with checkboxes — checked sites are queued for addition, unchecked sites are saved with `skip: true` so they don't reappear. The "Add Next Site (N)" button links to `/?sveltiacms=1`, which pre-fills the editor in Create + Site mode with the first non-skipped queued site's title and URL. Saving the entry in the editor automatically removes it from the queue.
+
 ## Testing
 
 - **Visual testing via browser**: When making UI or layout changes, use the Claude in Chrome MCP tools to verify the result in the running app at `http://127.0.0.1:5555`.
-- **pytest suite**: 165 tests in `tests/` covering services, routes, and data integrity. Run with `source .venv/bin/activate && pytest` (or `pytest -v` for verbose). Uses `responses` to mock HTTP calls and `pytest-flask` for the test client.
+- **pytest suite**: 224 tests in `tests/` covering services, routes, and data integrity. Run with `source .venv/bin/activate && pytest` (or `pytest -v` for verbose). Uses `responses` to mock HTTP calls and `pytest-flask` for the test client.
 - **Path overrides for testing**: `app.py` uses `_get_path(key)` to read file paths from `app.config` with fallback to module-level constants. Tests set `app.config["BUNDLEDB_PATH"]`, `app.config["SHOWCASE_PATH"]`, etc. to temp directories. For `bwe_list.BWE_FILE`, tests use `monkeypatch.setattr`.
 - **Adding tests**: When adding new services or routes, add corresponding test files. Mock external HTTP with `@responses.activate`. Use the `client` fixture for route tests and `app` fixture to access temp paths.
 
