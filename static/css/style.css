@@ -1029,6 +1029,16 @@ button.btn-nav {
     color: #fd7e14;
 }
 
+.issue-not-published {
+    background: color-mix(in srgb, #fd7e14 15%, transparent);
+    color: #fd7e14;
+}
+
+.issue-published {
+    background: color-mix(in srgb, var(--pico-ins-color) 15%, transparent);
+    color: var(--pico-ins-color);
+}
+
 .item-card-source {
     font-size: 0.75rem;
     color: var(--pico-muted-color);

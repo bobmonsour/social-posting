@@ -867,7 +867,21 @@ def editor_data():
     except Exception:
         pass
 
-    return jsonify({"bundledb": data, "showcase_only": showcase_only, "showcase": showcase_list, "review_flags": review_flags})
+    # Scan blog directories for published issue numbers
+    published_issues = []
+    blog_base = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundle.dev/content/blog"
+    try:
+        for year_dir in os.listdir(blog_base):
+            year_path = os.path.join(blog_base, year_dir)
+            if os.path.isdir(year_path):
+                for fname in os.listdir(year_path):
+                    m = re.match(r"11ty-bundle-(\d+)\.md$", fname)
+                    if m:
+                        published_issues.append(int(m.group(1)))
+    except Exception:
+        pass
+
+    return jsonify({"bundledb": data, "showcase_only": showcase_only, "showcase": showcase_list, "review_flags": review_flags, "published_issues": published_issues})
 
 
 @app.route("/editor/save", methods=["POST"])

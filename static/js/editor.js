@@ -4,6 +4,7 @@
   let allData = [];
   let showcaseData = [];
   let reviewFlags = {}; // normalized URL -> "flagged" | "error"
+  let publishedIssues = new Set();
   let fuse = null;
   let currentType = null;
   let currentIndex = null; // index into allData (null = create mode)
@@ -163,6 +164,7 @@
       allData = data.bundledb;
       showcaseData = data.showcase || [];
       reviewFlags = data.review_flags || {};
+      publishedIssues = new Set((data.published_issues || []).map(Number));
       // Append showcase-only entries so they're searchable/editable
       const showcaseOnly = data.showcase_only || [];
       showcaseOnly.forEach((entry) => allData.push(entry));
@@ -767,7 +769,7 @@
     const typed = getItemsOfType(currentType);
     // Sort by Date descending
     typed.sort((a, b) => (b.item.Date || "").localeCompare(a.item.Date || ""));
-    const recent = typed.slice(0, 5);
+    const recent = typed.slice(0, 20);
     recentItemsList.innerHTML = "";
     const heading = document.getElementById("recent-items-heading");
     if (heading) heading.textContent = "Recent " + (typeLabelsPlural[currentType] || currentType);
@@ -1098,7 +1100,7 @@
       (subtitle ? '<div class="item-card-subtitle">' + escapeHtml(subtitle) + "</div>" : "");
 
     // Origin badges + Source link container
-    if (item._origin || item.Link) {
+    if (item._origin || item.Link || item.Issue) {
       const metaRow = document.createElement("div");
       metaRow.className = "item-card-meta";
       if (item._origin === "both" || item._origin === "bundledb") {
@@ -1128,6 +1130,18 @@
           badge.textContent = "error";
           metaRow.appendChild(badge);
         }
+      }
+      if (item.Issue) {
+        const issueBadge = document.createElement("span");
+        const issueNum = parseInt(item.Issue, 10);
+        if (publishedIssues.has(issueNum)) {
+          issueBadge.className = "origin-badge issue-published";
+          issueBadge.textContent = "#" + item.Issue + " published";
+        } else {
+          issueBadge.className = "origin-badge issue-not-published";
+          issueBadge.textContent = "#" + item.Issue + " NOT PUBLISHED";
+        }
+        metaRow.appendChild(issueBadge);
       }
       if (item.Link) {
         const sourceLink = document.createElement("a");
