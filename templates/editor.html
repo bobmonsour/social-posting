@@ -193,5 +193,8 @@
 
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0"></script>
+{% if sveltiacms_prefill %}
+<script>window.sveltiacmsPrefill = {{ sveltiacms_prefill | tojson }};</script>
+{% endif %}
 <script src="{{ url_for('static', filename='js/editor.js') }}?v={{ js_version }}"></script>
 {% endblock %}

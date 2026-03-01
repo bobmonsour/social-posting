@@ -9,7 +9,30 @@
         <a href="/social" class="btn-nav">Social Posting</a>
     </div>
     <h2 style="margin: 0; flex: 1; text-align: center; font-family: var(--font-body)">Database Stats</h2>
-    <div style="width: 120px"></div>
+    <div style="display: flex; gap: 0.5rem; align-items: center;">
+        <button type="button" id="btn-sveltiacms-check" class="btn-nav">Check SveltiaCMS</button>
+        {% if sveltiacms_count > 0 %}
+        <a href="/?sveltiacms=1" class="btn-nav">Add Next Site ({{ sveltiacms_count }})</a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- SveltiaCMS Modal -->
+<div id="sveltiacms-modal" class="deploy-modal-overlay" style="display: none;">
+    <div class="deploy-modal" style="max-width: 600px;">
+        <h3>New SveltiaCMS Showcase Sites</h3>
+        <div id="sveltiacms-modal-body" style="flex: 1; overflow-y: auto; max-height: 50vh;">
+            <label style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.75rem; font-weight: 700; font-size: 0.85rem;">
+                <input type="checkbox" id="sveltiacms-select-all" checked style="margin: 0;">
+                Select All
+            </label>
+            <div id="sveltiacms-site-list" class="sveltiacms-site-list"></div>
+        </div>
+        <div style="display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1rem;">
+            <button type="button" id="sveltiacms-cancel" class="btn-action" style="background: var(--pico-secondary); border-color: var(--pico-secondary);">Cancel</button>
+            <button type="button" id="sveltiacms-save" class="btn-action">Save Sites</button>
+        </div>
+    </div>
 </div>
 
 <div class="dbmgmt-container">

@@ -1546,3 +1546,21 @@ button.btn-nav {
     font-style: italic;
     margin: 0;
 }
+
+/* ===== SveltiaCMS site list in modal ===== */
+.sveltiacms-site-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.sveltiacms-site-row {
+    padding: 0.5rem 0.6rem;
+    border: 1px solid var(--pico-muted-border-color);
+    border-radius: var(--pico-border-radius);
+    background: var(--pico-card-background-color);
+}
+
+.sveltiacms-site-row a {
+    font-size: 0.95rem;
+}

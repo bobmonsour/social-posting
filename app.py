@@ -61,6 +61,7 @@ SHOWCASE_PATH = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundledb/showcase-
 BUNDLEDB_DIR = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundledb"
 SCREENSHOT_DIR = os.path.join(BUNDLEDB_DIR, "screenshots")
 SCREENSHOT_SCRIPT = os.path.join(_BASE_DIR, "scripts", "capture-screenshot.js")
+SVELTIACMS_SITES_PATH = os.path.join(_BASE_DIR, "data", "sveltiacms-sites.json")
 
 
 def _get_path(key):
@@ -73,6 +74,7 @@ def _get_path(key):
         "SHOWCASE_BACKUP_DIR": SHOWCASE_BACKUP_DIR,
         "SHOWCASE_PATH": SHOWCASE_PATH,
         "BUNDLEDB_DIR": BUNDLEDB_DIR,
+        "SVELTIACMS_SITES_PATH": SVELTIACMS_SITES_PATH,
     }
     return app.config.get(key, defaults.get(key, ""))
 
@@ -721,7 +723,18 @@ def delete_bwe_posted_entry():
 @app.route("/")
 def home():
     issue_counts = get_latest_issue_counts()
-    return render_template("editor.html", issue_counts=issue_counts)
+    sveltiacms_prefill = None
+    if request.args.get("sveltiacms") == "1":
+        try:
+            with open(_get_path("SVELTIACMS_SITES_PATH"), "r") as f:
+                queue = json.load(f)
+            for entry in queue:
+                if not entry.get("skip"):
+                    sveltiacms_prefill = entry
+                    break
+        except (FileNotFoundError, json.JSONDecodeError):
+            pass
+    return render_template("editor.html", issue_counts=issue_counts, sveltiacms_prefill=sveltiacms_prefill)
 
 
 @app.route("/editor/check-url", methods=["POST"])
@@ -945,6 +958,21 @@ def editor_save():
 
         data.append(item)
         result["new_index"] = len(data) - 1
+
+        # Remove site from SveltiaCMS queue if it was pre-filled from there
+        sveltiacms_link = payload.get("sveltiacms_link")
+        if sveltiacms_link:
+            try:
+                queue_path = _get_path("SVELTIACMS_SITES_PATH")
+                with open(queue_path, "r") as f:
+                    queue = json.load(f)
+                normalized = sveltiacms_link.lower().rstrip("/")
+                queue = [s for s in queue if s.get("url", "").lower().rstrip("/") != normalized]
+                with open(queue_path, "w") as f:
+                    json.dump(queue, f, indent=2)
+                result["sveltiacms_removed"] = True
+            except (FileNotFoundError, json.JSONDecodeError):
+                pass
     else:
         index = payload.get("index")
         if index is None:
@@ -1537,7 +1565,13 @@ def _get_commit_history(filename, title_key, count=10):
 def db_mgmt():
     stats = _compute_db_stats()
     backup_info = _compute_backup_info()
-    return render_template("db_mgmt.html", stats=stats, backup_info=backup_info)
+    sveltiacms_count = 0
+    try:
+        with open(_get_path("SVELTIACMS_SITES_PATH"), "r") as f:
+            sveltiacms_count = sum(1 for s in json.load(f) if not s.get("skip"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        pass
+    return render_template("db_mgmt.html", stats=stats, backup_info=backup_info, sveltiacms_count=sveltiacms_count)
 
 
 @app.route("/db-mgmt/commits")
@@ -1545,6 +1579,146 @@ def db_mgmt_commits():
     bundledb_commits = _get_commit_history("bundledb.json", "Title", count=5)
     showcase_commits = _get_commit_history("showcase-data.json", "title", count=5)
     return jsonify({"bundledb": bundledb_commits, "showcase": showcase_commits})
+
+
+@app.route("/db-mgmt/sveltiacms-check", methods=["POST"])
+def db_mgmt_sveltiacms_check():
+    """Fetch SveltiaCMS showcase, filter for Eleventy sites not already in showcase."""
+    import requests as req
+
+    try:
+        # Step 1: Fetch the showcase HTML page to get the hash map
+        resp = req.get("https://sveltiacms.app/en/showcase?framework=eleventy", timeout=15)
+        resp.raise_for_status()
+        html = resp.text
+
+        # Extract hash for en_showcase.md from __VP_HASH_MAP__
+        match = re.search(r'window\.__VP_HASH_MAP__\s*=\s*JSON\.parse\("(.+?)"\)', html)
+        if not match:
+            return jsonify({"error": "Could not find __VP_HASH_MAP__ in SveltiaCMS page. The site structure may have changed."}), 502
+
+        try:
+            hash_map = json.loads(match.group(1).replace('\\"', '"'))
+        except json.JSONDecodeError:
+            return jsonify({"error": "Could not parse __VP_HASH_MAP__ JSON. The format may have changed."}), 502
+
+        showcase_hash = hash_map.get("en_showcase.md")
+        if not showcase_hash:
+            return jsonify({"error": "No hash found for en_showcase.md in __VP_HASH_MAP__."}), 502
+
+        # Step 2: Fetch the lean.js data file
+        data_url = f"https://sveltiacms.app/assets/en_showcase.md.{showcase_hash}.lean.js"
+        data_resp = req.get(data_url, timeout=15)
+        data_resp.raise_for_status()
+        js_text = data_resp.text
+
+        # Extract JSON array from JSON.parse('...')
+        json_match = re.search(r"JSON\.parse\('(.+?)'\)", js_text, re.DOTALL)
+        if not json_match:
+            return jsonify({"error": "Could not extract JSON data from the SveltiaCMS showcase data file."}), 502
+
+        raw_json = json_match.group(1).replace("\\'", "'")
+        try:
+            sites = json.loads(raw_json)
+        except json.JSONDecodeError:
+            return jsonify({"error": "Could not parse showcase site data JSON."}), 502
+
+        # Step 3: Filter for Eleventy sites
+        eleventy_sites = [s for s in sites if s.get("framework") == "eleventy"]
+
+        # Step 4: Build normalized URL set from existing showcase-data.json
+        def _normalize_url(raw):
+            """Lowercase, strip trailing slash, normalize to https://, strip www."""
+            u = (raw or "").strip().lower().rstrip("/")
+            if not u.startswith(("http://", "https://")):
+                u = "https://" + u
+            u = re.sub(r"^http://", "https://", u)
+            u = re.sub(r"^(https://)www\.", r"\1", u)
+            return u
+
+        existing_urls = set()
+        try:
+            with open(_get_path("SHOWCASE_PATH"), "r") as f:
+                showcase_data = json.load(f)
+            for entry in showcase_data:
+                url = _normalize_url(entry.get("link"))
+                if url:
+                    existing_urls.add(url)
+        except Exception:
+            pass
+
+        # Also filter out sites already in sveltiacms-sites.json queue
+        queued_urls = set()
+        try:
+            with open(_get_path("SVELTIACMS_SITES_PATH"), "r") as f:
+                queued = json.load(f)
+            for entry in queued:
+                url = _normalize_url(entry.get("url"))
+                if url:
+                    queued_urls.add(url)
+        except (FileNotFoundError, json.JSONDecodeError):
+            pass
+
+        # Step 5: Filter out already-known sites
+        new_sites = []
+        for site in eleventy_sites:
+            url = _normalize_url(site.get("url"))
+            if url and url not in existing_urls and url not in queued_urls:
+                new_sites.append({
+                    "name": site.get("name", ""),
+                    "url": site.get("url", ""),
+                    "description": site.get("description", ""),
+                })
+
+        return jsonify({"sites": new_sites})
+
+    except req.RequestException as e:
+        return jsonify({"error": f"Network error fetching SveltiaCMS showcase: {e}"}), 502
+
+
+@app.route("/db-mgmt/sveltiacms-save", methods=["POST"])
+def db_mgmt_sveltiacms_save():
+    """Save selected sites to the SveltiaCMS queue file."""
+    payload = request.get_json()
+    if not payload or "sites" not in payload:
+        return jsonify({"error": "No sites provided"}), 400
+
+    sites = payload["sites"]
+    queue_path = _get_path("SVELTIACMS_SITES_PATH")
+
+    # Merge with existing queue
+    existing = []
+    try:
+        with open(queue_path, "r") as f:
+            existing = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        pass
+
+    existing_urls = {s.get("url", "").lower().rstrip("/") for s in existing}
+    for site in sites:
+        url = site.get("url", "").lower().rstrip("/")
+        if url and url not in existing_urls:
+            existing.append(site)
+            existing_urls.add(url)
+
+    with open(queue_path, "w") as f:
+        json.dump(existing, f, indent=2)
+
+    return jsonify({"ok": True, "count": len(existing)})
+
+
+@app.route("/db-mgmt/sveltiacms-next")
+def db_mgmt_sveltiacms_next():
+    """Get the first queued SveltiaCMS site for editor pre-fill."""
+    try:
+        with open(_get_path("SVELTIACMS_SITES_PATH"), "r") as f:
+            queue = json.load(f)
+        for entry in queue:
+            if not entry.get("skip"):
+                return jsonify(entry)
+    except (FileNotFoundError, json.JSONDecodeError):
+        pass
+    return jsonify({"error": "No queued sites"}), 404
 
 
 if __name__ == "__main__":

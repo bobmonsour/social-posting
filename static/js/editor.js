@@ -12,6 +12,7 @@
   let originalItem = null; // snapshot before editing
   let uniqueAuthors = []; // for autocomplete
   let uniqueCategories = []; // for checkbox list
+  let sveltiacmsLink = null; // URL from SveltiaCMS queue pre-fill
 
   // Fields eligible for author-level propagation (empty→non-empty triggers prompt)
   const PROPAGATABLE_FIELDS = ["AuthorSiteDescription", "rssLink", "favicon"];
@@ -2002,6 +2003,7 @@
       payload.index = currentIndex;
     }
     if (doPropagate) payload.propagate = propagate;
+    if (sveltiacmsLink && isCreate) payload.sveltiacms_link = sveltiacmsLink;
 
     fetch("/editor/save", {
       method: "POST",
@@ -2042,6 +2044,10 @@
           if (propCount > 0) msg += " Updated " + propCount + " other post" + (propCount === 1 ? "" : "s") + ".";
           if (data.bwe_added) msg += " Added to BWE list.";
           if (data.showcase_added) msg += " Added to showcase.";
+          if (data.sveltiacms_removed) {
+            msg += " Removed from SveltiaCMS queue.";
+            sveltiacmsLink = null;
+          }
           if (!onSuccess) showStatus(msg, false);
           if (onSuccess) onSuccess();
 
@@ -2480,5 +2486,30 @@
     const div = document.createElement("div");
     div.textContent = str;
     return div.innerHTML;
+  }
+
+  // --- SveltiaCMS pre-fill ---
+  if (window.sveltiacmsPrefill) {
+    const prefill = window.sveltiacmsPrefill;
+    sveltiacmsLink = prefill.url || null;
+    // Click Create mode, then Site type
+    const createRadio = document.querySelector('input[name="editor-mode"][value="create"]');
+    if (createRadio && !createRadio.checked) {
+      createRadio.checked = true;
+      createRadio.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    setTimeout(() => {
+      const siteRadio = document.querySelector('input[name="item-type"][value="site"]');
+      if (siteRadio) {
+        siteRadio.checked = true;
+        siteRadio.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+      setTimeout(() => {
+        const titleEl = document.getElementById("field-Title");
+        const linkEl = document.getElementById("field-Link");
+        if (titleEl) titleEl.value = prefill.name || "";
+        if (linkEl) linkEl.value = prefill.url || "";
+      }, 100);
+    }, 100);
   }
 })();
