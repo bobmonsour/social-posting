@@ -1707,6 +1707,40 @@ def db_mgmt_sveltiacms_save():
     return jsonify({"ok": True, "count": len(existing)})
 
 
+@app.route("/editor/sveltiacms-skip", methods=["POST"])
+def editor_sveltiacms_skip():
+    """Mark a SveltiaCMS queued site as skipped."""
+    payload = request.get_json()
+    if not payload or not payload.get("url"):
+        return jsonify({"error": "Missing url"}), 400
+
+    target = payload["url"].lower().replace("://www.", "://").rstrip("/")
+    queue_path = _get_path("SVELTIACMS_SITES_PATH")
+
+    try:
+        with open(queue_path, "r") as f:
+            queue = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        queue = []
+
+    found = False
+    for entry in queue:
+        normalized = entry.get("url", "").lower().replace("://www.", "://").rstrip("/")
+        if normalized == target:
+            entry["skip"] = True
+            found = True
+            break
+
+    if not found:
+        queue.append({"url": payload["url"], "skip": True})
+
+    with open(queue_path, "w") as f:
+        json.dump(queue, f, indent=2)
+
+    remaining = sum(1 for s in queue if not s.get("skip"))
+    return jsonify({"ok": True, "remaining": remaining})
+
+
 @app.route("/db-mgmt/sveltiacms-next")
 def db_mgmt_sveltiacms_next():
     """Get the first queued SveltiaCMS site for editor pre-fill."""

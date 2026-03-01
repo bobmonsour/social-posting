@@ -114,6 +114,7 @@
   const btnSaveDeploy = document.getElementById("btn-save-deploy");
   const btnCancel = document.getElementById("btn-cancel");
   const btnViewJson = document.getElementById("btn-view-json");
+  const btnSkipSveltiacms = document.getElementById("btn-skip-sveltiacms");
   const jsonPreviewPanel = document.getElementById("json-preview-panel");
   const deleteConfirmModal = document.getElementById("delete-confirm-modal");
   const deleteConfirmMessage = document.getElementById("delete-confirm-message");
@@ -2511,5 +2512,28 @@
         if (linkEl) linkEl.value = prefill.url || "";
       }, 100);
     }, 100);
+
+    // Show Skip Site button and wire up handler
+    if (btnSkipSveltiacms) {
+      btnSkipSveltiacms.style.display = "";
+      btnSkipSveltiacms.addEventListener("click", () => {
+        if (!sveltiacmsLink) return;
+        fetch("/editor/sveltiacms-skip", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: sveltiacmsLink }),
+        })
+          .then((r) => r.json())
+          .then((data) => {
+            sveltiacmsLink = null;
+            if (data.remaining > 0) {
+              window.location.href = "/?sveltiacms=1";
+            } else {
+              window.location.href = "/db-mgmt";
+            }
+          })
+          .catch(() => showStatus("Failed to skip site.", true));
+      });
+    }
   }
 })();
