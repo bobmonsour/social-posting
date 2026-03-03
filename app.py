@@ -1314,6 +1314,29 @@ def editor_end_session():
     })
 
 
+@app.route("/editor/prebuild-sync", methods=["POST"])
+def editor_prebuild_sync():
+    """Run git sync and file check before build."""
+    from services.prebuild_sync import sync_bundledb_repo, check_and_copy_assets
+
+    # Step 1: Git sync
+    git_result = sync_bundledb_repo()
+    if not git_result["success"]:
+        return jsonify({"success": False, "error": git_result["message"], "stage": "git"})
+
+    # Step 2: File check/copy
+    file_result = check_and_copy_assets()
+    if not file_result["success"]:
+        return jsonify({"success": False, "error": file_result["message"], "stage": "files"})
+
+    return jsonify({
+        "success": True,
+        "git_message": git_result["message"],
+        "files_copied": file_result.get("copied", []),
+        "files_message": file_result["message"],
+    })
+
+
 ELEVENTY_PROJECT_DIR = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundle.dev"
 
 @app.route("/editor/run-latest", methods=["POST"])
