@@ -14,6 +14,8 @@
   let uniqueAuthors = []; // for autocomplete
   let uniqueCategories = []; // for checkbox list
   let sveltiacmsLink = null; // URL from SveltiaCMS queue pre-fill
+  let stashMode = false; // Stash checkbox checked
+  let processingStash = null; // Link of stash entry being processed
 
   // Fields eligible for author-level propagation (empty→non-empty triggers prompt)
   const PROPAGATABLE_FIELDS = ["AuthorSiteDescription", "rssLink", "favicon"];
@@ -156,6 +158,10 @@
   const overwriteModalMessage = document.getElementById("overwrite-modal-message");
   const overwriteModalCancel = document.getElementById("overwrite-modal-cancel");
   const overwriteModalOk = document.getElementById("overwrite-modal-ok");
+  const stashCheckbox = document.getElementById("stash-checkbox");
+  const stashCheckboxLabel = document.getElementById("stash-checkbox-label");
+  const btnProcessStash = document.getElementById("btn-process-stash");
+  let stashCount = window.stashCount || 0;
 
   // Load data on page load
   fetch("/editor/data")
@@ -297,6 +303,7 @@
       } else {
         typeSelector.style.display = "";
       }
+      updateStashVisibility();
     });
   });
 
@@ -346,7 +353,13 @@
   });
 
   // Save handler
-  btnSave.addEventListener("click", () => saveItem());
+  btnSave.addEventListener("click", () => {
+    if (stashMode) {
+      stashItem();
+    } else {
+      saveItem();
+    }
+  });
 
   // --- Run Latest / Deploy shared flows ---
 
@@ -558,6 +571,7 @@
 
   // Cancel handler
   btnCancel.addEventListener("click", () => {
+    if (processingStash) processingStash = null;
     hideEditForm();
     searchInput.value = "";
     searchResults.style.display = "none";
@@ -566,7 +580,68 @@
     } else if (currentMode === "edit-latest") {
       showLatestIssueItems();
     }
+    updateStashVisibility();
     window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
+  // --- Stash controls ---
+
+  function updateStashVisibility() {
+    const isCreate = currentMode === "create";
+    const hasSveltiacms = !!sveltiacmsLink;
+    const showStashCheckbox = isCreate && !hasSveltiacms && !processingStash;
+    const showProcessBtn = isCreate && stashCount > 0 && !processingStash;
+    stashCheckboxLabel.style.display = showStashCheckbox ? "" : "none";
+    btnProcessStash.style.display = showProcessBtn ? "" : "none";
+    if (!showStashCheckbox) {
+      stashCheckbox.checked = false;
+      stashMode = false;
+    }
+  }
+
+  function updateStashButtonText() {
+    btnProcessStash.textContent = "Process Stash (" + stashCount + ")";
+  }
+
+  stashCheckbox.addEventListener("change", () => {
+    stashMode = stashCheckbox.checked;
+    if (stashMode) {
+      btnSave.textContent = "Stash It";
+      btnSaveEnd.style.display = "none";
+      btnSaveDeploy.style.display = "none";
+    } else {
+      btnSave.textContent = "Save";
+      btnSaveEnd.style.display = "";
+      btnSaveDeploy.style.display = "";
+    }
+  });
+
+  btnProcessStash.addEventListener("click", () => {
+    fetch("/editor/stash/next")
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data.entry) {
+          showStatus("Stash is empty.", true);
+          return;
+        }
+        const entry = data.entry;
+        // Select the type
+        const typeRadio = document.querySelector('input[name="item-type"][value="' + entry.type + '"]');
+        if (typeRadio) {
+          typeRadio.checked = true;
+          typeRadio.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+        // Pre-fill title and link after form renders
+        setTimeout(() => {
+          const titleEl = document.getElementById("field-Title");
+          const linkEl = document.getElementById("field-Link");
+          if (titleEl) titleEl.value = entry.title;
+          if (linkEl) linkEl.value = entry.link;
+          processingStash = entry.link;
+          updateStashVisibility();
+        }, 100);
+      })
+      .catch((err) => showStatus("Failed to load stash: " + err.message, true));
   });
 
   // Escape key to reset editor to initial state (skip if a modal is open)
@@ -582,6 +657,7 @@
     if (testDeployModal.style.display !== "none") return;
     if (contentReviewModal && contentReviewModal.style.display !== "none") return;
     // Reset to initial editor state (same as mode change handler)
+    if (processingStash) processingStash = null;
     hideEditForm();
     currentType = null;
     typeRadios.forEach((r) => { r.checked = false; });
@@ -594,6 +670,7 @@
     searchSection.style.display = "none";
     testDataBanner.style.display = "none";
     contentReviewBanner.style.display = "none";
+    updateStashVisibility();
     // Re-apply current mode's default view
     if (currentMode === "edit-latest") {
       typeSelector.style.display = "none";
@@ -1987,6 +2064,45 @@
       });
   }
 
+  function stashItem() {
+    const titleEl = document.getElementById("field-Title");
+    const linkEl = document.getElementById("field-Link");
+    const title = titleEl ? titleEl.value.trim() : "";
+    const link = linkEl ? linkEl.value.trim() : "";
+    if (!title || !link) {
+      showStatus("Title and Link are required to stash.", true);
+      return;
+    }
+    btnSave.disabled = true;
+    btnSave.textContent = "Stashing...";
+    fetch("/editor/stash", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, link, type: currentType })
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) {
+          stashCount = data.count;
+          updateStashButtonText();
+          stashCheckbox.checked = false;
+          stashMode = false;
+          hideEditForm();
+          typeRadios.forEach((r) => (r.checked = false));
+          currentType = null;
+          showStatus("Stashed for later.", false);
+          updateStashVisibility();
+        } else {
+          showStatus("Stash failed: " + (data.error || "Unknown error"), true);
+        }
+      })
+      .catch((err) => showStatus("Stash failed: " + err.message, true))
+      .finally(() => {
+        btnSave.disabled = false;
+        btnSave.textContent = "Save";
+      });
+  }
+
   function saveItem(onSuccess) {
     const isCreate = currentIndex === null;
 
@@ -2085,6 +2201,24 @@
           if (data.sveltiacms_removed) {
             msg += " Removed from SveltiaCMS queue.";
             sveltiacmsLink = null;
+          }
+          // Remove from stash if processing a stashed entry
+          if (processingStash && isCreate) {
+            const stashLink = processingStash;
+            processingStash = null;
+            fetch("/editor/stash/remove", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ link: stashLink })
+            })
+              .then((r) => r.json())
+              .then((d) => {
+                stashCount = d.count;
+                updateStashButtonText();
+                updateStashVisibility();
+              })
+              .catch(() => {});
+            msg += " Removed from stash.";
           }
           if (!onSuccess) showStatus(msg, false);
           if (onSuccess) onSuccess();
@@ -2525,6 +2659,9 @@
     div.textContent = str;
     return div.innerHTML;
   }
+
+  // Initial stash visibility
+  updateStashVisibility();
 
   // --- SveltiaCMS pre-fill ---
   if (window.sveltiacmsPrefill) {

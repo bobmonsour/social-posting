@@ -62,6 +62,7 @@ BUNDLEDB_DIR = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundledb"
 SCREENSHOT_DIR = os.path.join(BUNDLEDB_DIR, "screenshots")
 SCREENSHOT_SCRIPT = os.path.join(_BASE_DIR, "scripts", "capture-screenshot.js")
 SVELTIACMS_SITES_PATH = os.path.join(_BASE_DIR, "data", "sveltiacms-sites.json")
+STASH_PATH = os.path.join(_BASE_DIR, "data", "stashed-entries.json")
 
 
 def _get_path(key):
@@ -75,6 +76,7 @@ def _get_path(key):
         "SHOWCASE_PATH": SHOWCASE_PATH,
         "BUNDLEDB_DIR": BUNDLEDB_DIR,
         "SVELTIACMS_SITES_PATH": SVELTIACMS_SITES_PATH,
+        "STASH_PATH": STASH_PATH,
     }
     return app.config.get(key, defaults.get(key, ""))
 
@@ -734,7 +736,76 @@ def home():
                     break
         except (FileNotFoundError, json.JSONDecodeError):
             pass
-    return render_template("editor.html", issue_counts=issue_counts, sveltiacms_prefill=sveltiacms_prefill)
+    stash_count = 0
+    try:
+        with open(_get_path("STASH_PATH"), "r") as f:
+            stash_count = len(json.load(f))
+    except (FileNotFoundError, json.JSONDecodeError):
+        pass
+    return render_template("editor.html", issue_counts=issue_counts, sveltiacms_prefill=sveltiacms_prefill, stash_count=stash_count)
+
+
+@app.route("/editor/stash", methods=["POST"])
+def editor_stash():
+    """Stash an entry (title + link + type) for later processing."""
+    payload = request.get_json()
+    if not payload:
+        return jsonify({"error": "No data provided"}), 400
+    title = (payload.get("title") or "").strip()
+    link = (payload.get("link") or "").strip()
+    entry_type = (payload.get("type") or "").strip()
+    if not title or not link or not entry_type:
+        return jsonify({"error": "Title, link, and type are required"}), 400
+
+    stash_path = _get_path("STASH_PATH")
+    try:
+        with open(stash_path, "r") as f:
+            stash = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        stash = []
+
+    stash.append({"title": title, "link": link, "type": entry_type})
+    with open(stash_path, "w") as f:
+        json.dump(stash, f, indent=2)
+
+    return jsonify({"success": True, "count": len(stash)})
+
+
+@app.route("/editor/stash/next")
+def editor_stash_next():
+    """Return the first stashed entry (FIFO)."""
+    stash_path = _get_path("STASH_PATH")
+    try:
+        with open(stash_path, "r") as f:
+            stash = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        stash = []
+
+    if not stash:
+        return jsonify({"entry": None, "count": 0})
+    return jsonify({"entry": stash[0], "count": len(stash)})
+
+
+@app.route("/editor/stash/remove", methods=["POST"])
+def editor_stash_remove():
+    """Remove a stashed entry by link."""
+    payload = request.get_json()
+    link = (payload.get("link") or "").strip() if payload else ""
+    if not link:
+        return jsonify({"error": "Link is required"}), 400
+
+    stash_path = _get_path("STASH_PATH")
+    try:
+        with open(stash_path, "r") as f:
+            stash = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        stash = []
+
+    stash = [e for e in stash if e.get("link") != link]
+    with open(stash_path, "w") as f:
+        json.dump(stash, f, indent=2)
+
+    return jsonify({"success": True, "count": len(stash)})
 
 
 @app.route("/editor/check-url", methods=["POST"])

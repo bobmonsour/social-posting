@@ -32,8 +32,8 @@
     <!-- Mode selector -->
     <fieldset id="mode-selector">
         <legend>Mode</legend>
-        <label><input type="radio" name="editor-mode" value="create" checked> Create Entry</label>
-        <label><input type="radio" name="editor-mode" value="edit"> Edit Entry</label>
+        <label><input type="radio" name="editor-mode" value="create" checked> Create</label>
+        <label><input type="radio" name="editor-mode" value="edit"> Edit</label>
         <label><input type="radio" name="editor-mode" value="edit-latest"> Edit Latest Issue</label>
         <label><input type="radio" name="editor-mode" value="generate"> Generate Bundle Issue</label>
     </fieldset>
@@ -44,10 +44,18 @@
     <!-- Type selector -->
     <fieldset id="type-selector">
         <legend>Type</legend>
-        <label><input type="radio" name="item-type" value="blog post"> Blog Post</label>
-        <label><input type="radio" name="item-type" value="site"> Site</label>
-        <label><input type="radio" name="item-type" value="release"> Release</label>
-        <label><input type="radio" name="item-type" value="starter"> Starter</label>
+        <div class="type-selector-row">
+            <div class="type-selector-types">
+                <label><input type="radio" name="item-type" value="blog post"> Blog Post</label>
+                <label><input type="radio" name="item-type" value="site"> Site</label>
+                <label><input type="radio" name="item-type" value="release"> Release</label>
+                <label><input type="radio" name="item-type" value="starter"> Starter</label>
+            </div>
+            <div class="type-selector-stash">
+                <label id="stash-checkbox-label" style="display:none;"><input type="checkbox" id="stash-checkbox"> Stash It</label>
+                <button type="button" id="btn-process-stash" class="btn-action btn-secondary" style="display:none;">Process Stash ({{ stash_count }})</button>
+            </div>
+        </div>
     </fieldset>
 
     <!-- Test data warning banner -->
@@ -197,5 +205,6 @@
 {% if sveltiacms_prefill %}
 <script>window.sveltiacmsPrefill = {{ sveltiacms_prefill | tojson }};</script>
 {% endif %}
+<script>window.stashCount = {{ stash_count }};</script>
 <script src="{{ url_for('static', filename='js/editor.js') }}?v={{ js_version }}"></script>
 {% endblock %}
