@@ -978,15 +978,15 @@ def editor_save():
 
     # Showcase-only save: update showcase-data.json directly
     if showcase_only:
-        sc_index = payload.get("showcase_index")
-        if sc_index is None:
-            return jsonify({"success": False, "error": "Missing showcase_index"}), 400
+        link = payload.get("link")
+        if not link:
+            return jsonify({"success": False, "error": "Missing link"}), 400
         with open(_get_path("SHOWCASE_PATH"), "r") as f:
             showcase_data = json.load(f)
-        if sc_index < 0 or sc_index >= len(showcase_data):
-            return jsonify({"success": False, "error": "Showcase index out of range"}), 400
+        sc_entry = next((e for e in showcase_data if e.get("link") == link), None)
+        if sc_entry is None:
+            return jsonify({"success": False, "error": f"Showcase entry not found for link: {link}"}), 404
         # Convert PascalCase back to lowercase for showcase-data.json
-        sc_entry = showcase_data[sc_index]
         sc_entry["title"] = item.get("Title", "")
         sc_entry["link"] = item.get("Link", "")
         sc_entry["date"] = item.get("Date", "")[:10] if item.get("Date") else ""
@@ -1059,11 +1059,12 @@ def editor_save():
             except (FileNotFoundError, json.JSONDecodeError):
                 pass
     else:
-        index = payload.get("index")
+        link = payload.get("link")
+        if not link:
+            return jsonify({"success": False, "error": "Missing link"}), 400
+        index = next((i for i, e in enumerate(data) if e.get("Link") == link), None)
         if index is None:
-            return jsonify({"success": False, "error": "Missing index"}), 400
-        if index < 0 or index >= len(data):
-            return jsonify({"success": False, "error": "Index out of range"}), 400
+            return jsonify({"success": False, "error": f"Entry not found for link: {link}"}), 404
 
         # For site edits: strip screenshotpath/leaderboardLink from bundledb, sync to showcase-data.json
         if item.get("Type") == "site":
@@ -1100,10 +1101,11 @@ def editor_save():
         propagate = payload.get("propagate", [])
         propagated = 0
         for entry in propagate:
-            p_index = entry.get("index")
+            p_link = entry.get("link")
             p_field = entry.get("field", "")
             p_value = entry.get("value", "")
-            if p_index is None or p_index < 0 or p_index >= len(data):
+            p_index = next((i for i, e in enumerate(data) if e.get("Link") == p_link), None) if p_link else None
+            if p_index is None:
                 continue
             if p_field.startswith("socialLinks."):
                 subkey = p_field.split(".", 1)[1]
@@ -1124,9 +1126,12 @@ def editor_save():
 @app.route("/editor/delete", methods=["POST"])
 def editor_delete():
     payload = request.get_json()
-    index = payload.get("index") if payload else None
+    link = payload.get("link") if payload else None
     backup_created = payload.get("backup_created", False) if payload else False
     showcase_only = payload.get("showcase_only", False) if payload else False
+
+    if not link:
+        return jsonify({"success": False, "error": "Missing link"}), 400
 
     # Create backup if this is the first modification in the session
     if not backup_created:
@@ -1135,26 +1140,22 @@ def editor_delete():
 
     # Showcase-only delete: remove from showcase-data.json only
     if showcase_only:
-        sc_index = payload.get("showcase_index") if payload else None
-        if sc_index is None or not isinstance(sc_index, int):
-            return jsonify({"success": False, "error": "Missing or invalid showcase_index"}), 400
         with open(_get_path("SHOWCASE_PATH"), "r") as f:
             showcase_data = json.load(f)
-        if sc_index < 0 or sc_index >= len(showcase_data):
-            return jsonify({"success": False, "error": "Showcase index out of range"}), 400
-        del showcase_data[sc_index]
+        original_len = len(showcase_data)
+        showcase_data = [e for e in showcase_data if e.get("link") != link]
+        if len(showcase_data) == original_len:
+            return jsonify({"success": False, "error": f"Showcase entry not found for link: {link}"}), 404
         with open(_get_path("SHOWCASE_PATH"), "w") as f:
             json.dump(showcase_data, f, indent=2)
         return jsonify({"success": True, "backup_created": True})
 
-    if index is None or not isinstance(index, int):
-        return jsonify({"success": False, "error": "Missing or invalid index"}), 400
-
     with open(_get_path("BUNDLEDB_PATH"), "r") as f:
         data = json.load(f)
 
-    if index < 0 or index >= len(data):
-        return jsonify({"success": False, "error": "Index out of range"}), 400
+    index = next((i for i, e in enumerate(data) if e.get("Link") == link), None)
+    if index is None:
+        return jsonify({"success": False, "error": f"Entry not found for link: {link}"}), 404
 
     item = data[index]
 

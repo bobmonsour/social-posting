@@ -160,7 +160,7 @@ def test_editor_save_edit(client, app, sample_bundledb):
     _write_json(app.config["BUNDLEDB_PATH"], sample_bundledb)
     edited = sample_bundledb[0].copy()
     edited["Title"] = "Updated Title"
-    resp = client.post("/editor/save", json={"item": edited, "index": 0})
+    resp = client.post("/editor/save", json={"item": edited, "link": sample_bundledb[0]["Link"]})
     data = resp.get_json()
     assert data["success"]
     saved = _read_json(app.config["BUNDLEDB_PATH"])
@@ -174,7 +174,7 @@ def test_editor_save_edit_site_syncs_showcase(client, app, sample_bundledb, samp
     edited["Title"] = "Updated Site"
     edited["screenshotpath"] = "/screenshots/updated.jpg"
     edited["leaderboardLink"] = ""
-    resp = client.post("/editor/save", json={"item": edited, "index": 1})
+    resp = client.post("/editor/save", json={"item": edited, "link": sample_bundledb[1]["Link"]})
     data = resp.get_json()
     assert data.get("showcase_updated")
     showcase = _read_json(app.config["SHOWCASE_PATH"])
@@ -184,16 +184,16 @@ def test_editor_save_edit_site_syncs_showcase(client, app, sample_bundledb, samp
 
 def test_editor_save_edit_propagation(client, app):
     data = [
-        {"Type": "blog post", "Title": "Post 1", "Author": "Alice", "favicon": ""},
-        {"Type": "blog post", "Title": "Post 2", "Author": "Alice", "favicon": ""},
+        {"Type": "blog post", "Title": "Post 1", "Author": "Alice", "Link": "https://example.com/post1", "favicon": ""},
+        {"Type": "blog post", "Title": "Post 2", "Author": "Alice", "Link": "https://example.com/post2", "favicon": ""},
     ]
     _write_json(app.config["BUNDLEDB_PATH"], data)
     edited = data[0].copy()
     edited["favicon"] = "/img/alice.png"
     resp = client.post("/editor/save", json={
         "item": edited,
-        "index": 0,
-        "propagate": [{"index": 1, "field": "favicon", "value": "/img/alice.png"}],
+        "link": "https://example.com/post1",
+        "propagate": [{"link": "https://example.com/post2", "field": "favicon", "value": "/img/alice.png"}],
     })
     result = resp.get_json()
     assert result["propagated"] == 1
@@ -201,17 +201,17 @@ def test_editor_save_edit_propagation(client, app):
     assert saved[1]["favicon"] == "/img/alice.png"
 
 
-def test_editor_save_edit_invalid_index(client, app, sample_bundledb):
+def test_editor_save_edit_not_found(client, app, sample_bundledb):
     _write_json(app.config["BUNDLEDB_PATH"], sample_bundledb)
-    resp = client.post("/editor/save", json={"item": sample_bundledb[0], "index": 99})
-    assert resp.status_code == 400
+    resp = client.post("/editor/save", json={"item": sample_bundledb[0], "link": "https://nonexistent.example.com"})
+    assert resp.status_code == 404
 
 
 # --- POST /editor/delete ---
 
 def test_editor_delete(client, app, sample_bundledb):
     _write_json(app.config["BUNDLEDB_PATH"], sample_bundledb)
-    resp = client.post("/editor/delete", json={"index": 2})
+    resp = client.post("/editor/delete", json={"link": sample_bundledb[2]["Link"]})
     data = resp.get_json()
     assert data["success"]
     saved = _read_json(app.config["BUNDLEDB_PATH"])
@@ -221,17 +221,16 @@ def test_editor_delete(client, app, sample_bundledb):
 def test_editor_delete_site_removes_showcase(client, app, sample_bundledb, sample_showcase):
     _write_json(app.config["BUNDLEDB_PATH"], sample_bundledb)
     _write_json(app.config["SHOWCASE_PATH"], sample_showcase)
-    # Index 1 is the site entry
-    resp = client.post("/editor/delete", json={"index": 1})
+    resp = client.post("/editor/delete", json={"link": sample_bundledb[1]["Link"]})
     assert resp.get_json()["success"]
     showcase = _read_json(app.config["SHOWCASE_PATH"])
     assert len(showcase) == 0
 
 
-def test_editor_delete_invalid_index(client, app, sample_bundledb):
+def test_editor_delete_not_found(client, app, sample_bundledb):
     _write_json(app.config["BUNDLEDB_PATH"], sample_bundledb)
-    resp = client.post("/editor/delete", json={"index": 99})
-    assert resp.status_code == 400
+    resp = client.post("/editor/delete", json={"link": "https://nonexistent.example.com"})
+    assert resp.status_code == 404
 
 
 # --- GET /editor/data (origin tags + showcase_only) ---
@@ -298,7 +297,7 @@ def test_editor_save_showcase_only(client, app):
         "favicon": "/fav.png", "screenshotpath": "/ss.jpg", "leaderboardLink": "",
     }
     resp = client.post("/editor/save", json={
-        "item": item, "showcase_only": True, "showcase_index": 0
+        "item": item, "showcase_only": True, "link": "https://old.dev"
     })
     assert resp.get_json()["success"]
     saved = _read_json(app.config["SHOWCASE_PATH"])
@@ -314,7 +313,7 @@ def test_editor_save_showcase_only_skip(client, app):
     _write_json(app.config["SHOWCASE_PATH"], showcase)
     item = {"Title": "Site", "Link": "https://site.dev", "Skip": True}
     resp = client.post("/editor/save", json={
-        "item": item, "showcase_only": True, "showcase_index": 0
+        "item": item, "showcase_only": True, "link": "https://site.dev"
     })
     assert resp.get_json()["success"]
     saved = _read_json(app.config["SHOWCASE_PATH"])
@@ -328,19 +327,19 @@ def test_editor_save_showcase_only_remove_skip(client, app):
     _write_json(app.config["SHOWCASE_PATH"], showcase)
     item = {"Title": "Site", "Link": "https://site.dev"}
     resp = client.post("/editor/save", json={
-        "item": item, "showcase_only": True, "showcase_index": 0
+        "item": item, "showcase_only": True, "link": "https://site.dev"
     })
     assert resp.get_json()["success"]
     saved = _read_json(app.config["SHOWCASE_PATH"])
     assert "Skip" not in saved[0]
 
 
-def test_editor_save_showcase_only_invalid_index(client, app):
+def test_editor_save_showcase_only_not_found(client, app):
     _write_json(app.config["SHOWCASE_PATH"], [])
     resp = client.post("/editor/save", json={
-        "item": {"Title": "X"}, "showcase_only": True, "showcase_index": 5
+        "item": {"Title": "X"}, "showcase_only": True, "link": "https://nonexistent.dev"
     })
-    assert resp.status_code == 400
+    assert resp.status_code == 404
 
 
 def test_editor_save_both_entry_syncs_skip(client, app, sample_bundledb, sample_showcase):
@@ -350,7 +349,7 @@ def test_editor_save_both_entry_syncs_skip(client, app, sample_bundledb, sample_
     edited["Skip"] = True
     edited["screenshotpath"] = "/screenshots/cool11ty-dev.jpg"
     edited["leaderboardLink"] = "https://www.11ty.dev/speedlify/cool11ty-dev/"
-    resp = client.post("/editor/save", json={"item": edited, "index": 1})
+    resp = client.post("/editor/save", json={"item": edited, "link": sample_bundledb[1]["Link"]})
     assert resp.get_json()["success"]
     # Skip should be in bundledb
     bundledb = _read_json(app.config["BUNDLEDB_PATH"])
@@ -370,7 +369,7 @@ def test_editor_delete_showcase_only(client, app):
     ]
     _write_json(app.config["SHOWCASE_PATH"], showcase)
     resp = client.post("/editor/delete", json={
-        "showcase_only": True, "showcase_index": 1
+        "showcase_only": True, "link": "https://delete.dev"
     })
     assert resp.get_json()["success"]
     saved = _read_json(app.config["SHOWCASE_PATH"])
@@ -379,12 +378,12 @@ def test_editor_delete_showcase_only(client, app):
     assert saved[1]["title"] == "Also Keep"
 
 
-def test_editor_delete_showcase_only_invalid_index(client, app):
+def test_editor_delete_showcase_only_not_found(client, app):
     _write_json(app.config["SHOWCASE_PATH"], [])
     resp = client.post("/editor/delete", json={
-        "showcase_only": True, "showcase_index": 5
+        "showcase_only": True, "link": "https://nonexistent.dev"
     })
-    assert resp.status_code == 400
+    assert resp.status_code == 404
 
 
 # --- POST /editor/delete-test-entries ---

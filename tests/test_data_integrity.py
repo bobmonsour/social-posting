@@ -123,7 +123,7 @@ def test_showcase_sync_on_edit(client, app, sample_bundledb, sample_showcase):
     edited["description"] = "Synced desc"
     edited["screenshotpath"] = "/screenshots/synced.jpg"
     edited["leaderboardLink"] = ""
-    client.post("/editor/save", json={"item": edited, "index": 1})
+    client.post("/editor/save", json={"item": edited, "link": sample_bundledb[1]["Link"]})
 
     showcase = _read_json(app.config["SHOWCASE_PATH"])
     assert showcase[0]["title"] == "Synced Title"

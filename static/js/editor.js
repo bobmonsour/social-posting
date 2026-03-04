@@ -1963,7 +1963,7 @@
           existing = (allData[i][field] || "").trim();
         }
         if (!existing) {
-          propagate.push({ index: i, field, value });
+          propagate.push({ link: allData[i].Link, field, value });
         }
       });
     }
@@ -1992,8 +1992,8 @@
     const entry = allData[index];
     const isShowcaseOnly = entry && entry._origin === "showcase";
     const body = isShowcaseOnly
-      ? { showcase_only: true, showcase_index: entry._showcaseIndex, backup_created: backupCreated }
-      : { index: index, backup_created: backupCreated };
+      ? { showcase_only: true, link: entry.Link, backup_created: backupCreated }
+      : { link: entry.Link, backup_created: backupCreated };
 
     fetch("/editor/delete", {
       method: "POST",
@@ -2004,15 +2004,6 @@
       .then((data) => {
         if (data.success) {
           backupCreated = data.backup_created;
-          // Decrement _showcaseIndex for remaining showcase-only entries with higher indices
-          if (isShowcaseOnly) {
-            const deletedScIdx = entry._showcaseIndex;
-            for (let i = 0; i < allData.length; i++) {
-              if (allData[i]._origin === "showcase" && allData[i]._showcaseIndex > deletedScIdx) {
-                allData[i]._showcaseIndex--;
-              }
-            }
-          }
           allData.splice(index, 1);
           hideEditForm();
           initFuse();
@@ -2143,7 +2134,7 @@
     let doPropagate = false;
     if (propagate.length > 0) {
       const fields = describeNewlyFilled(item);
-      const otherCount = new Set(propagate.map((p) => p.index)).size;
+      const otherCount = new Set(propagate.map((p) => p.link)).size;
       const msg =
         "You added " + fields.join(", ") + ".\n" +
         otherCount + " other post" + (otherCount === 1 ? "" : "s") +
@@ -2169,11 +2160,11 @@
 
     if (isShowcaseOnly) {
       payload.showcase_only = true;
-      payload.showcase_index = editingEntry._showcaseIndex;
+      payload.link = editingEntry.Link;
     } else if (isCreate) {
       payload.create = true;
     } else {
-      payload.index = currentIndex;
+      payload.link = editingEntry.Link;
     }
     if (doPropagate) payload.propagate = propagate;
     if (sveltiacmsLink && isCreate) payload.sveltiacms_link = sveltiacmsLink;
@@ -2195,7 +2186,9 @@
             allData[currentIndex] = item;
             // Sync propagated changes into local allData
             if (doPropagate && propagate.length > 0) {
-              propagate.forEach(({ index: idx, field, value }) => {
+              propagate.forEach(({ link: pLink, field, value }) => {
+                const idx = allData.findIndex((e) => e.Link === pLink);
+                if (idx === -1) return;
                 if (field.startsWith("socialLinks.")) {
                   const sub = field.split(".")[1];
                   if (!allData[idx].socialLinks) allData[idx].socialLinks = {};
