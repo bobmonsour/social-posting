@@ -4,5 +4,10 @@
     "name": "The Scalable Way",
     "url": "https://thescalableway.com/",
     "skip": true
+  },
+  {
+    "description": "Documentation for the Pressbooks Open Source project.",
+    "name": "Pressbooks",
+    "url": "https://pressbooks.org/"
   }
 ]
