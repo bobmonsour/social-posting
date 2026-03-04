@@ -176,6 +176,7 @@
       showcaseOnly.forEach((entry) => allData.push(entry));
       buildUniqueAuthors();
       buildUniqueCategories();
+      initSveltiacmsPrefill();
     })
     .catch((err) => {
       showStatus("Failed to load data: " + err.message, true);
@@ -595,7 +596,12 @@
     btnProcessStash.style.display = showProcessBtn ? "" : "none";
     if (!showStashCheckbox) {
       stashCheckbox.checked = false;
-      stashMode = false;
+      if (stashMode) {
+        stashMode = false;
+        btnSave.textContent = "Save";
+        btnSaveEnd.style.display = "";
+        btnSaveDeploy.style.display = "";
+      }
     }
   }
 
@@ -614,7 +620,20 @@
       btnSaveEnd.style.display = "";
       btnSaveDeploy.style.display = "";
     }
+    toggleStashFields();
   });
+
+  function toggleStashFields() {
+    Array.from(editFormFields.children).forEach((child) => {
+      const hasTitle = child.querySelector("#field-Title");
+      const hasLink = child.querySelector("#field-Link");
+      if (hasTitle || hasLink) {
+        child.style.display = "";
+      } else {
+        child.style.display = stashMode ? "none" : "";
+      }
+    });
+  }
 
   btnProcessStash.addEventListener("click", () => {
     fetch("/editor/stash/next")
@@ -2664,7 +2683,8 @@
   updateStashVisibility();
 
   // --- SveltiaCMS pre-fill ---
-  if (window.sveltiacmsPrefill) {
+  function initSveltiacmsPrefill() {
+    if (!window.sveltiacmsPrefill) return;
     const prefill = window.sveltiacmsPrefill;
     sveltiacmsLink = prefill.url || null;
     // Click Create mode, then Site type

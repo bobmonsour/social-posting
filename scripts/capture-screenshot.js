@@ -44,7 +44,7 @@ async function main() {
 
     const page = await browser.newPage();
     await page.setViewport({ width: 1920, height: 1080 });
-    await page.goto(url, { waitUntil: "networkidle0", timeout: 30000 });
+    await page.goto(url, { waitUntil: "networkidle2", timeout: 60000 });
 
     // Wait extra time for animations/lazy loads
     await new Promise((resolve) => setTimeout(resolve, 3000));
