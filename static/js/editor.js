@@ -132,10 +132,18 @@
   const deployModalOutput = document.getElementById("deploy-modal-output");
   const deployModalOk = document.getElementById("deploy-modal-ok");
   const deployModalClose = document.getElementById("deploy-modal-close");
-  deployModalClose.onclick = () => { deployModal.style.display = "none"; };
+  let devServerRunning = false;
+  function closeDeployModal() {
+    deployModal.style.display = "none";
+    if (devServerRunning) {
+      devServerRunning = false;
+      fetch("/editor/kill-server", { method: "POST" }).catch(() => {});
+    }
+  }
+  deployModalClose.onclick = closeDeployModal;
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && deployModal.style.display !== "none" && deployModalClose.style.display !== "none") {
-      deployModal.style.display = "none";
+      closeDeployModal();
     }
   });
   const btnRunLatest = document.getElementById("btn-run-latest");
@@ -365,6 +373,7 @@
   // --- Run Latest / Deploy shared flows ---
 
   function runLatestFlow() {
+    devServerRunning = false;
     deployModalTitle.textContent = "Running pre-build sync...";
     deployModalOutput.textContent = "";
     deployModalOk.style.display = "none";
@@ -425,6 +434,7 @@
               deployModalOk.style.display = "";
               return;
             }
+            devServerRunning = true;
             deployModalTitle.textContent = "Verifying site build...";
             deployModalOutput.textContent += "\n\nServer running at localhost:8080";
             return fetch("/editor/verify-site", { method: "POST" })
@@ -627,7 +637,8 @@
     Array.from(editFormFields.children).forEach((child) => {
       const hasTitle = child.querySelector("#field-Title");
       const hasLink = child.querySelector("#field-Link");
-      if (hasTitle || hasLink) {
+      const hasDate = child.querySelector("#field-Date");
+      if (hasTitle || hasLink || hasDate) {
         child.style.display = "";
       } else {
         child.style.display = stashMode ? "none" : "";
@@ -654,8 +665,10 @@
         setTimeout(() => {
           const titleEl = document.getElementById("field-Title");
           const linkEl = document.getElementById("field-Link");
+          const dateEl = document.getElementById("field-Date");
           if (titleEl) titleEl.value = entry.title;
           if (linkEl) linkEl.value = entry.link;
+          if (dateEl && entry.date) dateEl.value = entry.date;
           processingStash = entry.link;
           updateStashVisibility();
         }, 100);
@@ -1286,12 +1299,27 @@
   // --- Create mode ---
 
   function getMaxIssue() {
+    if (publishedIssues.size > 0) {
+      return Math.max(...publishedIssues) + 1;
+    }
     let max = 0;
     for (let i = 0; i < allData.length; i++) {
       const n = parseInt(allData[i].Issue, 10);
       if (n > max) max = n;
     }
     return max;
+  }
+
+  function updateIssueCounts(item) {
+    const issueEl = document.getElementById("count-issue");
+    if (!issueEl) return;
+    const nextIssue = parseInt(issueEl.textContent, 10);
+    if (parseInt(item.Issue, 10) !== nextIssue) return;
+    const typeMap = { "blog post": "count-blog-posts", "site": "count-sites", "release": "count-releases", "starter": "count-starters" };
+    const id = typeMap[item.Type];
+    if (!id) return;
+    const el = document.getElementById(id);
+    if (el) el.textContent = parseInt(el.textContent, 10) + 1;
   }
 
   function formatDate(d) {
@@ -2077,18 +2105,22 @@
   function stashItem() {
     const titleEl = document.getElementById("field-Title");
     const linkEl = document.getElementById("field-Link");
+    const dateEl = document.getElementById("field-Date");
     const title = titleEl ? titleEl.value.trim() : "";
     const link = linkEl ? linkEl.value.trim() : "";
+    const date = dateEl ? dateEl.value.trim() : "";
     if (!title || !link) {
       showStatus("Title and Link are required to stash.", true);
       return;
     }
     btnSave.disabled = true;
     btnSave.textContent = "Stashing...";
+    const payload = { title, link, type: currentType };
+    if (date) payload.date = date;
     fetch("/editor/stash", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, link, type: currentType })
+      body: JSON.stringify(payload)
     })
       .then((r) => r.json())
       .then((data) => {
@@ -2202,6 +2234,7 @@
 
           hideEditForm();
           if (isCreate) {
+            updateIssueCounts(item);
             typeRadios.forEach((r) => (r.checked = false));
           }
           initFuse();

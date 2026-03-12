@@ -21,11 +21,11 @@
     {% if issue_counts %}
     <fieldset id="next-issue-info">
         <legend>Next Issue</legend>
-        <span>Issue: <span class="issue-count-num">{{ issue_counts.issue_number }}</span></span>
-        <span>Blog Posts: <span class="issue-count-num">{{ issue_counts.blog_posts }}</span></span>
-        <span>Sites: <span class="issue-count-num">{{ issue_counts.sites }}</span></span>
-        <span>Releases: <span class="issue-count-num">{{ issue_counts.releases }}</span></span>
-        <span>Starters: <span class="issue-count-num">{{ issue_counts.starters }}</span></span>
+        <span>Issue: <span class="issue-count-num" id="count-issue">{{ issue_counts.issue_number }}</span></span>
+        <span>Blog Posts: <span class="issue-count-num" id="count-blog-posts">{{ issue_counts.blog_posts }}</span></span>
+        <span>Sites: <span class="issue-count-num" id="count-sites">{{ issue_counts.sites }}</span></span>
+        <span>Releases: <span class="issue-count-num" id="count-releases">{{ issue_counts.releases }}</span></span>
+        <span>Starters: <span class="issue-count-num" id="count-starters">{{ issue_counts.starters }}</span></span>
     </fieldset>
     {% endif %}
 
