@@ -15,6 +15,42 @@ FETCH_SIZE = 128
 
 EXTENSIONS = [".png", ".jpg", ".jpeg", ".svg", ".ico", ".gif", ".webp"]
 
+# Magic bytes for image formats
+_IMAGE_SIGNATURES = [
+    b"\x89PNG",           # PNG
+    b"\xff\xd8\xff",      # JPEG
+    b"GIF87a", b"GIF89a", # GIF
+    b"\x00\x00\x01\x00",  # ICO
+    b"\x00\x00\x02\x00",  # CUR (icon)
+    b"RIFF",              # WebP (RIFF....WEBP)
+    b"BM",                # BMP
+]
+
+
+def _is_valid_image_data(data):
+    """Check if data looks like a valid image by inspecting magic bytes.
+
+    Some sites return HTML error pages (404, redirects) for favicon URLs,
+    which get saved as .ico/.png files that aren't actually images.
+    """
+    if not data or len(data) == 0:
+        return False
+    # SVG: check for XML/SVG text content
+    try:
+        text = data[:500].decode("utf-8", errors="ignore").strip().lower()
+        if text.startswith("<?xml") or text.startswith("<svg") or "xmlns" in text[:200]:
+            return True
+        # Reject HTML pages masquerading as images
+        if text.startswith("<!doctype") or text.startswith("<html"):
+            return False
+    except Exception:
+        pass
+    # Binary image: check magic bytes
+    for sig in _IMAGE_SIGNATURES:
+        if data[:len(sig)] == sig:
+            return True
+    return False
+
 
 def slugify_domain(domain):
     """Slugify a domain name: lowercase, replace dots/special with hyphens."""
@@ -25,12 +61,20 @@ def slugify_domain(domain):
 
 
 def _check_existing(domain_slug):
-    """Check if a favicon already exists in storage for this domain."""
+    """Check if a favicon already exists in storage for this domain.
+
+    Validates that the file contains actual image data — some sites return
+    HTML error pages for favicon URLs, producing files that exist but
+    aren't images.
+    """
     for ext in EXTENSIONS:
         filename = f"{domain_slug}-favicon{ext}"
         path = os.path.join(FAVICON_STORAGE_DIR, filename)
         if os.path.exists(path):
-            return path, filename
+            with open(path, "rb") as f:
+                data = f.read(500)
+            if _is_valid_image_data(data):
+                return path, filename
     return None, None
 
 
@@ -44,7 +88,12 @@ def _copy_to_site(filename):
 
 
 def _save_favicon(data, filename, content_type=None):
-    """Save favicon data, resize if needed, copy to both dirs."""
+    """Save favicon data, resize if needed, copy to both dirs.
+
+    Returns None if the data is not valid image content.
+    """
+    if not _is_valid_image_data(data):
+        return None
     ext = os.path.splitext(filename)[1].lower()
     storage_path = os.path.join(FAVICON_STORAGE_DIR, filename)
     os.makedirs(FAVICON_STORAGE_DIR, exist_ok=True)

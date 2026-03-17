@@ -470,13 +470,34 @@
   }
 
   function runDeployFlow() {
-    deployModalTitle.textContent = "Running end-session scripts...";
+    deployModalTitle.textContent = "Running pre-build sync...";
     deployModalOutput.textContent = "";
     deployModalOk.style.display = "none";
     deployModalClose.style.display = "none";
     deployModal.style.display = "";
 
-    return fetch("/editor/end-session", { method: "POST" })
+    // Step 0: Pre-build sync (git sync + asset copy)
+    return fetch("/editor/prebuild-sync", { method: "POST" })
+      .then((r) => r.json())
+      .then((syncData) => {
+        if (!syncData.success) {
+          deployModalTitle.textContent = "Pre-Build Sync Failed";
+          deployModalOutput.textContent = `Error (${syncData.stage}): ${syncData.error}`;
+          deployModalOk.textContent = "Ok";
+          deployModalOk.onclick = () => { deployModal.style.display = "none"; };
+          deployModalOk.style.display = "";
+          deployModalClose.style.display = "";
+          return Promise.reject(new Error("prebuild-sync-failed"));
+        }
+        // Show sync results
+        deployModalOutput.textContent = "Git: " + syncData.git_message + "\nFiles: " + syncData.files_message;
+        if (syncData.files_copied && syncData.files_copied.length > 0) {
+          deployModalOutput.textContent += "\nCopied: " + syncData.files_copied.join(", ");
+        }
+
+        deployModalTitle.textContent = "Running end-session scripts...";
+        return fetch("/editor/end-session", { method: "POST" });
+      })
       .then((r) => r.json())
       .then((data) => {
         if (!data.success) {
@@ -495,7 +516,7 @@
           const r = data[key];
           return label + ": " + (r && r.success ? "OK" : "FAILED");
         });
-        deployModalOutput.textContent = lines.join("\n");
+        deployModalOutput.textContent += "\n\n" + lines.join("\n");
 
         deployModalTitle.textContent = "Deploying...";
         deployModalOutput.textContent += "\n\nRunning npm run deploy...\n";
@@ -520,6 +541,8 @@
           });
       })
       .catch((err) => {
+        // Don't show error for expected prebuild-sync rejection
+        if (err.message === "prebuild-sync-failed") return;
         deployModalTitle.textContent = "Deploy Failed";
         deployModalOutput.textContent = "Error: " + err.message;
         deployModalOk.textContent = "Ok";
