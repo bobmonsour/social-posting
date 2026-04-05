@@ -185,17 +185,17 @@ def post():
     platforms_selected = request.form.getlist("platforms")
     link_url = request.form.get("link_url", "").strip()
 
-    # Mode support: read per-platform texts if a mode is active
+    # Mode support: read per-platform texts (always, since UI uses per-platform textareas)
     mode = request.form.get("mode", "").strip() or None
-    platform_texts = None
-    if mode and get_mode(mode):
-        platform_texts = {}
-        for pname in ["mastodon", "bluesky", "discord", "discord_content"]:
-            pt = request.form.get(f"text_{pname}", "").strip()
-            if pt:
-                platform_texts[pname] = pt
+    platform_texts = {}
+    for pname in ["mastodon", "bluesky", "discord", "discord_content"]:
+        pt = request.form.get(f"text_{pname}", "").strip()
+        if pt:
+            platform_texts[pname] = pt
+    if not platform_texts:
+        platform_texts = None
 
-    if not text and not (mode and platform_texts):
+    if not text and not platform_texts:
         return render_template(
             "result.html",
             results=[{"platform": "error", "success": False, "error": "No text provided"}],
@@ -603,11 +603,27 @@ def link_preview():
         return jsonify({"error": "No URL provided"}), 400
 
     card = fetch_og_metadata(url)
-    return jsonify({
+    result = {
         "title": card.title,
         "description": card.description,
         "image_url": card.image_url,
-    })
+    }
+
+    # Verify OG image dimensions for bobmonsour.com links
+    if "bobmonsour.com" in url and card.image_data:
+        from io import BytesIO
+        from PIL import Image as PILImage
+        try:
+            img = PILImage.open(BytesIO(card.image_data))
+            w, h = img.size
+            if abs(w - 1200) > 50 or abs(h - 630) > 50:
+                result["og_warning"] = (
+                    f"OG image is {w}x{h}px (expected ~1200x630)"
+                )
+        except Exception:
+            result["og_warning"] = "Could not read OG image dimensions"
+
+    return jsonify(result)
 
 
 def _lookup_social_links_from_bundledb(site_url):
@@ -747,13 +763,14 @@ def home():
 
 @app.route("/editor/stash", methods=["POST"])
 def editor_stash():
-    """Stash an entry (title + link + type) for later processing."""
+    """Stash an entry (title + link + type + optional date) for later processing."""
     payload = request.get_json()
     if not payload:
         return jsonify({"error": "No data provided"}), 400
     title = (payload.get("title") or "").strip()
     link = (payload.get("link") or "").strip()
     entry_type = (payload.get("type") or "").strip()
+    date = (payload.get("date") or "").strip()
     if not title or not link or not entry_type:
         return jsonify({"error": "Title, link, and type are required"}), 400
 
@@ -764,7 +781,10 @@ def editor_stash():
     except (FileNotFoundError, json.JSONDecodeError):
         stash = []
 
-    stash.append({"title": title, "link": link, "type": entry_type})
+    entry = {"title": title, "link": link, "type": entry_type}
+    if date:
+        entry["date"] = date
+    stash.append(entry)
     with open(stash_path, "w") as f:
         json.dump(stash, f, indent=2)
 
@@ -1464,6 +1484,24 @@ def editor_run_latest():
         return jsonify({"success": False, "error": "Timed out waiting for Eleventy server"})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
+
+
+@app.route("/editor/kill-server", methods=["POST"])
+def editor_kill_server():
+    """Kill any Eleventy dev server processes on ports 8080-8083."""
+    killed = []
+    for port in (8080, 8081, 8082, 8083):
+        try:
+            pids = subprocess.check_output(
+                ["lsof", "-ti", f":{port}"], text=True
+            ).strip()
+            if pids:
+                for pid in pids.split("\n"):
+                    subprocess.run(["kill", pid.strip()], check=False)
+                    killed.append(pid.strip())
+        except subprocess.CalledProcessError:
+            pass
+    return jsonify({"success": True, "killed": killed})
 
 
 def _commit_and_push_bundledb(commit_message="New entries saved"):

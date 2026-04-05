@@ -540,6 +540,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 } else {
                     previewImg.hidden = true;
                 }
+                const ogWarning = document.getElementById("og-warning");
+                if (data.og_warning) {
+                    ogWarning.textContent = data.og_warning;
+                    ogWarning.hidden = false;
+                } else {
+                    ogWarning.hidden = true;
+                }
                 linkPreview.hidden = false;
             } else {
                 linkPreview.hidden = true;

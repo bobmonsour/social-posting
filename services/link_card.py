@@ -1,3 +1,5 @@
+from urllib.parse import urljoin
+
 import requests
 from bs4 import BeautifulSoup
 from platforms.base import LinkCard
@@ -33,11 +35,8 @@ def fetch_og_metadata(url):
         image_mime = ""
         if image_url:
             try:
-                # Handle relative URLs
-                if image_url.startswith("/"):
-                    from urllib.parse import urlparse
-                    parsed = urlparse(url)
-                    image_url = f"{parsed.scheme}://{parsed.netloc}{image_url}"
+                # Resolve relative URLs (path-relative, absolute-path, protocol-relative)
+                image_url = urljoin(url, image_url)
 
                 img_resp = requests.get(
                     image_url, headers=headers, timeout=10

@@ -16,7 +16,7 @@ python app.py  # runs on 127.0.0.1:5555
 
 **Important**: Always prefix Python commands (pytest, python, etc.) with `source .venv/bin/activate &&` since the virtual environment is not automatically activated.
 
-Launched via Raycast script at `~/Dropbox/Docs/Raycast/Scripts/bob-on-social.sh`.
+Launched via Raycast script at `~/Dropbox/Docs/Raycast/Scripts/socially-bundled.sh`.
 
 ## Project Structure
 

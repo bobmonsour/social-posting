@@ -4,5 +4,11 @@
     "name": "The Scalable Way",
     "url": "https://thescalableway.com/",
     "skip": true
+  },
+  {
+    "description": "A neurology and general surgery clinic based in Comrat, Moldova.",
+    "name": "SRL NeuroDeny",
+    "url": "https://nickseen.github.io/NeuroDeny/",
+    "skip": true
   }
 ]
