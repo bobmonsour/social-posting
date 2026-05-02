@@ -689,9 +689,22 @@
           const titleEl = document.getElementById("field-Title");
           const linkEl = document.getElementById("field-Link");
           const dateEl = document.getElementById("field-Date");
+          const fmtDateEl = document.getElementById("field-formattedDate");
           if (titleEl) titleEl.value = entry.title;
           if (linkEl) linkEl.value = entry.link;
-          if (dateEl && entry.date) dateEl.value = entry.date;
+          if (dateEl && entry.date) {
+            const parts = entry.date.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (parts) {
+              dateEl.value = parts[0];
+              dateEl.dataset.fullDate = parts[0] + "T00:00:00.000";
+              if (fmtDateEl) {
+                const parsed = new Date(+parts[1], +parts[2] - 1, +parts[3]);
+                fmtDateEl.value = formatDate(parsed);
+              }
+            } else {
+              dateEl.value = entry.date;
+            }
+          }
           processingStash = entry.link;
           updateStashVisibility();
         }, 100);
@@ -1812,9 +1825,18 @@
       }
     });
 
+    // Strip surrounding whitespace so accidental trailing spaces don't break
+    // unique-author detection at build time. Runs before the slug-blur handler.
+    input.addEventListener("blur", () => {
+      const trimmed = input.value.trim();
+      if (input.value !== trimmed) input.value = trimmed;
+    });
+
     // Auto-fill on selection
     input.addEventListener("change", () => {
-      autoFillFromAuthor(input.value.trim());
+      const trimmed = input.value.trim();
+      if (input.value !== trimmed) input.value = trimmed;
+      autoFillFromAuthor(trimmed);
     });
 
     row.appendChild(label);
@@ -1960,7 +1982,18 @@
         if (field === "Type" && !el) {
           item[field] = currentType;
         } else if (field === "Date" && el && el.dataset.fullDate) {
-          item[field] = el.dataset.fullDate;
+          // Preserve the original ISO timestamp only if the user hasn't edited
+          // the date. Otherwise the typed YYYY-MM-DD wins (with midnight time),
+          // matching the convention used elsewhere in this file.
+          const inputValue = el.value.trim();
+          const storedDay = el.dataset.fullDate.slice(0, 10);
+          if (inputValue && inputValue !== storedDay && /^\d{4}-\d{2}-\d{2}$/.test(inputValue)) {
+            item[field] = inputValue + "T00:00:00.000";
+          } else {
+            item[field] = el.dataset.fullDate;
+          }
+        } else if (field === "Author") {
+          item[field] = el ? el.value.trim() : "";
         } else {
           item[field] = el ? el.value : "";
         }
@@ -2235,9 +2268,12 @@
           backupCreated = data.backup_created;
 
           if (isCreate) {
+            item._origin = "bundledb";
             allData.push(item);
             buildUniqueAuthors();
           } else {
+            // Preserve metadata fields not in the edit form
+            if (allData[currentIndex]._origin) item._origin = allData[currentIndex]._origin;
             allData[currentIndex] = item;
             // Sync propagated changes into local allData
             if (doPropagate && propagate.length > 0) {

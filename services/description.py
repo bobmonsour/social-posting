@@ -19,7 +19,7 @@ def extract_description(url):
         }
         resp = requests.get(url, headers=headers, timeout=10, allow_redirects=True)
         resp.raise_for_status()
-        soup = BeautifulSoup(resp.text, "html.parser")
+        soup = BeautifulSoup(resp.content, "html.parser")
     except Exception:
         return ""
 

@@ -10,5 +10,17 @@
     "name": "SRL NeuroDeny",
     "url": "https://nickseen.github.io/NeuroDeny/",
     "skip": true
+  },
+  {
+    "description": "Portfolio of a Ukrainian construction engineer specializing in project planning and execution documentation.",
+    "name": "Andrii Khomenko",
+    "url": "https://khomenko-build.work/",
+    "skip": true
+  },
+  {
+    "description": "Personal site of a Finnish AI education researcher, covering academic work, training services, and local politics.",
+    "name": "Jari Laru",
+    "url": "https://www.jarilaru.fi/",
+    "skip": true
   }
 ]

@@ -5,3 +5,4 @@ atproto
 requests
 beautifulsoup4
 Pillow
+anthropic
