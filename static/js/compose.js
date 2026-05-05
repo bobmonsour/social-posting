@@ -134,7 +134,8 @@ document.addEventListener("DOMContentLoaded", () => {
             .filter(cb => cb.checked).length;
         if (checkedCount >= 2) {
             mirrorLabel.hidden = false;
-            cbMirror.checked = true;
+            const mode = activeMode ? modesConfig[activeMode] : null;
+            cbMirror.checked = !(mode && mode.mirror_default === false);
         } else {
             mirrorLabel.hidden = true;
             cbMirror.checked = false;

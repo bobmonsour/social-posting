@@ -10,9 +10,11 @@ MODES = {
     "11ty-bundle-issue": {
         "label": "11ty Bundle Issue",
         "platforms": ["mastodon", "bluesky"],
+        "mirror_default": False,
         "prefixes": {
             "mastodon": "11ty Bundle Issue {issue_number}",
             "bluesky": "11ty Bundle Issue {issue_number}",
+            "discord_content": "11ty Bundle Issue {issue_number}",
         },
         "suffixes": {
             "mastodon": "\n\n#11ty @11ty@neighborhood.11ty.dev",
