@@ -148,12 +148,18 @@ def _annotate_bwe_with_drafts(bwe_to_post, history):
 def _resolve_modes(issue_number):
     """Deep-copy modes and substitute {issue_number} placeholder in prefixes/suffixes."""
     modes = copy.deepcopy(all_modes())
-    for mode in modes.values():
+    for mode_name, mode in modes.items():
+        # 11ty-bundle-issue posts announce the issue that just published,
+        # so the placeholder resolves to one less than the next-issue number.
+        if mode_name == "11ty-bundle-issue" and isinstance(issue_number, int):
+            value = str(issue_number - 1)
+        else:
+            value = str(issue_number)
         for key in ("prefixes", "suffixes"):
             mapping = mode.get(key)
             if mapping:
                 for platform, text in mapping.items():
-                    mapping[platform] = text.replace("{issue_number}", str(issue_number))
+                    mapping[platform] = text.replace("{issue_number}", value)
     return modes
 
 
