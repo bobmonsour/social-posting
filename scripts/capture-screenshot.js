@@ -82,7 +82,8 @@ async function main() {
           error: `OG generation failed: ${ogErr.message}`,
         })
       );
-      process.exit(1);
+      process.exitCode = 1;
+      return;
     }
 
     console.log(
@@ -92,7 +93,7 @@ async function main() {
     console.log(
       JSON.stringify({ success: false, error: err.message })
     );
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
     if (browser) await browser.close();
   }
