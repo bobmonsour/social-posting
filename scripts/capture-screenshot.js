@@ -5,7 +5,8 @@
  * Usage: node capture-screenshot.js <url>
  *
  * Saves to both 11tybundledb/screenshots/ and content/screenshots/.
- * Outputs JSON to stdout: {success, filename, screenshotpath}
+ * Also generates a 1200x630 OG image saved to og-images/ in both locations.
+ * Outputs JSON to stdout: {success, filename, screenshotpath, ogpath}
  *
  */
 
@@ -17,6 +18,12 @@ const BUNDLEDB_DIR = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundledb";
 const SCREENSHOTS_DIR = path.join(BUNDLEDB_DIR, "screenshots");
 const CONTENT_SCREENSHOTS_DIR =
   "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundle.dev/content/screenshots";
+
+const OG_IMAGES_DIR = path.join(BUNDLEDB_DIR, "og-images");
+const CONTENT_OG_IMAGES_DIR =
+  "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundle.dev/content/og-images";
+
+const { generateOg } = require("./lib/og-from-screenshot");
 
 async function main() {
   const url = process.argv[2];
@@ -60,8 +67,26 @@ async function main() {
     const contentPath = path.join(CONTENT_SCREENSHOTS_DIR, filename);
     fs.copyFileSync(dbtoolsPath, contentPath);
 
+    // Generate OG image (1200x630) alongside the -large.jpg
+    const ogFilename = `${domain}-og.jpg`;
+    const ogpath = `/og-images/${ogFilename}`;
+    try {
+      await generateOg(dbtoolsPath, [
+        path.join(OG_IMAGES_DIR, ogFilename),
+        path.join(CONTENT_OG_IMAGES_DIR, ogFilename),
+      ]);
+    } catch (ogErr) {
+      console.log(
+        JSON.stringify({
+          success: false,
+          error: `OG generation failed: ${ogErr.message}`,
+        })
+      );
+      process.exit(1);
+    }
+
     console.log(
-      JSON.stringify({ success: true, filename, screenshotpath })
+      JSON.stringify({ success: true, filename, screenshotpath, ogpath })
     );
   } catch (err) {
     console.log(
