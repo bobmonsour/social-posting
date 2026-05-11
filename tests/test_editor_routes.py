@@ -207,6 +207,91 @@ def test_editor_save_edit_not_found(client, app, sample_bundledb):
     assert resp.status_code == 404
 
 
+# --- POST /editor/save (ogImagePath persistence) ---
+
+def test_editor_save_create_site_persists_og_image_path(client, app, monkeypatch):
+    import services.bwe_list as bwe_list
+    bwe_path = os.path.join(os.path.dirname(app.config["BUNDLEDB_PATH"]), "bwe.md")
+    with open(bwe_path, "w") as f:
+        f.write("- TO BE POSTED -\n\n- ALREADY POSTED -\n")
+    monkeypatch.setattr(bwe_list, "BWE_FILE", bwe_path)
+
+    item = {
+        "Type": "site",
+        "Title": "OG Test Site",
+        "Link": "https://og-test.dev",
+        "Date": "2026-02-20",
+        "formattedDate": "February 20, 2026",
+        "description": "OG derivation test",
+        "favicon": "/img/fav.png",
+        "screenshotpath": "/screenshots/og-test-dev-large.jpg",
+        "leaderboardLink": "",
+    }
+    resp = client.post("/editor/save", json={"item": item, "create": True})
+    assert resp.get_json()["success"]
+
+    showcase = _read_json(app.config["SHOWCASE_PATH"])
+    assert showcase[0]["screenshotpath"] == "/screenshots/og-test-dev-large.jpg"
+    assert showcase[0]["ogImagePath"] == "/og-images/og-test-dev-og.jpg"
+
+
+def test_editor_save_edit_site_persists_og_image_path(client, app, sample_bundledb):
+    _write_json(app.config["BUNDLEDB_PATH"], sample_bundledb)
+    showcase = [{
+        "title": "Cool Eleventy Site",
+        "link": "https://cool11ty.dev",
+        "screenshotpath": "/screenshots/old-large.jpg",
+        "ogImagePath": "/og-images/old-og.jpg",
+    }]
+    _write_json(app.config["SHOWCASE_PATH"], showcase)
+
+    edited = sample_bundledb[1].copy()
+    edited["screenshotpath"] = "/screenshots/cool11ty-dev-large.jpg"
+    edited["leaderboardLink"] = ""
+    resp = client.post("/editor/save",
+                       json={"item": edited, "link": sample_bundledb[1]["Link"]})
+    assert resp.get_json()["success"]
+
+    saved = _read_json(app.config["SHOWCASE_PATH"])
+    assert saved[0]["screenshotpath"] == "/screenshots/cool11ty-dev-large.jpg"
+    assert saved[0]["ogImagePath"] == "/og-images/cool11ty-dev-og.jpg"
+
+
+def test_editor_save_showcase_only_persists_og_image_path(client, app):
+    showcase = [{
+        "title": "Showcase Only",
+        "link": "https://showcase-only.dev",
+        "description": "old desc",
+        "date": "2026-01-01",
+        "formattedDate": "Jan 1, 2026",
+        "favicon": "/fav.png",
+        "screenshotpath": "/screenshots/old-large.jpg",
+        "leaderboardLink": "",
+    }]
+    _write_json(app.config["SHOWCASE_PATH"], showcase)
+
+    edited = {
+        "Title": "Showcase Only",
+        "Link": "https://showcase-only.dev",
+        "Date": "2026-02-01",
+        "formattedDate": "Feb 1, 2026",
+        "description": "new desc",
+        "favicon": "/fav.png",
+        "screenshotpath": "/screenshots/showcase-only-dev-large.jpg",
+        "leaderboardLink": "",
+    }
+    resp = client.post("/editor/save", json={
+        "item": edited,
+        "link": "https://showcase-only.dev",
+        "showcase_only": True,
+    })
+    assert resp.get_json()["success"]
+
+    saved = _read_json(app.config["SHOWCASE_PATH"])
+    assert saved[0]["screenshotpath"] == "/screenshots/showcase-only-dev-large.jpg"
+    assert saved[0]["ogImagePath"] == "/og-images/showcase-only-dev-og.jpg"
+
+
 # --- POST /editor/delete ---
 
 def test_editor_delete(client, app, sample_bundledb):

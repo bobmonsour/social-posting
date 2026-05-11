@@ -48,7 +48,8 @@ social-posting/
 │   ├── blog_post.py        # Create bundle issue markdown from template with optional highlights
 │   ├── content_review.py   # AI content review for site entries (Claude Haiku via anthropic SDK)
 │   ├── showcase_review.py  # Bulk content review scanner for all showcase-data.json sites (CLI tool)
-│   └── verify_site.py      # Post-build verification: checks _site HTML for entry presence and valid assets
+│   ├── verify_site.py      # Post-build verification: checks _site HTML for entry presence and valid assets
+│   └── og_image.py         # derive_og_image_path: /screenshots/X-large.jpg -> /og-images/X-og.jpg (used at site-save time and by the showcase backfill)
 ├── data/
 │   ├── insights-exclusions.json  # Exclusions for insights missing-data checks
 │   ├── showcase-cleared-sites.json  # Allowlist of sites that passed content review
@@ -56,7 +57,11 @@ social-posting/
 ├── showcase-review-results.json  # Full review results keyed by URL (flagged/error/clean)
 ├── showcase-review-report.html   # Generated HTML report of flagged and error sites
 ├── scripts/
-│   └── capture-screenshot.js  # Puppeteer full-page screenshot capture
+│   ├── capture-screenshot.js     # Puppeteer full-page screenshot + 1200x630 OG image
+│   ├── backfill-og-images.js     # One-shot: regenerate OG images from existing screenshots (Sharp)
+│   ├── backfill-showcase-og-paths.py  # One-shot: add ogImagePath field to showcase-data.json entries
+│   └── lib/
+│       └── og-from-screenshot.js  # Sharp-based OG image generator shared by capture + backfill
 ├── templates/              # Jinja2 (base.html, compose.html, result.html, editor.html, db_mgmt.html, 11ty-bundle-xx.md)
 ├── static/
 │   ├── css/style.css       # Pico CSS overrides, warm color scheme, light/dark
@@ -65,7 +70,7 @@ social-posting/
 ├── posts/
 │   ├── history.json        # All posts, drafts, and failed posts (newest first)
 │   └── draft_images/       # Persisted images keyed by draft/failed UUID
-├── tests/                  # pytest suite (165 tests, uses responses + pytest-flask)
+├── tests/                  # pytest suite (277 tests, uses responses + pytest-flask)
 │   ├── conftest.py         # Shared fixtures (app, client, sample data, temp paths)
 │   └── test_*.py           # Service, route, and data integrity tests
 ├── pytest.ini              # pytest config (testpaths, warnings)
@@ -103,7 +108,7 @@ The `/db-mgmt` page shows database statistics (per-type counts, authors, categor
 ## Testing
 
 - **Visual testing via browser**: When making UI or layout changes, use the Claude in Chrome MCP tools to verify the result in the running app at `http://127.0.0.1:5555`.
-- **pytest suite**: 224 tests in `tests/` covering services, routes, and data integrity. Run with `source .venv/bin/activate && pytest` (or `pytest -v` for verbose). Uses `responses` to mock HTTP calls and `pytest-flask` for the test client.
+- **pytest suite**: 277 tests in `tests/` covering services, routes, and data integrity. Run with `source .venv/bin/activate && pytest` (or `pytest -v` for verbose). Uses `responses` to mock HTTP calls and `pytest-flask` for the test client.
 - **Path overrides for testing**: `app.py` uses `_get_path(key)` to read file paths from `app.config` with fallback to module-level constants. Tests set `app.config["BUNDLEDB_PATH"]`, `app.config["SHOWCASE_PATH"]`, etc. to temp directories. For `bwe_list.BWE_FILE`, tests use `monkeypatch.setattr`.
 - **Adding tests**: When adding new services or routes, add corresponding test files. Mock external HTTP with `@responses.activate`. Use the `client` fixture for route tests and `app` fixture to access temp paths.
 

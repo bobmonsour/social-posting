@@ -23,6 +23,7 @@ from services.insights import generate_insights
 from services.issue_records import generate_issue_records
 from services.latest_data import generate_latest_data
 from services.blog_post import create_blog_post, summarize_blog_post, blog_post_exists
+from services.og_image import derive_og_image_path
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16MB upload limit
@@ -1020,6 +1021,7 @@ def editor_save():
         sc_entry["description"] = item.get("description", "")
         sc_entry["favicon"] = item.get("favicon", "")
         sc_entry["screenshotpath"] = item.get("screenshotpath", "")
+        sc_entry["ogImagePath"] = derive_og_image_path(sc_entry["screenshotpath"])
         sc_entry["leaderboardLink"] = item.get("leaderboardLink", "")
         if item.get("Skip"):
             sc_entry["Skip"] = True
@@ -1056,6 +1058,7 @@ def editor_save():
                         "formattedDate": item.get("formattedDate", ""),
                         "favicon": item.get("favicon", ""),
                         "screenshotpath": screenshotpath,
+                        "ogImagePath": derive_og_image_path(screenshotpath),
                         "leaderboardLink": leaderboard_link,
                     }
                     with open(_get_path("SHOWCASE_PATH"), "r") as f:
@@ -1107,6 +1110,7 @@ def editor_save():
                                 bundledb_key = "Title" if key == "title" else key
                                 sc_entry[key] = item.get(bundledb_key, "")
                             sc_entry["screenshotpath"] = screenshotpath
+                            sc_entry["ogImagePath"] = derive_og_image_path(screenshotpath)
                             sc_entry["leaderboardLink"] = leaderboard_link
                             sc_entry["date"] = item.get("Date", "")[:10]
                             sc_entry["formattedDate"] = item.get("formattedDate", "")
