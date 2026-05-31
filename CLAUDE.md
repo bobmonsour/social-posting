@@ -139,3 +139,17 @@ Environment variables in `.env` (see `.env.example`):
 - **Tooling**: Node.js + Puppeteer (screenshot capture)
 - **Testing**: pytest, responses (HTTP mocking), pytest-flask
 - **No database** — flat JSON file for history, filesystem for images
+
+<!-- worklog:start -->
+## Worklog
+
+When wrapping up a session here (I say "done" / "wrap up"), or when I say "log this",
+record a worklog entry to the projects registry — run from this directory so the slug
+auto-detects:
+
+    projects log-note "<one-sentence summary of what got done>
+    Next: <the next step to resume from>"
+
+This writes a dated entry to the project's Notes in the registry; it does not modify
+this repo. Keep it to the summary + Next line — detail lives in git history.
+<!-- worklog:end -->
