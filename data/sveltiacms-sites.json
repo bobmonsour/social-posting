@@ -22,5 +22,17 @@
     "name": "Jari Laru",
     "url": "https://www.jarilaru.fi/",
     "skip": true
+  },
+  {
+    "description": "French corporate training firm offering custom blended programs, soft skills, management coaching, and AI-powered training simulations.",
+    "name": "Sherpa Consulting",
+    "url": "https://www.sherpa-consulting.fr/",
+    "skip": true
+  },
+  {
+    "description": "Wedding photographers in Kerala, India offering documentary-style photography, cinematic films, and heirloom albums.",
+    "name": "Memorygraph Weddings",
+    "url": "https://www.memorygraphweddings.com/",
+    "skip": true
   }
 ]
