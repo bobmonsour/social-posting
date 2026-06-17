@@ -721,6 +721,9 @@ document.addEventListener("DOMContentLoaded", () => {
         btn.addEventListener("click", () => {
             const name = btn.dataset.name;
             const url = btn.dataset.url;
+            // Link card points at the 11tybundle.dev Showcase page for the site,
+            // not the site's own URL (falls back to the site URL if unavailable).
+            const showcaseUrl = btn.dataset.showcaseUrl || url;
 
             // Read M/B/D checkboxes from the BWE queue item
             const queueItem = btn.closest(".bwe-queue-item");
@@ -771,8 +774,8 @@ document.addEventListener("DOMContentLoaded", () => {
             // Update visibility of platform groups
             updatePlatformSections();
 
-            // Set link URL
-            linkUrl.value = url;
+            // Set link URL to the site's Showcase page (the link card target)
+            linkUrl.value = showcaseUrl;
 
             // Populate hidden fields
             document.getElementById("bwe-site-name").value = name;

@@ -285,7 +285,7 @@
                 {% if site.draft_id %}
                 <a href="/draft/{{ site.draft_id }}" class="btn-use-draft">Use</a>
                 {% else %}
-                <button type="button" class="btn-bwe-post" data-name="{{ site.name }}" data-url="{{ site.url }}">Post</button>
+                <button type="button" class="btn-bwe-post" data-name="{{ site.name }}" data-url="{{ site.url }}" data-showcase-url="{{ site.showcase_url or site.url }}">Post</button>
                 {% endif %}
                 <button type="button" class="btn-del-draft btn-bwe-to-post-del" data-name="{{ site.name }}" data-url="{{ site.url }}">Del</button>
             </div>

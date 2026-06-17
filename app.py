@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import uuid
 from datetime import date, datetime, timezone
+from urllib.parse import urlparse
 
 from flask import Flask, redirect, render_template, request, jsonify, url_for, send_from_directory
 
@@ -24,6 +25,7 @@ from services.issue_records import generate_issue_records
 from services.latest_data import generate_latest_data
 from services.blog_post import create_blog_post, summarize_blog_post, blog_post_exists
 from services.og_image import derive_og_image_path
+from services.slugify import slugify
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16MB upload limit
@@ -135,10 +137,27 @@ def load_recent_posts(n=10):
     return _read_history()[:n]
 
 
+def showcase_url_for_site(site_url):
+    """Build the 11tybundle.dev per-site Showcase page URL for *site_url*.
+
+    Mirrors the Eleventy permalink in 11tybundle.dev's
+    ``content/showcase/sites.njk``: ``/showcase/{{ site.link | getHostname | slugify }}/``
+    where ``getHostname`` is ``new URL(link).hostname`` and ``slugify`` matches
+    ``@sindresorhus/slugify`` (our ``services.slugify``). Returns None if the URL
+    has no parseable hostname.
+    """
+    hostname = urlparse(site_url).hostname
+    if not hostname:
+        return None
+    return f"https://11tybundle.dev/showcase/{slugify(hostname)}/"
+
+
 def _annotate_bwe_with_drafts(bwe_to_post, history):
-    """Tag each BWE site with its draft_id if a matching draft exists in history."""
+    """Tag each BWE site with its draft_id (if a matching draft exists) and the
+    11tybundle.dev Showcase page URL used as the link-card default."""
     for site in bwe_to_post:
         site["draft_id"] = None
+        site["showcase_url"] = showcase_url_for_site(site["url"])
         for entry in history:
             if (entry.get("is_draft") and entry.get("mode") == "11ty-bwe"
                     and entry.get("link_url") == site["url"]):

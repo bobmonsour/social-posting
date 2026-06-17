@@ -6,3 +6,8 @@ requests
 beautifulsoup4
 Pillow
 anthropic
+
+# Test dependencies
+pytest
+pytest-flask
+responses
