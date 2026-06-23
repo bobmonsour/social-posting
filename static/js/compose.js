@@ -682,7 +682,7 @@ document.addEventListener("DOMContentLoaded", () => {
         document.querySelectorAll(".bwe-plat-cb").forEach(cb => cb.checked = false);
 
         // Reset draft checkbox
-        cbDraft.checked = true;
+        cbDraft.checked = false;
 
         updatePlatformSections();
         updateCharCounters();
@@ -763,10 +763,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 const prefixes = mode.prefixes || {};
                 const suffixes = mode.suffixes || {};
                 const textareaMap = {mastodon: textMastodon, bluesky: textBluesky, discord: textDiscord, discord_content: textDiscordContent};
+                const showcaseLeadIn = "From the 11ty Bundle Showcase\n\n";
                 for (const [platform, el] of Object.entries(textareaMap)) {
                     const pre = prefixes[platform] || "";
                     const suf = suffixes[platform] || "";
-                    el.value = pre + name + suf;
+                    el.value = showcaseLeadIn + pre + name + suf;
                 }
                 updateModeCharCounters();
             }
