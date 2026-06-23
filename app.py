@@ -1782,16 +1782,30 @@ def db_mgmt_sveltiacms_check():
         if not showcase_hash:
             return jsonify({"error": "No hash found for en_showcase.md in __VP_HASH_MAP__."}), 502
 
-        # Step 2: Fetch the lean.js data file
+        # Step 2: Fetch the lean.js page module
         data_url = f"https://sveltiacms.app/assets/en_showcase.md.{showcase_hash}.lean.js"
         data_resp = req.get(data_url, timeout=15)
         data_resp.raise_for_status()
         js_text = data_resp.text
 
+        # The site array is no longer inlined in the lean.js (it now holds only
+        # page metadata). It lives in a separate chunk imported by the lean.js,
+        # e.g. import { s as sites } from "./chunks/showcase-sites.<hash>.js"
+        chunk_match = re.search(
+            r'from\s+"(\./chunks/showcase-sites\.[^"]+\.js)"', js_text
+        )
+        if not chunk_match:
+            return jsonify({"error": "Could not find the showcase-sites chunk import in the SveltiaCMS data file. The site structure may have changed."}), 502
+
+        chunk_url = "https://sveltiacms.app/assets/" + chunk_match.group(1).lstrip("./")
+        chunk_resp = req.get(chunk_url, timeout=15)
+        chunk_resp.raise_for_status()
+        js_text = chunk_resp.text
+
         # Extract JSON array from JSON.parse('...')
         json_match = re.search(r"JSON\.parse\('(.+?)'\)", js_text, re.DOTALL)
         if not json_match:
-            return jsonify({"error": "Could not extract JSON data from the SveltiaCMS showcase data file."}), 502
+            return jsonify({"error": "Could not extract JSON data from the SveltiaCMS showcase-sites chunk."}), 502
 
         raw_json = json_match.group(1).replace("\\'", "'")
         try:
