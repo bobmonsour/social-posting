@@ -37,9 +37,17 @@
 [Zest - Lightweight Cookie Consent Toolkit](https://zest.freshjuice.dev/)
 [PulpPDF](https://pulppdf.app/)
 [Daniele Del Sette](https://www.ddart.it/)
-[Center for Interactive Media](https://www.centerforinteractivemedia.com/)
+[John Niedermeyer](https://nieder.me/)
+[austroPott](https://austropott.de/)
+[Begoña Pereda](https://begopereda.com/)
+[Codeboxx](https://codeboxx.co.uk/)
+[Ryan Knaggs Music](https://ryanknaggsmusic.com/)
+[The Shared Homeland Paradigm](https://sharedhomeland.com/)
 
 - ALREADY POSTED -
+2026-06-23 [Center for Interactive Media](https://www.centerforinteractivemedia.com/) {B,M}
+2026-06-23 [JKA NorCal](https://jkanorcal.org/) {B,M}
+2026-06-23 [Resolve Advisory](https://www.resolve-advisory.com/) {B,M}
 2026-06-17 [Ganesha Deva](https://ganeshaexperience.it/) {B,M}
 2026-06-17 [The Alliance Futures Initiative](https://alliancefutures.org/) {B,M}
 2026-06-17 [Justice Rowing](https://justicerowing.org/) {B,M}

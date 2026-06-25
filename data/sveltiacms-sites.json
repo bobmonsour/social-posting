@@ -34,5 +34,17 @@
     "name": "Memorygraph Weddings",
     "url": "https://www.memorygraphweddings.com/",
     "skip": true
+  },
+  {
+    "description": "Theater company in Dortmund, Germany performing comedies and dramas at Dortmunder U since 2012 with wit and emotional depth.",
+    "name": "austroPott",
+    "url": "https://www.austropott.de/",
+    "skip": true
+  },
+  {
+    "description": "Product design portfolio showcasing 20+ years leading design at industry brands including The New York Times, BuzzFeed, and Resy.",
+    "name": "John Niedermeyer",
+    "url": "https://nieder.me/",
+    "skip": true
   }
 ]
