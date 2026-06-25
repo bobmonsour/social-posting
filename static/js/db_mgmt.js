@@ -46,6 +46,7 @@
 
     // ===== SveltiaCMS Check =====
     var sveltiacmsSites = [];
+    var deletedIndices = {};
     var btnCheck = document.getElementById('btn-sveltiacms-check');
     var modal = document.getElementById('sveltiacms-modal');
     var siteList = document.getElementById('sveltiacms-site-list');
@@ -99,11 +100,12 @@
     }
 
     function renderSiteList() {
+        deletedIndices = {};
         var html = '';
         for (var i = 0; i < sveltiacmsSites.length; i++) {
             var site = sveltiacmsSites[i];
-            html += '<div class="sveltiacms-site-row">';
-            html += '<label style="display: flex; align-items: flex-start; gap: 0.5rem; margin-bottom: 0; cursor: pointer;">';
+            html += '<div class="sveltiacms-site-row" data-row="' + i + '" style="display: flex; align-items: flex-start; gap: 0.5rem;">';
+            html += '<label style="display: flex; align-items: flex-start; gap: 0.5rem; margin-bottom: 0; cursor: pointer; flex: 1;">';
             html += '<input type="checkbox" class="sveltiacms-cb" data-index="' + i + '" checked style="margin: 0.2rem 0 0 0; flex-shrink: 0;">';
             html += '<span>';
             html += '<a href="' + escapeHtml(site.url) + '" target="_blank" rel="noopener" style="font-weight: 600;">' + escapeHtml(site.name) + '</a>';
@@ -112,9 +114,20 @@
             }
             html += '</span>';
             html += '</label>';
+            html += '<button type="button" class="sveltiacms-delete" data-index="' + i + '" title="Delete &mdash; won\'t reappear on future checks" style="flex-shrink: 0; background: none; border: none; color: #c62828; cursor: pointer; font-size: 1.2rem; line-height: 1; padding: 0 0.3rem; width: auto; margin: 0;">&times;</button>';
             html += '</div>';
         }
         siteList.innerHTML = html;
+
+        var dels = siteList.querySelectorAll('.sveltiacms-delete');
+        for (var j = 0; j < dels.length; j++) {
+            dels[j].addEventListener('click', function() {
+                var idx = parseInt(this.dataset.index);
+                deletedIndices[idx] = true;
+                var row = siteList.querySelector('.sveltiacms-site-row[data-row="' + idx + '"]');
+                if (row) { row.remove(); }
+            });
+        }
     }
 
     if (selectAll) {
@@ -134,12 +147,18 @@
 
     if (btnSave) {
         btnSave.addEventListener('click', function() {
-            var cbs = siteList.querySelectorAll('.sveltiacms-cb');
             var selected = [];
             var skipped = [];
-            for (var i = 0; i < cbs.length; i++) {
-                var site = sveltiacmsSites[parseInt(cbs[i].dataset.index)];
-                if (cbs[i].checked) {
+            for (var i = 0; i < sveltiacmsSites.length; i++) {
+                var site = sveltiacmsSites[i];
+                if (deletedIndices[i]) {
+                    // Deleted: keep only a lightweight skip record so it
+                    // never reappears on a future check.
+                    skipped.push({ url: site.url, skip: true });
+                    continue;
+                }
+                var cb = siteList.querySelector('.sveltiacms-cb[data-index="' + i + '"]');
+                if (cb && cb.checked) {
                     selected.push(site);
                 } else {
                     skipped.push(Object.assign({}, site, { skip: true }));
