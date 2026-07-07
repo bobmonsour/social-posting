@@ -16,5 +16,17 @@
   "additionalDirectories": [
     "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundle.dev",
     "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundledb"
-  ]
+  ],
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/welcome.sh"
+          }
+        ]
+      }
+    ]
+  }
 }
