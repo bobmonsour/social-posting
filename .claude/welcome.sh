@@ -17,6 +17,9 @@ WORKFLOW
 2. Compose/post, edit entries, or run build/deploy from the editor's Save & Run Latest /
    Save & Deploy buttons.
 3. Run tests after changes: `source .venv/bin/activate && pytest` (277 tests).
+
+SKILLS
+- verify-site (skill) — Runs a fresh 11ty Bundle build, then parses the static _site output to confirm recently added entries rendered correctly (defaults to the latest issue; accepts a date / today / yesterday / latest).
 EOF
 
 jq -nc --arg m "$MESSAGE" '{systemMessage: $m}'
