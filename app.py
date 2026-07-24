@@ -1802,12 +1802,25 @@ def db_mgmt_sveltiacms_check():
         chunk_resp.raise_for_status()
         js_text = chunk_resp.text
 
-        # Extract JSON array from JSON.parse('...')
-        json_match = re.search(r"JSON\.parse\('(.+?)'\)", js_text, re.DOTALL)
-        if not json_match:
+        # Extract the JSON array from JSON.parse(...). The build emits the array
+        # as a JS string literal, which may be single- or double-quoted depending
+        # on the bundler version:
+        #   JSON.parse('[{"name":"..."}]')      -> inner " are raw, ' are escaped
+        #   JSON.parse("[{\"name\":\"...\"}]")  -> inner " are escaped
+        single_match = re.search(r"JSON\.parse\('((?:[^'\\]|\\.)*)'\)", js_text, re.DOTALL)
+        double_match = re.search(r'JSON\.parse\("((?:[^"\\]|\\.)*)"\)', js_text, re.DOTALL)
+        if single_match:
+            raw_json = single_match.group(1).replace("\\'", "'")
+        elif double_match:
+            # A double-quoted JS string literal uses JSON's own escape rules,
+            # so decoding it as a JSON string yields the array text.
+            try:
+                raw_json = json.loads('"' + double_match.group(1) + '"')
+            except json.JSONDecodeError:
+                return jsonify({"error": "Could not decode the showcase-sites string literal."}), 502
+        else:
             return jsonify({"error": "Could not extract JSON data from the SveltiaCMS showcase-sites chunk."}), 502
 
-        raw_json = json_match.group(1).replace("\\'", "'")
         try:
             sites = json.loads(raw_json)
         except json.JSONDecodeError:
