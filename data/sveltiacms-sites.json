@@ -46,5 +46,45 @@
     "name": "John Niedermeyer",
     "url": "https://nieder.me/",
     "skip": true
+  },
+  {
+    "description": "Family medicine practice website sharing services, patient information, and contact details for care in Bryan and College Station.",
+    "name": "BCS Abundant Life Family Practice",
+    "url": "https://doctorbacak.com/"
+  },
+  {
+    "description": "Clinical psychologist offering online therapy and educational materials focusing on self-esteem, relationships, and personal psychology.",
+    "name": "Polina Vavilina",
+    "url": "https://vavilinaapollinaria-psy.ru/"
+  },
+  {
+    "description": "Artist-run gallery in Watertown, NY featuring rotating exhibits, live music, workshops, and sound healing in the North Country.",
+    "name": "Phi Gallery",
+    "url": "https://phigallery.art/"
+  },
+  {
+    "description": "Australian government systems advisory firm providing policy design, strategic planning, and organizational development in public sector.",
+    "name": "Good Government Advisory",
+    "url": "https://goodgov.au/"
+  },
+  {
+    "description": "Houseboat and mangrove cruises in Kerala, India featuring day trips, sunset cruises, and overnight stays in Kerala\u2019s largest mangrove belt.",
+    "name": "Vellikkeel Waves",
+    "url": "https://www.vellikkeelwaves.in/"
+  },
+  {
+    "description": "Trichologist and aesthetic biomedicalist in Novo Hamburgo offering science-based hair and skin care with natural results.",
+    "name": "Dr. Guilherme Cerutti M\u00fcller",
+    "url": "https://drgcmuller.com.br/"
+  },
+  {
+    "description": "Volunteer-led conservation project maintaining trails and promoting outdoor access in Angeles National Forest, Los Angeles.",
+    "name": "Trail Angeles",
+    "url": "https://trailangeles.org/"
+  },
+  {
+    "description": "Public-private foundation promoting Villajoyosa tourism on the Costa Blanca through destination management, sustainability, and innovation.",
+    "name": "Discover Villajoyosa",
+    "url": "https://discovervillajoyosa.org/"
   }
 ]
