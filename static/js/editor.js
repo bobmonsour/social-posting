@@ -2095,7 +2095,14 @@
           const files = origin === "showcase" ? "showcase-data.json"
             : origin === "both" ? "bundledb.json and showcase-data.json"
             : "bundledb.json";
-          showStatus("Entry deleted from " + files + ".", false);
+          let msg = "Entry deleted from " + files + ".";
+          const out = data.showcase_output;
+          if (out && out.status === "deleted") {
+            msg += " Removed _site/showcase/" + out.slug + "/.";
+          } else if (out && out.status === "error") {
+            msg += " Could not remove _site/showcase/" + out.slug + "/: " + out.error;
+          }
+          showStatus(msg, false);
           if (currentMode === "edit") {
             if (searchInput.value.trim()) {
               runSearch(searchInput.value.trim());

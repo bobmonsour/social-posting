@@ -26,6 +26,7 @@ from services.latest_data import generate_latest_data
 from services.blog_post import create_blog_post, summarize_blog_post, blog_post_exists
 from services.og_image import derive_og_image_path
 from services.slugify import slugify
+from services.showcase_output import delete_showcase_output, showcase_slug_for_site
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16MB upload limit
@@ -140,16 +141,14 @@ def load_recent_posts(n=10):
 def showcase_url_for_site(site_url):
     """Build the 11tybundle.dev per-site Showcase page URL for *site_url*.
 
-    Mirrors the Eleventy permalink in 11tybundle.dev's
-    ``content/showcase/sites.njk``: ``/showcase/{{ site.link | getHostname | slugify }}/``
-    where ``getHostname`` is ``new URL(link).hostname`` and ``slugify`` matches
-    ``@sindresorhus/slugify`` (our ``services.slugify``). Returns None if the URL
-    has no parseable hostname.
+    Returns None if the URL has no parseable hostname. The slug comes from
+    ``services.showcase_output``, which also uses it to locate the generated
+    page directory in ``_site``.
     """
-    hostname = urlparse(site_url).hostname
-    if not hostname:
+    slug = showcase_slug_for_site(site_url)
+    if not slug:
         return None
-    return f"https://11tybundle.dev/showcase/{slugify(hostname)}/"
+    return f"https://11tybundle.dev/showcase/{slug}/"
 
 
 def _annotate_bwe_with_drafts(bwe_to_post, history):
@@ -1197,7 +1196,11 @@ def editor_delete():
             return jsonify({"success": False, "error": f"Showcase entry not found for link: {link}"}), 404
         with open(_get_path("SHOWCASE_PATH"), "w") as f:
             json.dump(showcase_data, f, indent=2)
-        return jsonify({"success": True, "backup_created": True})
+        return jsonify({
+            "success": True,
+            "backup_created": True,
+            "showcase_output": delete_showcase_output(link),
+        })
 
     with open(_get_path("BUNDLEDB_PATH"), "r") as f:
         data = json.load(f)
@@ -1208,7 +1211,9 @@ def editor_delete():
 
     item = data[index]
 
-    # For sites, also remove from showcase-data.json
+    # For sites, also remove from showcase-data.json and drop the generated
+    # Showcase page from the build output (Eleventy never prunes _site)
+    showcase_output_result = None
     if item.get("Type") == "site" and item.get("Link"):
         try:
             with open(_get_path("SHOWCASE_PATH"), "r") as f:
@@ -1218,13 +1223,18 @@ def editor_delete():
                 json.dump(showcase_data, f, indent=2)
         except Exception:
             pass
+        showcase_output_result = delete_showcase_output(item["Link"])
 
     del data[index]
 
     with open(_get_path("BUNDLEDB_PATH"), "w") as f:
         json.dump(data, f, indent=2)
 
-    return jsonify({"success": True, "backup_created": True})
+    return jsonify({
+        "success": True,
+        "backup_created": True,
+        "showcase_output": showcase_output_result,
+    })
 
 
 @app.route("/editor/delete-test-entries", methods=["POST"])

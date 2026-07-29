@@ -1,6 +1,19 @@
 import json
 import os
 
+import pytest
+
+from services import showcase_output
+
+
+@pytest.fixture
+def showcase_dir(tmp_path, monkeypatch):
+    """A stand-in for 11tybundle.dev/_site/showcase."""
+    path = tmp_path / "_site" / "showcase"
+    path.mkdir(parents=True)
+    monkeypatch.setattr(showcase_output, "SHOWCASE_OUTPUT_DIR", path)
+    return path
+
 
 def _write_json(path, data):
     with open(path, "w") as f:
@@ -318,6 +331,37 @@ def test_editor_delete_not_found(client, app, sample_bundledb):
     assert resp.status_code == 404
 
 
+def test_editor_delete_site_removes_build_output(client, app, sample_bundledb,
+                                                 sample_showcase, showcase_dir):
+    _write_json(app.config["BUNDLEDB_PATH"], sample_bundledb)
+    _write_json(app.config["SHOWCASE_PATH"], sample_showcase)
+    page = showcase_dir / "cool11ty-dev"
+    page.mkdir()
+    (page / "index.html").write_text("<html></html>")
+
+    resp = client.post("/editor/delete", json={"link": sample_bundledb[1]["Link"]})
+
+    data = resp.get_json()
+    assert data["success"]
+    assert data["showcase_output"]["status"] == "deleted"
+    assert data["showcase_output"]["slug"] == "cool11ty-dev"
+    assert not page.exists()
+
+
+def test_editor_delete_blog_post_leaves_build_output_alone(client, app, sample_bundledb,
+                                                           showcase_dir):
+    _write_json(app.config["BUNDLEDB_PATH"], sample_bundledb)
+    # A site with the same hostname as the blog post being deleted
+    page = showcase_dir / "example-com"
+    page.mkdir()
+
+    resp = client.post("/editor/delete", json={"link": sample_bundledb[0]["Link"]})
+
+    assert resp.get_json()["success"]
+    assert resp.get_json().get("showcase_output") is None
+    assert page.exists()
+
+
 # --- GET /editor/data (origin tags + showcase_only) ---
 
 def test_editor_data_origin_tags(client, app, sample_bundledb, sample_showcase):
@@ -461,6 +505,22 @@ def test_editor_delete_showcase_only(client, app):
     assert len(saved) == 2
     assert saved[0]["title"] == "Keep"
     assert saved[1]["title"] == "Also Keep"
+
+
+def test_editor_delete_showcase_only_removes_build_output(client, app, showcase_dir):
+    _write_json(app.config["SHOWCASE_PATH"],
+                [{"title": "Delete Me", "link": "https://delete.dev"}])
+    page = showcase_dir / "delete-dev"
+    page.mkdir()
+
+    resp = client.post("/editor/delete", json={
+        "showcase_only": True, "link": "https://delete.dev"
+    })
+
+    data = resp.get_json()
+    assert data["success"]
+    assert data["showcase_output"]["status"] == "deleted"
+    assert not page.exists()
 
 
 def test_editor_delete_showcase_only_not_found(client, app):
