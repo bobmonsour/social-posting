@@ -2391,6 +2391,12 @@
           }
 
           hideEditForm();
+          // A clear content review has served its purpose once the entry is
+          // saved. A flagged one stays up so the warning isn't lost.
+          if (contentReviewBanner.classList.contains("clear")) {
+            contentReviewBanner.style.display = "none";
+            contentReviewBanner.className = "content-review-banner";
+          }
           if (isCreate) {
             updateIssueCounts(item);
             typeRadios.forEach((r) => (r.checked = false));
