@@ -48,10 +48,10 @@ def friendly_time(iso_timestamp):
 
 @app.context_processor
 def cache_busting():
-    """Provide CSS/JS cache-busting timestamps to templates."""
+    """Provide static asset cache-busting timestamps to templates."""
     static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
     versions = {}
-    for key, rel_path in [("css_version", "css/style.css"), ("js_version", "js/editor.js"), ("dbmgmt_js_version", "js/db_mgmt.js")]:
+    for key, rel_path in [("css_version", "css/style.css"), ("js_version", "js/editor.js"), ("dbmgmt_js_version", "js/db_mgmt.js"), ("favicon_version", "img/favicon.svg")]:
         try:
             versions[key] = int(os.path.getmtime(os.path.join(static_dir, rel_path)))
         except OSError:

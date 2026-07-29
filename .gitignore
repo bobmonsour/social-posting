@@ -1,6 +1,7 @@
 
 .env
 .claude/settings.local.json
+.superpowers/
 
 __pycache__/
 *.pyc
