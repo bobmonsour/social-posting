@@ -1,7 +1,11 @@
 import pytest
 
 from services import showcase_output
-from services.showcase_output import delete_showcase_output, showcase_slug_for_site
+from services.showcase_output import (
+    delete_showcase_output,
+    showcase_output_path,
+    showcase_slug_for_site,
+)
 
 
 @pytest.fixture
@@ -30,6 +34,21 @@ def test_slug_keeps_www_and_multi_part_tld():
 def test_slug_is_none_for_unparseable_url():
     assert showcase_slug_for_site("not a url") is None
     assert showcase_slug_for_site("") is None
+
+
+# --- showcase_output_path ---
+
+def test_output_path_is_the_slug_under_the_showcase_dir(showcase_dir):
+    assert showcase_output_path("https://cool11ty.dev") == showcase_dir / "cool11ty-dev"
+
+
+def test_output_path_does_not_require_the_directory_to_exist(showcase_dir):
+    assert showcase_output_path("https://never-built.dev") is not None
+
+
+def test_output_path_is_none_when_there_is_no_usable_slug(showcase_dir):
+    assert showcase_output_path("not a url") is None
+    assert showcase_output_path("https://.../page") is None
 
 
 # --- delete_showcase_output ---

@@ -26,7 +26,11 @@ from services.latest_data import generate_latest_data
 from services.blog_post import create_blog_post, summarize_blog_post, blog_post_exists
 from services.og_image import derive_og_image_path
 from services.slugify import slugify
-from services.showcase_output import delete_showcase_output, showcase_slug_for_site
+from services.showcase_output import (
+    delete_showcase_output,
+    showcase_output_path,
+    showcase_slug_for_site,
+)
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16MB upload limit
@@ -1169,6 +1173,99 @@ def editor_save():
         json.dump(data, f, indent=2)
 
     return jsonify(result)
+
+
+def _resolve_delete_plan(link, showcase_only=False):
+    """Describe what deleting *link* will touch, without touching anything.
+
+    Mirrors ``editor_delete``'s matching exactly, so the confirmation dialog
+    cannot promise something the delete won't do. Each target carries a
+    ``status``: ``delete`` (will be removed), ``none`` (nothing there to
+    remove), or ``n/a`` (this target is not in play for this kind of entry).
+    """
+    plan = {
+        "link": link,
+        "bundledb": {"status": "n/a"},
+        "showcase": {"status": "n/a"},
+        "showcase_output": {"status": "n/a"},
+    }
+
+    bundledb_item = None
+    if not showcase_only:
+        with open(_get_path("BUNDLEDB_PATH"), "r") as f:
+            data = json.load(f)
+        bundledb_item = next((e for e in data if e.get("Link") == link), None)
+        if bundledb_item is None:
+            plan["bundledb"] = {"status": "none"}
+        else:
+            issue = bundledb_item.get("Issue")
+            if isinstance(issue, str) and not issue.strip():
+                issue = None
+            plan["bundledb"] = {
+                "status": "delete",
+                "title": bundledb_item.get("Title"),
+                "type": bundledb_item.get("Type"),
+                "issue": issue,
+                "link": bundledb_item.get("Link"),
+            }
+
+    # showcase-data.json and the build output are only in play for site entries
+    is_site = showcase_only or (
+        bundledb_item is not None and bundledb_item.get("Type") == "site"
+    )
+    if is_site:
+        try:
+            with open(_get_path("SHOWCASE_PATH"), "r") as f:
+                showcase_data = json.load(f)
+        except Exception:
+            showcase_data = []
+        entry = next((e for e in showcase_data if e.get("link") == link), None)
+        if entry is None:
+            plan["showcase"] = {"status": "none"}
+        else:
+            plan["showcase"] = {
+                "status": "delete",
+                "title": entry.get("title"),
+                "link": entry.get("link"),
+            }
+
+        target = showcase_output_path(link)
+        if target is None:
+            plan["showcase_output"] = {"status": "none", "slug": None, "path": None}
+        else:
+            plan["showcase_output"] = {
+                "status": "delete" if target.is_dir() else "none",
+                "slug": target.name,
+                "path": str(target),
+            }
+
+    return plan
+
+
+@app.route("/editor/delete-preview", methods=["POST"])
+def editor_delete_preview():
+    """What would `/editor/delete` remove? Read-only; nothing is modified."""
+    payload = request.get_json() or {}
+    link = payload.get("link")
+    showcase_only = payload.get("showcase_only", False)
+
+    if not link:
+        return jsonify({"success": False, "error": "Missing link"}), 400
+
+    plan = _resolve_delete_plan(link, showcase_only)
+
+    # Match editor_delete's not-found rules: showcase-only deletes key off
+    # showcase-data.json, everything else off bundledb.json
+    missing = (
+        plan["showcase"]["status"] != "delete" if showcase_only
+        else plan["bundledb"]["status"] != "delete"
+    )
+    if missing:
+        return jsonify({"success": False,
+                        "error": f"Entry not found for link: {link}"}), 404
+
+    plan["success"] = True
+    return jsonify(plan)
 
 
 @app.route("/editor/delete", methods=["POST"])

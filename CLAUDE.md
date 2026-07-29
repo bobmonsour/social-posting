@@ -71,7 +71,7 @@ social-posting/
 ├── posts/
 │   ├── history.json        # All posts, drafts, and failed posts (newest first)
 │   └── draft_images/       # Persisted images keyed by draft/failed UUID
-├── tests/                  # pytest suite (297 tests, uses responses + pytest-flask)
+├── tests/                  # pytest suite (310 tests, uses responses + pytest-flask)
 │   ├── conftest.py         # Shared fixtures (app, client, sample data, temp paths)
 │   └── test_*.py           # Service, route, and data integrity tests
 ├── pytest.ini              # pytest config (testpaths, warnings)
@@ -94,7 +94,7 @@ The compose page (`/`) supports cross-posting to Mastodon, Bluesky, Discord Show
 
 ## Bundledb Editor
 
-The `/editor` page provides search and edit for entries across `bundledb.json` and `showcase-data.json`, with four modes: Create Entry, Edit Entry, Edit Latest Issue, and Generate Bundle Issue. Entries are tagged with `_origin` (bundledb/both/showcase). Features include: fuzzy search (Fuse.js), per-type field ordering, auto-slugify, author autocomplete with field propagation, per-type fetch buttons (description, favicon, screenshot, leaderboard, RSS, author info), AI content review for sites, duplicate link detection, Check URL modal, View JSON preview, skip checkbox, delete with confirmation, and test data guards. Site saves sync to `showcase-data.json` and add to BWE to-post list. For full details see `docs/editor-reference.md`.
+The `/editor` page provides search and edit for entries across `bundledb.json` and `showcase-data.json`, with four modes: Create Entry, Edit Entry, Edit Latest Issue, and Generate Bundle Issue. Entries are tagged with `_origin` (bundledb/both/showcase). Features include: fuzzy search (Fuse.js), per-type field ordering, auto-slugify, author autocomplete with field propagation, per-type fetch buttons (description, favicon, screenshot, leaderboard, RSS, author info), AI content review for sites, duplicate link detection, Check URL modal, View JSON preview, skip checkbox, delete with an itemized pre-delete confirmation (`/editor/delete-preview` reports what will be removed from `bundledb.json`, `showcase-data.json`, and `_site/showcase/<slug>/` before you confirm), and test data guards. Site saves sync to `showcase-data.json` and add to BWE to-post list. For full details see `docs/editor-reference.md`.
 
 ## Build & Deploy Workflows
 
@@ -109,7 +109,7 @@ The `/db-mgmt` page shows database statistics (per-type counts, authors, categor
 ## Testing
 
 - **Visual testing via browser**: When making UI or layout changes, use the Claude in Chrome MCP tools to verify the result in the running app at `http://127.0.0.1:5555`.
-- **pytest suite**: 297 tests in `tests/` covering services, routes, and data integrity. Run with `source .venv/bin/activate && pytest` (or `pytest -v` for verbose). Uses `responses` to mock HTTP calls and `pytest-flask` for the test client.
+- **pytest suite**: 310 tests in `tests/` covering services, routes, and data integrity. Run with `source .venv/bin/activate && pytest` (or `pytest -v` for verbose). Uses `responses` to mock HTTP calls and `pytest-flask` for the test client.
 - **Path overrides for testing**: `app.py` uses `_get_path(key)` to read file paths from `app.config` with fallback to module-level constants. Tests set `app.config["BUNDLEDB_PATH"]`, `app.config["SHOWCASE_PATH"]`, etc. to temp directories. For `bwe_list.BWE_FILE`, tests use `monkeypatch.setattr`.
 - **Adding tests**: When adding new services or routes, add corresponding test files. Mock external HTTP with `@responses.activate`. Use the `client` fixture for route tests and `app` fixture to access temp paths.
 

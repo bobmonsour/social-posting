@@ -305,6 +305,138 @@ def test_editor_save_showcase_only_persists_og_image_path(client, app):
     assert saved[0]["ogImagePath"] == "/og-images/showcase-only-dev-og.jpg"
 
 
+# --- POST /editor/delete-preview ---
+
+def test_delete_preview_site_lists_all_three_targets(client, app, sample_bundledb,
+                                                     sample_showcase, showcase_dir):
+    _write_json(app.config["BUNDLEDB_PATH"], sample_bundledb)
+    _write_json(app.config["SHOWCASE_PATH"], sample_showcase)
+    (showcase_dir / "cool11ty-dev").mkdir()
+
+    plan = client.post("/editor/delete-preview",
+                       json={"link": "https://cool11ty.dev"}).get_json()
+
+    assert plan["bundledb"]["status"] == "delete"
+    assert plan["bundledb"]["title"] == "Cool Eleventy Site"
+    assert plan["bundledb"]["type"] == "site"
+    assert plan["bundledb"]["issue"] == 100
+    assert plan["showcase"]["status"] == "delete"
+    assert plan["showcase"]["title"] == "Cool Eleventy Site"
+    assert plan["showcase_output"]["status"] == "delete"
+    assert plan["showcase_output"]["slug"] == "cool11ty-dev"
+
+
+def test_delete_preview_reports_absent_build_output(client, app, sample_bundledb,
+                                                    sample_showcase, showcase_dir):
+    _write_json(app.config["BUNDLEDB_PATH"], sample_bundledb)
+    _write_json(app.config["SHOWCASE_PATH"], sample_showcase)
+    # no directory created in showcase_dir
+
+    plan = client.post("/editor/delete-preview",
+                       json={"link": "https://cool11ty.dev"}).get_json()
+
+    assert plan["showcase_output"]["status"] == "none"
+    assert plan["showcase_output"]["slug"] == "cool11ty-dev"
+
+
+def test_delete_preview_blog_post_marks_showcase_not_applicable(client, app,
+                                                                sample_bundledb,
+                                                                showcase_dir):
+    _write_json(app.config["BUNDLEDB_PATH"], sample_bundledb)
+
+    plan = client.post("/editor/delete-preview",
+                       json={"link": sample_bundledb[0]["Link"]}).get_json()
+
+    assert plan["bundledb"]["status"] == "delete"
+    assert plan["bundledb"]["type"] == "blog post"
+    assert plan["showcase"]["status"] == "n/a"
+    assert plan["showcase_output"]["status"] == "n/a"
+
+
+def test_delete_preview_showcase_only_leaves_bundledb_alone(client, app, showcase_dir):
+    _write_json(app.config["SHOWCASE_PATH"],
+                [{"title": "Delete Me", "link": "https://delete.dev"}])
+    (showcase_dir / "delete-dev").mkdir()
+
+    plan = client.post("/editor/delete-preview",
+                       json={"showcase_only": True,
+                             "link": "https://delete.dev"}).get_json()
+
+    assert plan["bundledb"]["status"] == "n/a"
+    assert plan["showcase"]["status"] == "delete"
+    assert plan["showcase"]["title"] == "Delete Me"
+    assert plan["showcase_output"]["status"] == "delete"
+
+
+def test_delete_preview_site_missing_from_showcase_data(client, app, sample_bundledb,
+                                                        showcase_dir):
+    _write_json(app.config["BUNDLEDB_PATH"], sample_bundledb)
+    _write_json(app.config["SHOWCASE_PATH"], [])
+
+    plan = client.post("/editor/delete-preview",
+                       json={"link": "https://cool11ty.dev"}).get_json()
+
+    assert plan["bundledb"]["status"] == "delete"
+    assert plan["showcase"]["status"] == "none"
+
+
+def test_delete_preview_normalizes_a_blank_issue_to_none(client, app, sample_bundledb):
+    entry = dict(sample_bundledb[0], Issue="")
+    _write_json(app.config["BUNDLEDB_PATH"], [entry])
+
+    plan = client.post("/editor/delete-preview",
+                       json={"link": entry["Link"]}).get_json()
+
+    assert plan["bundledb"]["issue"] is None
+
+
+def test_delete_preview_unknown_link_is_404(client, app, sample_bundledb):
+    _write_json(app.config["BUNDLEDB_PATH"], sample_bundledb)
+    resp = client.post("/editor/delete-preview",
+                       json={"link": "https://nonexistent.example.com"})
+    assert resp.status_code == 404
+    assert resp.get_json()["success"] is False
+
+
+def test_delete_preview_showcase_only_unknown_link_is_404(client, app):
+    _write_json(app.config["SHOWCASE_PATH"], [])
+    resp = client.post("/editor/delete-preview",
+                       json={"showcase_only": True, "link": "https://nope.dev"})
+    assert resp.status_code == 404
+    assert resp.get_json()["success"] is False
+
+
+def test_delete_preview_does_not_modify_anything(client, app, sample_bundledb,
+                                                 sample_showcase, showcase_dir):
+    _write_json(app.config["BUNDLEDB_PATH"], sample_bundledb)
+    _write_json(app.config["SHOWCASE_PATH"], sample_showcase)
+    page = showcase_dir / "cool11ty-dev"
+    page.mkdir()
+
+    client.post("/editor/delete-preview", json={"link": "https://cool11ty.dev"})
+
+    assert _read_json(app.config["BUNDLEDB_PATH"]) == sample_bundledb
+    assert _read_json(app.config["SHOWCASE_PATH"]) == sample_showcase
+    assert page.exists()
+
+
+def test_delete_preview_matches_what_delete_actually_does(client, app, sample_bundledb,
+                                                          sample_showcase, showcase_dir):
+    _write_json(app.config["BUNDLEDB_PATH"], sample_bundledb)
+    _write_json(app.config["SHOWCASE_PATH"], sample_showcase)
+    (showcase_dir / "cool11ty-dev").mkdir()
+
+    plan = client.post("/editor/delete-preview",
+                       json={"link": "https://cool11ty.dev"}).get_json()
+    client.post("/editor/delete", json={"link": "https://cool11ty.dev"})
+
+    bundledb = _read_json(app.config["BUNDLEDB_PATH"])
+    showcase = _read_json(app.config["SHOWCASE_PATH"])
+    assert (plan["bundledb"]["status"] == "delete") == (len(bundledb) == len(sample_bundledb) - 1)
+    assert (plan["showcase"]["status"] == "delete") == (len(showcase) == len(sample_showcase) - 1)
+    assert (plan["showcase_output"]["status"] == "delete") == (not (showcase_dir / "cool11ty-dev").exists())
+
+
 # --- POST /editor/delete ---
 
 def test_editor_delete(client, app, sample_bundledb):

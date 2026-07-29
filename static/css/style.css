@@ -1354,6 +1354,57 @@ button.btn-nav {
     }
 }
 
+/* Itemized breakdown of what a delete will touch */
+#delete-confirm-details {
+    max-height: 45vh;
+    overflow-y: auto;
+}
+
+.delete-plan-section {
+    background: var(--pico-card-sectioning-background-color);
+    border: 1px solid var(--pico-muted-border-color);
+    border-radius: var(--pico-border-radius);
+    padding: 0.6rem 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.delete-plan-section h4 {
+    font-family: var(--font-body);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 0 0 0.5rem;
+    color: var(--pico-muted-color);
+}
+
+.delete-plan-unaffected {
+    opacity: 0.7;
+}
+
+.delete-plan-row {
+    display: flex;
+    gap: 0.75rem;
+    font-size: 0.82rem;
+    line-height: 1.45;
+    padding: 0.2rem 0;
+}
+
+.delete-plan-label {
+    flex: 0 0 9.5rem;
+    font-weight: 600;
+    word-break: break-word;
+}
+
+.delete-plan-value {
+    flex: 1;
+    word-break: break-word;
+}
+
+.delete-plan-sub {
+    color: var(--pico-muted-color);
+    font-size: 0.78rem;
+}
+
 .delete-confirm-buttons {
     display: flex;
     gap: 0.75rem;

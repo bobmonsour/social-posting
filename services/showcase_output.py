@@ -34,6 +34,22 @@ def showcase_slug_for_site(site_url):
     return slugify(hostname) or None
 
 
+def showcase_output_path(site_url):
+    """Return the ``_site/showcase/<slug>/`` Path for *site_url*, or None.
+
+    The directory need not exist. Returns None when *site_url* has no usable
+    slug, or -- belt and braces, since a hostname slug cannot contain a
+    separator -- when the result would escape the showcase directory.
+    """
+    slug = showcase_slug_for_site(site_url)
+    if not slug:
+        return None
+    target = SHOWCASE_OUTPUT_DIR / slug
+    if target.parent != SHOWCASE_OUTPUT_DIR or target == SHOWCASE_OUTPUT_DIR:
+        return None
+    return target
+
+
 def delete_showcase_output(site_url):
     """Delete ``_site/showcase/<slug>/`` for *site_url*.
 
@@ -41,17 +57,11 @@ def delete_showcase_output(site_url):
     Returns a dict with ``status`` (``deleted``, ``not_found``, ``invalid``, or
     ``error``), ``slug``, and ``path``.
     """
-    slug = showcase_slug_for_site(site_url)
-    if not slug:
-        return {"status": "invalid", "slug": None, "path": None}
+    target = showcase_output_path(site_url)
+    if target is None:
+        return {"status": "invalid", "slug": showcase_slug_for_site(site_url), "path": None}
 
-    base = SHOWCASE_OUTPUT_DIR
-    target = base / slug
-
-    # Belt and braces: the slug is derived from a hostname and cannot contain a
-    # separator, but never let a surprise value escape the showcase directory.
-    if target.parent != base or target == base:
-        return {"status": "invalid", "slug": slug, "path": None}
+    slug = target.name
 
     if not target.is_dir():
         return {"status": "not_found", "slug": slug, "path": str(target)}

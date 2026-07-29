@@ -121,8 +121,79 @@
   const jsonPreviewPanel = document.getElementById("json-preview-panel");
   const deleteConfirmModal = document.getElementById("delete-confirm-modal");
   const deleteConfirmMessage = document.getElementById("delete-confirm-message");
+  const deleteConfirmDetails = document.getElementById("delete-confirm-details");
   const deleteConfirmOk = document.getElementById("delete-confirm-ok");
   const deleteConfirmCancel = document.getElementById("delete-confirm-cancel");
+
+  // Single entry point for the shared delete-confirmation modal. Always clears
+  // the details block so it can't leak between the callers that don't set it.
+  function showDeleteConfirm(message, detailsHtml, onConfirm) {
+    deleteConfirmMessage.textContent = message;
+    deleteConfirmDetails.innerHTML = detailsHtml || "";
+    deleteConfirmOk.onclick = () => {
+      deleteConfirmModal.style.display = "none";
+      onConfirm();
+    };
+    deleteConfirmModal.style.display = "";
+    deleteConfirmCancel.focus();
+  }
+
+  // Turn a /editor/delete-preview plan into the modal's itemized breakdown.
+  function renderDeletePlan(plan) {
+    const willDelete = [];
+    const notAffected = [];
+
+    function row(label, primary, secondary) {
+      return '<div class="delete-plan-row">' +
+        '<span class="delete-plan-label">' + escapeHtml(label) + "</span>" +
+        '<span class="delete-plan-value">' + escapeHtml(primary) +
+        (secondary ? '<br><span class="delete-plan-sub">' +
+          escapeHtml(secondary) + "</span>" : "") +
+        "</span></div>";
+    }
+
+    const db = plan.bundledb || {};
+    if (db.status === "delete") {
+      const issue = (db.issue || db.issue === 0) ? " (Issue " + db.issue + ")" : "";
+      willDelete.push(row("bundledb.json",
+        (db.type || "entry") + ' — "' + (db.title || "(untitled)") + '"' + issue,
+        db.link || ""));
+    } else if (db.status === "none") {
+      notAffected.push(row("bundledb.json", "no matching entry", ""));
+    } else {
+      notAffected.push(row("bundledb.json", "not touched by a showcase-only delete", ""));
+    }
+
+    const sc = plan.showcase || {};
+    if (sc.status === "delete") {
+      willDelete.push(row("showcase-data.json",
+        '"' + (sc.title || "(untitled)") + '"', sc.link || ""));
+    } else if (sc.status === "none") {
+      notAffected.push(row("showcase-data.json", "no matching entry", ""));
+    } else {
+      notAffected.push(row("showcase-data.json", "not a site entry", ""));
+    }
+
+    const out = plan.showcase_output || {};
+    if (out.status === "delete") {
+      willDelete.push(row("build output", "_site/showcase/" + out.slug + "/", ""));
+    } else if (out.status === "none") {
+      notAffected.push(row("build output", "no generated page in _site", ""));
+    } else {
+      notAffected.push(row("build output", "not a site entry", ""));
+    }
+
+    let html = "";
+    if (willDelete.length) {
+      html += '<div class="delete-plan-section"><h4>Will be deleted</h4>' +
+        willDelete.join("") + "</div>";
+    }
+    if (notAffected.length) {
+      html += '<div class="delete-plan-section delete-plan-unaffected"><h4>Not affected</h4>' +
+        notAffected.join("") + "</div>";
+    }
+    return html;
+  }
   const dupLinkModal = document.getElementById("duplicate-link-modal");
   const dupLinkMessage = document.getElementById("duplicate-link-message");
   const dupLinkOk = document.getElementById("duplicate-link-ok");
@@ -244,14 +315,11 @@
     btn.className = "btn-action btn-delete-entry";
     btn.textContent = "DELETE ALL TEST ITEMS";
     btn.addEventListener("click", () => {
-      deleteConfirmMessage.textContent =
-        "ARE YOU SURE YOU WANT TO DELETE ALL " + count + " TEST ENTRIES?";
-      deleteConfirmOk.onclick = () => {
-        deleteConfirmModal.style.display = "none";
-        deleteAllTestEntries();
-      };
-      deleteConfirmModal.style.display = "";
-      deleteConfirmCancel.focus();
+      showDeleteConfirm(
+        "ARE YOU SURE YOU WANT TO DELETE ALL " + count + " TEST ENTRIES?",
+        "",
+        deleteAllTestEntries
+      );
     });
     testDataBanner.appendChild(btn);
   }
@@ -1468,14 +1536,41 @@
       deleteBtn.addEventListener("click", () => {
         const entryType = (currentType || "entry").toUpperCase();
         const entryTitle = item.Title || "(untitled)";
-        deleteConfirmMessage.textContent =
+        const message =
           'ARE YOU SURE YOU WANT TO DELETE THE ' + entryType + ' NAMED "' + entryTitle + '"?';
-        deleteConfirmOk.onclick = () => {
-          deleteConfirmModal.style.display = "none";
-          deleteEntry(currentIndex);
-        };
-        deleteConfirmModal.style.display = "";
-        deleteConfirmCancel.focus();
+        const index = currentIndex;
+        const body = { link: item.Link };
+        if (item._origin === "showcase") body.showcase_only = true;
+
+        // Ask the server what the delete would actually touch, so the
+        // confirmation shows ground truth rather than a client-side guess
+        deleteBtn.disabled = true;
+        fetch("/editor/delete-preview", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+        })
+          .then((r) => r.json())
+          .then((plan) => {
+            const details = plan && plan.success
+              ? renderDeletePlan(plan)
+              : '<div class="delete-plan-section delete-plan-unaffected">' +
+                "<p>Could not determine what would be deleted: " +
+                escapeHtml((plan && plan.error) || "unknown error") + "</p></div>";
+            showDeleteConfirm(message, details, () => deleteEntry(index));
+          })
+          .catch((err) => {
+            showDeleteConfirm(
+              message,
+              '<div class="delete-plan-section delete-plan-unaffected">' +
+                "<p>Could not determine what would be deleted: " +
+                escapeHtml(err.message) + "</p></div>",
+              () => deleteEntry(index)
+            );
+          })
+          .finally(() => {
+            deleteBtn.disabled = false;
+          });
       });
 
       const btnGroup = document.createElement("div");
@@ -1491,14 +1586,11 @@
         deleteTestBtn.className = "btn-action btn-delete-entry";
         deleteTestBtn.textContent = "DELETE ALL TEST ENTRIES";
         deleteTestBtn.addEventListener("click", () => {
-          deleteConfirmMessage.textContent =
-            "ARE YOU SURE YOU WANT TO DELETE ALL " + testCount + " TEST ENTRIES?";
-          deleteConfirmOk.onclick = () => {
-            deleteConfirmModal.style.display = "none";
-            deleteAllTestEntries();
-          };
-          deleteConfirmModal.style.display = "";
-          deleteConfirmCancel.focus();
+          showDeleteConfirm(
+            "ARE YOU SURE YOU WANT TO DELETE ALL " + testCount + " TEST ENTRIES?",
+            "",
+            deleteAllTestEntries
+          );
         });
         btnGroup.appendChild(deleteTestBtn);
       }
