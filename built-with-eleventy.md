@@ -53,6 +53,16 @@
 [Elevate Agency](https://elevateeventsaustralia.com/)
 [Dakṣiṇāmūrti Stotram](https://oleandrum.github.io/dakshinamurti-stotram/)
 [Paul Hebert](https://paulmakeswebsites.com/)
+[BCS Abundant Life Family Practice](https://doctorbacak.com/)
+[Polina Vavilina](https://vavilinaapollinaria-psy.ru/)
+[Phi Gallery](https://phigallery.art/)
+[Good Government Advisory](https://goodgov.au/)
+[Vellikkeel Waves](https://www.vellikkeelwaves.in/)
+[Dr. Guilherme Cerutti Müller](https://drgcmuller.com.br/)
+[Trail Angeles](https://trailangeles.org/)
+[Discover Villajoyosa](https://discovervillajoyosa.org/)
+[Matt Doane](https://mattdoane.com/)
+[TYDAC](https://tydac.ch/en/)
 
 - ALREADY POSTED -
 2026-07-19 [The Tampa Monitor](https://tampamonitor.com/) {B,M}
