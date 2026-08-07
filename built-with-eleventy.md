@@ -63,6 +63,9 @@
 [Discover Villajoyosa](https://discovervillajoyosa.org/)
 [Matt Doane](https://mattdoane.com/)
 [TYDAC](https://tydac.ch/en/)
+[Original Free Nations](https://originalfreenations.com/)
+[thebleucheese](https://thebleucheese.com/)
+[China Hospitals Guide](https://chinahospitalsguide.com/)
 
 - ALREADY POSTED -
 2026-07-19 [The Tampa Monitor](https://tampamonitor.com/) {B,M}

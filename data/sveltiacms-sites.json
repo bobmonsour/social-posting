@@ -46,5 +46,9 @@
     "name": "John Niedermeyer",
     "url": "https://nieder.me/",
     "skip": true
+  },
+  {
+    "url": "https://katifshiloh.com/",
+    "skip": true
   }
 ]
