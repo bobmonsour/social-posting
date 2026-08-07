@@ -9,6 +9,29 @@ SHOWCASE_PAGE = (
     "</head><body></body></html>"
 )
 
+# VitePress v2 (2.0.0-alpha.19+): the hash map is no longer inlined. The page
+# preloads the lean.js directly and ships the hash map in a metadata chunk.
+SHOWCASE_PAGE_V2 = (
+    "<html><head>"
+    '<script type="module" src="/assets/chunks/metadata.6779fd66.js"></script>'
+    '<link rel="modulepreload" href="/assets/chunks/showcase-sites.CS1rCjQi.js">'
+    '<link rel="modulepreload" href="/assets/en_showcase.md.ABCD1234.lean.js">'
+    "</head><body></body></html>"
+)
+
+# Same VitePress v2 build, but without the lean.js modulepreload hint -- the
+# hash map has to be read from the external metadata chunk.
+SHOWCASE_PAGE_V2_NO_PRELOAD = (
+    "<html><head>"
+    '<script type="module" src="/assets/chunks/metadata.6779fd66.js"></script>'
+    "</head><body></body></html>"
+)
+
+METADATA_CHUNK = (
+    'window.__VP_HASH_MAP__=JSON.parse("{\\"en_docs_api.md\\":\\"HVJqFQ4I\\",'
+    '\\"en_showcase.md\\":\\"ABCD1234\\"}");'
+)
+
 # Modern lean.js: page metadata only, sites imported from a separate chunk
 LEAN_JS = (
     'import { d as defineComponent } from "./chunks/framework.xxx.js";'
@@ -40,13 +63,20 @@ SHOWCASE_SITES_CHUNK_DOUBLE_QUOTED = (
 )
 
 
-def _register(chunk_body):
+def _register(chunk_body, page=SHOWCASE_PAGE, metadata=None):
     responses.add(
         responses.GET,
         "https://sveltiacms.app/en/showcase",
-        body=SHOWCASE_PAGE,
+        body=page,
         status=200,
     )
+    if metadata is not None:
+        responses.add(
+            responses.GET,
+            "https://sveltiacms.app/assets/chunks/metadata.6779fd66.js",
+            body=metadata,
+            status=200,
+        )
     responses.add(
         responses.GET,
         "https://sveltiacms.app/assets/en_showcase.md.ABCD1234.lean.js",
@@ -78,6 +108,36 @@ def test_sveltiacms_check_handles_double_quoted_chunk(client, app, tmp_path):
     """SveltiaCMS now emits JSON.parse("...") with escaped inner quotes."""
     app.config["SVELTIACMS_SITES_PATH"] = str(tmp_path / "sveltiacms-sites.json")
     _register(SHOWCASE_SITES_CHUNK_DOUBLE_QUOTED)
+
+    resp = client.post("/db-mgmt/sveltiacms-check")
+    assert resp.status_code == 200, resp.get_data(as_text=True)
+    data = resp.get_json()
+    names = [s["name"] for s in data["sites"]]
+    assert names == ["Eleventy Site"]
+
+
+@responses.activate
+def test_sveltiacms_check_vitepress_v2_preloaded_lean(client, app, tmp_path):
+    """VitePress v2 dropped the inline hash map; the page preloads lean.js."""
+    app.config["SVELTIACMS_SITES_PATH"] = str(tmp_path / "sveltiacms-sites.json")
+    _register(SHOWCASE_SITES_CHUNK_DOUBLE_QUOTED, page=SHOWCASE_PAGE_V2)
+
+    resp = client.post("/db-mgmt/sveltiacms-check")
+    assert resp.status_code == 200, resp.get_data(as_text=True)
+    data = resp.get_json()
+    names = [s["name"] for s in data["sites"]]
+    assert names == ["Eleventy Site"]
+
+
+@responses.activate
+def test_sveltiacms_check_reads_hash_map_from_metadata_chunk(client, app, tmp_path):
+    """With no lean.js preload hint, fall back to the external metadata chunk."""
+    app.config["SVELTIACMS_SITES_PATH"] = str(tmp_path / "sveltiacms-sites.json")
+    _register(
+        SHOWCASE_SITES_CHUNK_DOUBLE_QUOTED,
+        page=SHOWCASE_PAGE_V2_NO_PRELOAD,
+        metadata=METADATA_CHUNK,
+    )
 
     resp = client.post("/db-mgmt/sveltiacms-check")
     assert resp.status_code == 200, resp.get_data(as_text=True)

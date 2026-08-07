@@ -1875,22 +1875,45 @@ def db_mgmt_sveltiacms_check():
         resp.raise_for_status()
         html = resp.text
 
-        # Extract hash for en_showcase.md from __VP_HASH_MAP__
-        match = re.search(r'window\.__VP_HASH_MAP__\s*=\s*JSON\.parse\("(.+?)"\)', html)
-        if not match:
-            return jsonify({"error": "Could not find __VP_HASH_MAP__ in SveltiaCMS page. The site structure may have changed."}), 502
+        # Locate the lean.js page module for en_showcase.md. VitePress v2
+        # (2.0.0-alpha.19+) preloads it directly and no longer inlines the hash
+        # map in the page, so try the preload hint first and fall back to the
+        # hash map -- inline (VitePress v1) or in the metadata chunk (v2).
+        data_url = None
 
-        try:
-            hash_map = json.loads(match.group(1).replace('\\"', '"'))
-        except json.JSONDecodeError:
-            return jsonify({"error": "Could not parse __VP_HASH_MAP__ JSON. The format may have changed."}), 502
+        preload = re.search(r'href="(/assets/en_showcase\.md\.[^"]+\.lean\.js)"', html)
+        if preload:
+            data_url = "https://sveltiacms.app" + preload.group(1)
+        else:
+            hash_map_js = html
+            if "__VP_HASH_MAP__" not in hash_map_js:
+                meta_match = re.search(
+                    r'<script[^>]+src="(/assets/chunks/metadata\.[^"]+\.js)"', html
+                )
+                if not meta_match:
+                    return jsonify({"error": "Could not find the en_showcase.md lean.js preload or a metadata chunk in the SveltiaCMS page. The site structure may have changed."}), 502
+                meta_resp = req.get("https://sveltiacms.app" + meta_match.group(1), timeout=15)
+                meta_resp.raise_for_status()
+                hash_map_js = meta_resp.text
 
-        showcase_hash = hash_map.get("en_showcase.md")
-        if not showcase_hash:
-            return jsonify({"error": "No hash found for en_showcase.md in __VP_HASH_MAP__."}), 502
+            match = re.search(
+                r'window\.__VP_HASH_MAP__\s*=\s*JSON\.parse\("(.+?)"\)', hash_map_js
+            )
+            if not match:
+                return jsonify({"error": "Could not find __VP_HASH_MAP__ in SveltiaCMS page. The site structure may have changed."}), 502
+
+            try:
+                hash_map = json.loads(match.group(1).replace('\\"', '"'))
+            except json.JSONDecodeError:
+                return jsonify({"error": "Could not parse __VP_HASH_MAP__ JSON. The format may have changed."}), 502
+
+            showcase_hash = hash_map.get("en_showcase.md")
+            if not showcase_hash:
+                return jsonify({"error": "No hash found for en_showcase.md in __VP_HASH_MAP__."}), 502
+
+            data_url = f"https://sveltiacms.app/assets/en_showcase.md.{showcase_hash}.lean.js"
 
         # Step 2: Fetch the lean.js page module
-        data_url = f"https://sveltiacms.app/assets/en_showcase.md.{showcase_hash}.lean.js"
         data_resp = req.get(data_url, timeout=15)
         data_resp.raise_for_status()
         js_text = data_resp.text
