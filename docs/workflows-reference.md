@@ -45,25 +45,43 @@ Note that `shutil.copy2` preserves mtime, so a file's timestamp in the destinati
 reflects when the asset was *created*, not when it was copied — do not use those mtimes
 to reason about deploy order.
 
+### Git sync for 11tybundledb
+
+`sync_bundledb_repo(commit_message="Added new entries")` in `services/prebuild_sync.py` is
+the only function that touches the `11tybundledb` repo. All three routes call it:
+
+| Route | Commit message |
+|---|---|
+| `/editor/prebuild-sync` | `Added new entries` (default) |
+| `/editor/verify-site` | `New entries saved after local build` |
+| `/editor/deploy` | `New entries saved on deploy` |
+
+Distinct messages keep the log a usable signal for which flow produced a commit.
+
+Steps: `add -A` -> `commit` (skipped when the tree is clean) -> `pull --rebase origin main`
+-> `push`. The rebase is what keeps the push from failing when origin has moved ahead; on
+conflict it runs `rebase --abort` and returns an error rather than leaving the repo
+mid-rebase. The push is unconditional, so commits already sitting in the local repo reach
+origin whether or not this run created any — `_ahead_count()` reports how many in the
+message when there was nothing new to commit. A branch with no upstream reports 0 ahead.
+
+Callers pass the result straight through as `git_result`; a git failure never turns a
+successful deploy or verification into a failure.
+
 ### Run Latest Flow (4 endpoints)
 
 - `POST /editor/end-session` runs three tasks in parallel via `ThreadPoolExecutor`: `generate_issue_records()` (Python, `services/issue_records.py`), `generate_latest_data()` (Python, `services/latest_data.py`), and `generate_insights()` (Python, `services/insights.py`).
 - `POST /editor/run-latest` starts `npm run latest` in the `11tybundle.dev` project (`ELEVENTY_PROJECT_DIR`) via `Popen`, watches stdout for `"Server at"` to detect readiness (30s timeout), then drains stdout in a daemon thread.
-- `POST /editor/verify-site` runs post-build verification (see below). Called automatically after the server starts. On success, auto-commits and pushes `11tybundledb` changes via `_commit_and_push_bundledb()`.
+- `POST /editor/verify-site` runs post-build verification (see below). Called automatically after the server starts. On success, syncs `11tybundledb` via `sync_bundledb_repo("New entries saved after local build")`.
 - Modal shows script results, then "Starting local server...", then verification results and git result, then "View Local Site" button which opens `localhost:8080`.
 
 ### Deploy Flow (2 steps)
 
 - First calls `POST /editor/end-session` to run the same three parallel tasks as Run Latest (issue records, insights, latest data). Modal shows script results before proceeding.
 - Then calls `POST /editor/deploy` which runs `npm run deploy` in `ELEVENTY_PROJECT_DIR` via `subprocess.run()` with 120s timeout, captures full stdout+stderr.
-- On successful deploy, auto-commits and pushes `11tybundledb` changes via `_commit_and_push_bundledb()`. Git failures don't affect deploy success status.
+- On successful deploy, syncs `11tybundledb` via `sync_bundledb_repo("New entries saved on deploy")`. Git failures don't affect deploy success status.
 - Response includes `git_result` with `success` and `message`. Git failures don't affect deploy success status.
-- `_commit_and_push_bundledb()` acts on two independent signals: a dirty working tree, and
-  commits that exist locally but not on origin (`git rev-list --count @{u}..HEAD`). It
-  commits when the tree is dirty and pushes when either is true, so a commit made by hand
-  outside the app still reaches origin on the next deploy. Only a clean tree that is also
-  in sync is a no-op. A branch with no upstream reports 0 ahead and falls back to pushing
-  only what was just committed.
+- See "Git sync for 11tybundledb" below for what that call does.
 - Modal shows end-session results, then deploy output plus git result (success message or failure note), then "View 11tybundle.dev" button which opens `https://11tybundle.dev`.
 
 ## Post-Build Verification
@@ -80,7 +98,7 @@ to reason about deploy order.
 - Home page sections limited to 11 entries each; entries beyond that are skipped with a note.
 - Also available as a CLI: `python3 -m services.verify_site [YYYY-MM-DD]`.
 - Integrated into the Run Latest flow -- runs automatically after the server starts, results shown in the modal before the "View Local Site" button.
-- On successful verification (both Run Latest flow and `/verify-site` skill), `_commit_and_push_bundledb()` auto-commits and pushes all `11tybundledb` changes. Skipped on verification failure.
+- On successful verification (both Run Latest flow and `/verify-site` skill), `sync_bundledb_repo()` commits and pushes all `11tybundledb` changes. Skipped on verification failure.
 
 ## Database Management
 

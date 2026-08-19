@@ -5,7 +5,7 @@ import subprocess
 import pytest
 
 import app as app_module
-from services import showcase_output
+from services import prebuild_sync, showcase_output, verify_site
 
 
 @pytest.fixture
@@ -757,113 +757,75 @@ def test_summarize_skips_empty_links(client):
     mock_sum.assert_called_once_with("https://a.com")
 
 
-# --- _commit_and_push_bundledb() ---
+# --- git sync from the build/deploy routes ---
 
-def _completed(cmd, returncode=0, stdout="", stderr=""):
-    return subprocess.CompletedProcess(cmd, returncode, stdout=stdout, stderr=stderr)
+def _capture_sync(monkeypatch, result=None):
+    """Replace sync_bundledb_repo and record the commit message it was given."""
+    seen = {}
 
+    def fake_sync(commit_message="Added new entries"):
+        seen["commit_message"] = commit_message
+        return result or {"success": True, "message": "Pushed to remote"}
 
-def _fake_git(calls, status="", ahead="0", ahead_rc=0, commit_rc=0, push_rc=0):
-    """Stand in for subprocess.run, dispatching on the git subcommand."""
-    def run(cmd, **kwargs):
-        calls.append(cmd[1])
-        sub = cmd[1]
-        if sub == "status":
-            return _completed(cmd, 0, stdout=status)
-        if sub == "rev-list":
-            return _completed(cmd, ahead_rc, stdout=ahead,
-                              stderr="fatal: no upstream configured")
-        if sub == "add":
-            return _completed(cmd, 0)
-        if sub == "commit":
-            return _completed(cmd, commit_rc, stderr="nothing to commit")
-        if sub == "push":
-            return _completed(cmd, push_rc, stderr="rejected: non-fast-forward")
-        raise AssertionError(f"unexpected git command: {cmd}")
-    return run
+    monkeypatch.setattr(prebuild_sync, "sync_bundledb_repo", fake_sync)
+    return seen
 
 
-def test_commit_and_push_does_nothing_when_clean_and_in_sync(monkeypatch):
-    calls = []
-    monkeypatch.setattr(app_module.subprocess, "run", _fake_git(calls))
+def test_deploy_syncs_the_db_repo_with_its_own_commit_message(client, monkeypatch):
+    monkeypatch.setattr(
+        app_module.subprocess, "run",
+        lambda *a, **k: subprocess.CompletedProcess([], 0, stdout="deployed", stderr=""))
+    seen = _capture_sync(monkeypatch)
 
-    result = app_module._commit_and_push_bundledb()
+    data = client.post("/editor/deploy").get_json()
 
-    assert result["success"] is True
-    assert "push" not in calls
-    assert "commit" not in calls
-
-
-def test_commit_and_push_pushes_unpushed_commits_when_tree_is_clean(monkeypatch):
-    """A local commit that never reached origin must still be pushed.
-
-    The early return on a clean tree fired before the push, so a deploy reported
-    success while the commit stayed local.
-    """
-    calls = []
-    monkeypatch.setattr(app_module.subprocess, "run", _fake_git(calls, status="", ahead="2"))
-
-    result = app_module._commit_and_push_bundledb()
-
-    assert result["success"] is True
-    assert "push" in calls
-    assert "commit" not in calls
-    assert "2" in result["message"]
+    assert data["success"] is True
+    assert data["git_result"]["success"] is True
+    assert seen["commit_message"] == "New entries saved on deploy"
 
 
-def test_commit_and_push_commits_and_pushes_a_dirty_tree(monkeypatch):
-    calls = []
-    monkeypatch.setattr(app_module.subprocess, "run",
-                        _fake_git(calls, status=" M bundledb.json"))
+def test_deploy_skips_the_git_sync_when_the_deploy_fails(client, monkeypatch):
+    monkeypatch.setattr(
+        app_module.subprocess, "run",
+        lambda *a, **k: subprocess.CompletedProcess([], 1, stdout="", stderr="build error"))
+    seen = _capture_sync(monkeypatch)
 
-    result = app_module._commit_and_push_bundledb()
+    data = client.post("/editor/deploy").get_json()
 
-    assert result["success"] is True
-    assert calls.count("push") == 1
-    assert "add" in calls and "commit" in calls
-
-
-def test_commit_and_push_pushes_once_when_dirty_and_ahead(monkeypatch):
-    calls = []
-    monkeypatch.setattr(app_module.subprocess, "run",
-                        _fake_git(calls, status=" M bundledb.json", ahead="3"))
-
-    result = app_module._commit_and_push_bundledb()
-
-    assert result["success"] is True
-    assert calls.count("push") == 1
+    assert data["success"] is False
+    assert "commit_message" not in seen
+    assert data["git_result"]["success"] is False
 
 
-def test_commit_and_push_reports_push_failure(monkeypatch):
-    calls = []
-    monkeypatch.setattr(app_module.subprocess, "run",
-                        _fake_git(calls, status="", ahead="1", push_rc=1))
+def test_deploy_succeeds_even_when_the_git_sync_fails(client, monkeypatch):
+    """A rebase conflict must not turn a successful deploy into a failure."""
+    monkeypatch.setattr(
+        app_module.subprocess, "run",
+        lambda *a, **k: subprocess.CompletedProcess([], 0, stdout="deployed", stderr=""))
+    _capture_sync(monkeypatch, {"success": False, "message": "Rebase conflict detected."})
 
-    result = app_module._commit_and_push_bundledb()
+    data = client.post("/editor/deploy").get_json()
 
-    assert result["success"] is False
-    assert "push failed" in result["message"]
-
-
-def test_commit_and_push_reports_commit_failure(monkeypatch):
-    calls = []
-    monkeypatch.setattr(app_module.subprocess, "run",
-                        _fake_git(calls, status=" M bundledb.json", commit_rc=1))
-
-    result = app_module._commit_and_push_bundledb()
-
-    assert result["success"] is False
-    assert "commit failed" in result["message"]
-    assert "push" not in calls
+    assert data["success"] is True
+    assert data["git_result"]["success"] is False
 
 
-def test_commit_and_push_tolerates_a_branch_with_no_upstream(monkeypatch):
-    """rev-list against @{u} fails without an upstream; fall back to old behavior."""
-    calls = []
-    monkeypatch.setattr(app_module.subprocess, "run",
-                        _fake_git(calls, status="", ahead="", ahead_rc=128))
+def test_verify_site_syncs_the_db_repo_with_its_own_commit_message(client, monkeypatch):
+    monkeypatch.setattr(verify_site, "verify_latest_issue", lambda: ("all good", True))
+    seen = _capture_sync(monkeypatch)
 
-    result = app_module._commit_and_push_bundledb()
+    data = client.post("/editor/verify-site").get_json()
 
-    assert result["success"] is True
-    assert "push" not in calls
+    assert data["success"] is True
+    assert seen["commit_message"] == "New entries saved after local build"
+
+
+def test_verify_site_skips_the_git_sync_when_verification_fails(client, monkeypatch):
+    monkeypatch.setattr(verify_site, "verify_latest_issue", lambda: ("missing favicon", False))
+    seen = _capture_sync(monkeypatch)
+
+    data = client.post("/editor/verify-site").get_json()
+
+    assert data["success"] is False
+    assert "commit_message" not in seen
+    assert data["git_result"] is None

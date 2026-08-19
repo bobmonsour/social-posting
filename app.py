@@ -1642,90 +1642,16 @@ def editor_kill_server():
     return jsonify({"success": True, "killed": killed})
 
 
-def _bundledb_ahead_count():
-    """Commits on HEAD that have not reached the upstream branch.
-
-    Returns 0 when the branch is in sync, and also when there is no upstream to
-    compare against -- without one there is nothing meaningful to push, and the
-    caller should fall back to pushing only what it just committed.
-    """
-    ahead = subprocess.run(
-        ["git", "rev-list", "--count", "@{u}..HEAD"],
-        cwd=BUNDLEDB_DIR,
-        capture_output=True,
-        text=True,
-    )
-    if ahead.returncode != 0:
-        return 0
-    try:
-        return int(ahead.stdout.strip())
-    except ValueError:
-        return 0
-
-
-def _commit_and_push_bundledb(commit_message="New entries saved"):
-    """Commit and push all changes in the 11tybundledb repo.
-
-    Acts on two independent signals: a dirty working tree, and commits that
-    exist locally but not on origin. Checking only the working tree meant a
-    commit made by hand stayed local while the deploy reported success.
-
-    Returns dict with 'success' (bool) and 'message' (str).
-    """
-    try:
-        status = subprocess.run(
-            ["git", "status", "--porcelain"],
-            cwd=BUNDLEDB_DIR,
-            capture_output=True,
-            text=True,
-        )
-        dirty = bool(status.stdout.strip())
-        ahead = _bundledb_ahead_count()
-
-        if not dirty and not ahead:
-            return {"success": True, "message": "No DB changes to commit or push."}
-
-        if dirty:
-            subprocess.run(["git", "add", "-A"], cwd=BUNDLEDB_DIR, check=True)
-            commit = subprocess.run(
-                ["git", "commit", "-m", commit_message],
-                cwd=BUNDLEDB_DIR,
-                capture_output=True,
-                text=True,
-            )
-            if commit.returncode != 0:
-                return {"success": False, "message": f"git commit failed: {commit.stderr.strip()}"}
-
-        push = subprocess.run(
-            ["git", "push"],
-            cwd=BUNDLEDB_DIR,
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-        if push.returncode != 0:
-            return {"success": False, "message": f"git push failed: {push.stderr.strip()}"}
-
-        if dirty:
-            return {"success": True, "message": "DB files committed and pushed."}
-        return {
-            "success": True,
-            "message": f"Pushed {ahead} previously committed change(s).",
-        }
-    except Exception as e:
-        return {"success": False, "message": str(e)}
-
-
 @app.route("/editor/verify-site", methods=["POST"])
 def editor_verify_site():
     """Run post-build verification for entries in the latest issue."""
-    from services.verify_site import verify_latest_issue
+    from services import prebuild_sync, verify_site
 
     try:
-        report, success = verify_latest_issue()
+        report, success = verify_site.verify_latest_issue()
         git_result = None
         if success:
-            git_result = _commit_and_push_bundledb()
+            git_result = prebuild_sync.sync_bundledb_repo("New entries saved after local build")
         return jsonify({"success": success, "report": report, "git_result": git_result})
     except Exception as e:
         return jsonify({"success": False, "report": f"Verification error: {e}"})
@@ -1734,6 +1660,8 @@ def editor_verify_site():
 @app.route("/editor/deploy", methods=["POST"])
 def editor_deploy():
     """Run 'npm run deploy' in the 11tybundle.dev project and capture output."""
+    from services import prebuild_sync
+
     try:
         result = subprocess.run(
             ["npm", "run", "deploy"],
@@ -1746,7 +1674,7 @@ def editor_deploy():
         deploy_success = result.returncode == 0
 
         if deploy_success:
-            git_result = _commit_and_push_bundledb()
+            git_result = prebuild_sync.sync_bundledb_repo("New entries saved on deploy")
         else:
             git_result = {"success": False, "message": "Deploy failed, skipping git."}
 

@@ -5,8 +5,7 @@ seven broken favicons on 11tybundle.dev. **The favicons are already fixed and de
 — nothing is broken right now.** What remains is the three underlying gaps that let
 them break silently, all of which live in this repo.
 
-**Gaps 1 and 2 are resolved** (see below). Gap 3 has not been designed or approved yet —
-treat its "Direction" note as a starting point, not a decision.
+**All three gaps are resolved** (see below).
 
 ## What happened
 
@@ -118,7 +117,7 @@ encoded the bug; it now describes the two-signal rule.
 
 Not addressed here: Gap 3. This function still pushes without rebasing.
 
-## Gap 3 — deploy pushes without rebasing
+## Gap 3 — deploy pushes without rebasing — RESOLVED
 
 Same function. It runs `git add -A` -> `commit` -> `push`, with no pull. The sibling
 function `sync_bundledb_repo()` (`services/prebuild_sync.py:35`), reached only via
@@ -138,8 +137,29 @@ If origin ever moves ahead, deploy's push just fails and surfaces as `git push f
 in `git_result`. The `11tybundledb` history is currently all "Added new entries", which
 suggests commits have been coming from prebuild-sync rather than deploy.
 
-**Direction**: add `pull --rebase` to `_commit_and_push_bundledb()`, or consolidate the
-two functions. Worth deciding whether two separate git helpers should exist at all.
+### What was built
+
+Consolidated. `sync_bundledb_repo(commit_message=...)` in `services/prebuild_sync.py` is
+now the only function that touches this repo, and `_commit_and_push_bundledb()` is gone
+from `app.py`. `/editor/deploy` and `/editor/verify-site` call it with their own commit
+messages — "New entries saved on deploy" and "New entries saved after local build" — so
+the log stays a signal for which flow produced a commit, which is what revealed Gap 2.
+
+Fixing Gap 3 by construction rather than by adding `pull --rebase` to the second function:
+after the Gap 2 fix the two were doing nearly the same job by different code, which was the
+real problem the table below describes.
+
+`_ahead_count()` moved into `prebuild_sync.py` alongside it. `sync_bundledb_repo()` already
+pushed unconditionally, so it never had Gap 2; the count now appears in its message when
+there was nothing new to commit.
+
+The six existing tests used ordered `side_effect` lists, which break whenever a step is
+added to the sequence. They were rewritten onto a stub that dispatches on the git
+subcommand — eleven tests now, plus five route-level tests in `tests/test_editor_routes.py`
+asserting each route calls the shared helper with its own message and that a git failure
+never fails a successful deploy.
+
+The table below records what the two functions looked like before consolidation.
 
 ## Verification recipe
 
@@ -203,8 +223,9 @@ fetch time) while screenshots and og-images wait for a build to passthrough-copy
   deploys are succeeding — unexplained, and worth understanding before it becomes a
   failure. 36 favicons in `_site` are referenced by nothing.
 - **`docs/commit-push-on-deploy.md` is stale.** It describes deploy as *not* committing
-  or pushing and asks for the feature. That was implemented as
-  `_commit_and_push_bundledb()`. Fold it into this doc or delete it.
+  or pushing and asks for the feature. That was implemented, and the function it describes
+  no longer exists — deploy now calls `sync_bundledb_repo()`. Fold it into this doc or
+  delete it. Still not done.
 - **SVG favicons are fragile as `<img src>`.** cassie.ink's is `fill="currentColor"`
   (renders flat black, no color context); `f26rm-ryancordell-org-favicon.svg` draws an
   emoji as `<text>` with `font-family="AppleColorEmoji"`, so it only renders in color on

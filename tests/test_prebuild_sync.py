@@ -9,47 +9,116 @@ import pytest
 from services import prebuild_sync
 
 
+def _git_stub(calls, status="", ahead="0", ahead_rc=0, add_rc=0, commit_rc=0,
+              pull_rc=0, pull_out="Already up to date.", pull_err="", push_rc=0):
+    """Stand in for subprocess.run, dispatching on the git subcommand.
+
+    Dispatching rather than an ordered side_effect list keeps these tests from
+    breaking every time a step is added to or removed from the sequence.
+    """
+    def run(cmd, **kwargs):
+        calls.append(cmd[1:])
+        sub = cmd[1]
+        if sub == "add":
+            return MagicMock(returncode=add_rc, stdout="", stderr="fatal: error")
+        if sub == "status":
+            return MagicMock(returncode=0, stdout=status, stderr="")
+        if sub == "commit":
+            return MagicMock(returncode=commit_rc, stdout="", stderr="error: commit failed")
+        if sub == "pull":
+            return MagicMock(returncode=pull_rc, stdout=pull_out, stderr=pull_err)
+        if sub == "rebase":
+            return MagicMock(returncode=0, stdout="", stderr="")
+        if sub == "rev-list":
+            return MagicMock(returncode=ahead_rc, stdout=ahead, stderr="fatal: no upstream")
+        if sub == "push":
+            return MagicMock(returncode=push_rc, stdout="", stderr="error: push failed")
+        raise AssertionError(f"unexpected git command: {cmd}")
+    return run
+
+
+def _subcommands(calls):
+    return [c[0] for c in calls]
+
+
 class TestSyncBundledbRepo:
-    """Tests for sync_bundledb_repo()."""
+    """Tests for sync_bundledb_repo() - the single helper for the 11tybundledb repo."""
 
     @patch("services.prebuild_sync.subprocess.run")
     def test_no_changes_to_commit(self, mock_run):
         """When there are no local changes, should still pull and push."""
-        mock_run.side_effect = [
-            MagicMock(returncode=0, stdout="", stderr=""),  # git add
-            MagicMock(returncode=0, stdout="", stderr=""),  # git status
-            MagicMock(returncode=0, stdout="Already up to date.", stderr=""),  # git pull
-            MagicMock(returncode=0, stdout="", stderr=""),  # git push
-        ]
+        calls = []
+        mock_run.side_effect = _git_stub(calls)
 
         result = prebuild_sync.sync_bundledb_repo()
 
         assert result["success"] is True
         assert "No local changes to commit" in result["message"]
         assert "Already up to date" in result["message"]
-        assert mock_run.call_count == 4
+        assert "commit" not in _subcommands(calls)
+        assert "push" in _subcommands(calls)
 
     @patch("services.prebuild_sync.subprocess.run")
     def test_with_local_changes(self, mock_run):
         """When there are local changes, should commit, pull, and push."""
-        mock_run.side_effect = [
-            MagicMock(returncode=0, stdout="", stderr=""),  # git add
-            MagicMock(returncode=0, stdout="M bundledb.json", stderr=""),  # git status
-            MagicMock(returncode=0, stdout="", stderr=""),  # git commit
-            MagicMock(returncode=0, stdout="Current branch main is up to date.", stderr=""),  # git pull
-            MagicMock(returncode=0, stdout="", stderr=""),  # git push
-        ]
+        calls = []
+        mock_run.side_effect = _git_stub(calls, status="M bundledb.json")
 
         result = prebuild_sync.sync_bundledb_repo()
 
         assert result["success"] is True
         assert "Committed local changes" in result["message"]
-        assert mock_run.call_count == 5
+        assert _subcommands(calls) == ["add", "status", "commit", "pull", "push"]
+
+    @patch("services.prebuild_sync.subprocess.run")
+    def test_uses_the_default_commit_message(self, mock_run):
+        calls = []
+        mock_run.side_effect = _git_stub(calls, status="M bundledb.json")
+
+        prebuild_sync.sync_bundledb_repo()
+
+        commit = next(c for c in calls if c[0] == "commit")
+        assert commit == ["commit", "-m", "Added new entries"]
+
+    @patch("services.prebuild_sync.subprocess.run")
+    def test_uses_a_caller_supplied_commit_message(self, mock_run):
+        """Each flow labels its own commits so the log says which one made them."""
+        calls = []
+        mock_run.side_effect = _git_stub(calls, status="M bundledb.json")
+
+        prebuild_sync.sync_bundledb_repo("New entries saved on deploy")
+
+        commit = next(c for c in calls if c[0] == "commit")
+        assert commit == ["commit", "-m", "New entries saved on deploy"]
+
+    @patch("services.prebuild_sync.subprocess.run")
+    def test_reports_previously_committed_work_it_pushed(self, mock_run):
+        """A clean tree that is ahead of origin still has commits to push."""
+        calls = []
+        mock_run.side_effect = _git_stub(calls, status="", ahead="2")
+
+        result = prebuild_sync.sync_bundledb_repo()
+
+        assert result["success"] is True
+        assert "push" in _subcommands(calls)
+        assert "2 previously committed" in result["message"]
+
+    @patch("services.prebuild_sync.subprocess.run")
+    def test_tolerates_a_branch_with_no_upstream(self, mock_run):
+        """rev-list against @{u} fails without an upstream; that is not an error."""
+        calls = []
+        mock_run.side_effect = _git_stub(calls, status="", ahead="", ahead_rc=128)
+
+        result = prebuild_sync.sync_bundledb_repo()
+
+        assert result["success"] is True
+        assert "previously committed" not in result["message"]
 
     @patch("services.prebuild_sync.subprocess.run")
     def test_git_add_fails(self, mock_run):
         """When git add fails, should return error."""
-        mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="fatal: error")
+        calls = []
+        mock_run.side_effect = _git_stub(calls, add_rc=1)
 
         result = prebuild_sync.sync_bundledb_repo()
 
@@ -59,41 +128,48 @@ class TestSyncBundledbRepo:
     @patch("services.prebuild_sync.subprocess.run")
     def test_git_commit_fails(self, mock_run):
         """When git commit fails, should return error."""
-        mock_run.side_effect = [
-            MagicMock(returncode=0, stdout="", stderr=""),  # git add
-            MagicMock(returncode=0, stdout="M bundledb.json", stderr=""),  # git status
-            MagicMock(returncode=1, stdout="", stderr="error: commit failed"),  # git commit
-        ]
+        calls = []
+        mock_run.side_effect = _git_stub(calls, status="M bundledb.json", commit_rc=1)
 
         result = prebuild_sync.sync_bundledb_repo()
 
         assert result["success"] is False
         assert "git commit failed" in result["message"]
+        assert "push" not in _subcommands(calls)
 
     @patch("services.prebuild_sync.subprocess.run")
     def test_rebase_conflict(self, mock_run):
         """When pull --rebase has a conflict, should abort and return error."""
-        mock_run.side_effect = [
-            MagicMock(returncode=0, stdout="", stderr=""),  # git add
-            MagicMock(returncode=0, stdout="", stderr=""),  # git status (no changes)
-            MagicMock(returncode=1, stdout="", stderr="CONFLICT in bundledb.json"),  # git pull --rebase
-            MagicMock(returncode=0, stdout="", stderr=""),  # git rebase --abort
-        ]
+        calls = []
+        mock_run.side_effect = _git_stub(calls, pull_rc=1, pull_err="CONFLICT in bundledb.json")
 
         result = prebuild_sync.sync_bundledb_repo()
 
         assert result["success"] is False
         assert "Rebase conflict detected" in result["message"]
+        assert "rebase" in _subcommands(calls)
+        assert "push" not in _subcommands(calls)
+
+    @patch("services.prebuild_sync.subprocess.run")
+    def test_pulls_and_rebases_before_pushing(self, mock_run):
+        """The rebase is what keeps a push from failing when origin has moved ahead."""
+        calls = []
+        mock_run.side_effect = _git_stub(
+            calls, status="M bundledb.json",
+            pull_out="Successfully rebased and updated refs/heads/main.")
+
+        result = prebuild_sync.sync_bundledb_repo()
+
+        assert result["success"] is True
+        assert "Pulled and rebased remote changes" in result["message"]
+        subs = _subcommands(calls)
+        assert subs.index("pull") < subs.index("push")
 
     @patch("services.prebuild_sync.subprocess.run")
     def test_push_fails(self, mock_run):
         """When git push fails, should return error."""
-        mock_run.side_effect = [
-            MagicMock(returncode=0, stdout="", stderr=""),  # git add
-            MagicMock(returncode=0, stdout="", stderr=""),  # git status
-            MagicMock(returncode=0, stdout="Already up to date.", stderr=""),  # git pull
-            MagicMock(returncode=1, stdout="", stderr="error: push failed"),  # git push
-        ]
+        calls = []
+        mock_run.side_effect = _git_stub(calls, push_rc=1)
 
         result = prebuild_sync.sync_bundledb_repo()
 

@@ -38,15 +38,37 @@ def _run_git(args, cwd=BUNDLEDB_DIR, timeout=30):
     return result.returncode, result.stdout.strip(), result.stderr.strip()
 
 
-def sync_bundledb_repo():
+def _ahead_count():
+    """Commits on HEAD that have not reached the upstream branch.
+
+    Returns 0 when the branch is in sync, and also when there is no upstream to
+    compare against -- without one there is nothing meaningful to report.
     """
-    Sync 11tybundledb repo with GitHub.
+    code, out, _ = _run_git(["rev-list", "--count", "@{u}..HEAD"])
+    if code != 0:
+        return 0
+    try:
+        return int(out.strip())
+    except ValueError:
+        return 0
+
+
+def sync_bundledb_repo(commit_message="Added new entries"):
+    """
+    Sync the 11tybundledb repo with GitHub.
+
+    The single helper for this repo, shared by /editor/prebuild-sync,
+    /editor/deploy, and /editor/verify-site. Each caller passes its own commit
+    message so the log says which flow produced a commit.
 
     Steps:
     1. git add -A
-    2. git commit -m "Added new entries" (skip if nothing to commit)
+    2. git commit (skip if nothing to commit)
     3. git pull --rebase origin main
     4. git push
+
+    The push is unconditional, so commits already sitting in the local repo
+    reach origin whether or not this run created any.
 
     Returns dict with 'success' (bool) and 'message' (str).
     On rebase conflict: abort rebase, return error.
@@ -62,12 +84,16 @@ def sync_bundledb_repo():
     code, status, _ = _run_git(["status", "--porcelain"])
     if status:
         # There are staged changes, commit them
-        code, out, err = _run_git(["commit", "-m", "Added new entries"])
+        code, out, err = _run_git(["commit", "-m", commit_message])
         if code != 0:
             return {"success": False, "message": f"git commit failed: {err}"}
         messages.append("Committed local changes")
     else:
-        messages.append("No local changes to commit")
+        ahead = _ahead_count()
+        if ahead:
+            messages.append(f"No local changes to commit, {ahead} previously committed to push")
+        else:
+            messages.append("No local changes to commit")
 
     # Step 3: git pull --rebase origin main
     code, out, err = _run_git(["pull", "--rebase", "origin", "main"], timeout=60)
