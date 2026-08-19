@@ -264,7 +264,8 @@ class TestCheckAndCopyAssets:
         result = prebuild_sync.check_and_copy_assets(
             str(bundledb_path), str(showcase_path),
             str(favicon_src), str(favicon_dest),
-            str(screenshot_src), str(screenshot_dest)
+            str(screenshot_src), str(screenshot_dest),
+            str(tmp_path / "og-images"), str(tmp_path / "dest_og-images")
         )
 
         assert result["success"] is True
@@ -299,7 +300,8 @@ class TestCheckAndCopyAssets:
         result = prebuild_sync.check_and_copy_assets(
             str(bundledb_path), str(showcase_path),
             str(favicon_src), str(favicon_dest),
-            str(screenshot_src), str(screenshot_dest)
+            str(screenshot_src), str(screenshot_dest),
+            str(tmp_path / "og-images"), str(tmp_path / "dest_og-images")
         )
 
         assert result["success"] is True
@@ -336,7 +338,8 @@ class TestCheckAndCopyAssets:
         result = prebuild_sync.check_and_copy_assets(
             str(bundledb_path), str(showcase_path),
             str(favicon_src), str(favicon_dest),
-            str(screenshot_src), str(screenshot_dest)
+            str(screenshot_src), str(screenshot_dest),
+            str(tmp_path / "og-images"), str(tmp_path / "dest_og-images")
         )
 
         assert result["success"] is True
@@ -368,14 +371,17 @@ class TestCheckAndCopyAssets:
         result = prebuild_sync.check_and_copy_assets(
             str(bundledb_path), str(showcase_path),
             str(favicon_src), str(favicon_dest),
-            str(screenshot_src), str(screenshot_dest)
+            str(screenshot_src), str(screenshot_dest),
+            str(tmp_path / "og-images"), str(tmp_path / "dest_og-images")
         )
 
         assert result["success"] is True
         assert "screenshot: starter-large.jpg" in result["copied"]
 
     def test_skips_existing_files(self, tmp_path):
-        """Should not copy files that already exist in destination."""
+        """Should not recopy a destination file that already matches the source."""
+        import shutil as _shutil
+
         favicon_src = tmp_path / "favicons"
         favicon_dest = tmp_path / "dest_favicons"
         screenshot_src = tmp_path / "screenshots"
@@ -386,7 +392,7 @@ class TestCheckAndCopyAssets:
         screenshot_dest.mkdir()
 
         (favicon_src / "existing.png").write_bytes(b"source")
-        (favicon_dest / "existing.png").write_bytes(b"already there")
+        _shutil.copy2(favicon_src / "existing.png", favicon_dest / "existing.png")
 
         bundledb = [
             {"Issue": 100, "Type": "blog post", "Title": "Post", "Link": "https://a.com", "favicon": "/img/favicons/existing.png"},
@@ -399,13 +405,13 @@ class TestCheckAndCopyAssets:
         result = prebuild_sync.check_and_copy_assets(
             str(bundledb_path), str(showcase_path),
             str(favicon_src), str(favicon_dest),
-            str(screenshot_src), str(screenshot_dest)
+            str(screenshot_src), str(screenshot_dest),
+            str(tmp_path / "og-images"), str(tmp_path / "dest_og-images")
         )
 
         assert result["success"] is True
         assert result["copied"] == []
-        # Original content should be preserved
-        assert (favicon_dest / "existing.png").read_bytes() == b"already there"
+        assert result["refreshed"] == []
 
     def test_fails_on_missing_source(self, tmp_path):
         """Should fail if source file doesn't exist."""
@@ -429,7 +435,8 @@ class TestCheckAndCopyAssets:
         result = prebuild_sync.check_and_copy_assets(
             str(bundledb_path), str(showcase_path),
             str(favicon_src), str(favicon_dest),
-            str(screenshot_src), str(screenshot_dest)
+            str(screenshot_src), str(screenshot_dest),
+            str(tmp_path / "og-images"), str(tmp_path / "dest_og-images")
         )
 
         assert result["success"] is False
@@ -453,7 +460,8 @@ class TestCheckAndCopyAssets:
         result = prebuild_sync.check_and_copy_assets(
             str(bundledb_path), str(showcase_path),
             str(favicon_src), str(favicon_dest),
-            str(screenshot_src), str(screenshot_dest)
+            str(screenshot_src), str(screenshot_dest),
+            str(tmp_path / "og-images"), str(tmp_path / "dest_og-images")
         )
 
         assert result["success"] is True
@@ -479,7 +487,8 @@ class TestCheckAndCopyAssets:
         result = prebuild_sync.check_and_copy_assets(
             str(bundledb_path), str(showcase_path),
             str(favicon_src), str(favicon_dest),
-            str(screenshot_src), str(screenshot_dest)
+            str(screenshot_src), str(screenshot_dest),
+            str(tmp_path / "og-images"), str(tmp_path / "dest_og-images")
         )
 
         assert result["success"] is True
@@ -506,7 +515,8 @@ class TestCheckAndCopyAssets:
         result = prebuild_sync.check_and_copy_assets(
             str(bundledb_path), str(showcase_path),
             str(favicon_src), str(favicon_dest),
-            str(screenshot_src), str(screenshot_dest)
+            str(screenshot_src), str(screenshot_dest),
+            str(tmp_path / "og-images"), str(tmp_path / "dest_og-images")
         )
 
         assert result["success"] is True
@@ -559,3 +569,254 @@ class TestPrebuildSyncRoute:
         assert data["success"] is False
         assert data["stage"] == "files"
         assert data["error"] == "Missing file"
+
+
+def _reconcile_dirs(tmp_path):
+    """Create the six source/destination dirs used by check_and_copy_assets()."""
+    dirs = {
+        "favicon_src": tmp_path / "favicons",
+        "favicon_dest": tmp_path / "dest_favicons",
+        "screenshot_src": tmp_path / "screenshots",
+        "screenshot_dest": tmp_path / "dest_screenshots",
+        "og_src": tmp_path / "og-images",
+        "og_dest": tmp_path / "dest_og-images",
+    }
+    for key in ("favicon_src", "screenshot_src", "og_src"):
+        dirs[key].mkdir()
+    return dirs
+
+
+def _run_reconcile(tmp_path, bundledb, showcase, dirs=None):
+    """Write the two DB files and run check_and_copy_assets() against tmp dirs."""
+    dirs = dirs or _reconcile_dirs(tmp_path)
+    bundledb_path = tmp_path / "bundledb.json"
+    showcase_path = tmp_path / "showcase-data.json"
+    bundledb_path.write_text(json.dumps(bundledb))
+    showcase_path.write_text(json.dumps(showcase))
+    result = prebuild_sync.check_and_copy_assets(
+        bundledb_path=str(bundledb_path),
+        showcase_path=str(showcase_path),
+        **{k: str(v) for k, v in dirs.items()},
+    )
+    return result, dirs
+
+
+class TestFullDbAssetReconcile:
+    """Gap 1: reconcile every asset reference in the DB, not just the recent issues."""
+
+    def test_copies_favicon_for_old_issue_entry(self, tmp_path):
+        """An entry from an issue older than the recent window still gets its favicon copied."""
+        dirs = _reconcile_dirs(tmp_path)
+        (dirs["favicon_src"] / "ancient.png").write_bytes(b"ancient favicon")
+
+        bundledb = [
+            {"Issue": 100, "Type": "blog post", "Title": "Latest", "Link": "https://latest.com"},
+            {"Issue": 99, "Type": "blog post", "Title": "Prior", "Link": "https://prior.com"},
+            {"Issue": 1, "Type": "blog post", "Title": "Ancient", "Link": "https://ancient.com",
+             "favicon": "/img/favicons/ancient.png"},
+        ]
+        result, dirs = _run_reconcile(tmp_path, bundledb, [], dirs)
+
+        assert result["success"] is True
+        assert "favicon: ancient.png" in result["copied"]
+        assert (dirs["favicon_dest"] / "ancient.png").exists()
+
+    def test_copies_favicon_for_entry_without_issue(self, tmp_path):
+        """Entries with no Issue field are invisible to an issue walk but still need assets."""
+        dirs = _reconcile_dirs(tmp_path)
+        (dirs["favicon_src"] / "noissue.png").write_bytes(b"favicon")
+
+        bundledb = [
+            {"Issue": 100, "Type": "blog post", "Title": "Latest", "Link": "https://latest.com"},
+            {"Issue": 99, "Type": "blog post", "Title": "Prior", "Link": "https://prior.com"},
+            {"Type": "blog post", "Title": "No Issue", "Link": "https://noissue.com",
+             "favicon": "/img/favicons/noissue.png"},
+        ]
+        result, dirs = _run_reconcile(tmp_path, bundledb, [], dirs)
+
+        assert result["success"] is True
+        assert "favicon: noissue.png" in result["copied"]
+
+    def test_copies_og_image_from_showcase_entry(self, tmp_path):
+        """og-images are reconciled from showcase-data.json."""
+        dirs = _reconcile_dirs(tmp_path)
+        (dirs["og_src"] / "site-com-og.jpg").write_bytes(b"og image")
+
+        showcase = [
+            {"title": "Site", "link": "https://site.com", "ogImagePath": "/og-images/site-com-og.jpg"},
+        ]
+        result, dirs = _run_reconcile(tmp_path, [], showcase, dirs)
+
+        assert result["success"] is True
+        assert "og-image: site-com-og.jpg" in result["copied"]
+        assert (dirs["og_dest"] / "site-com-og.jpg").exists()
+
+    def test_copies_assets_for_showcase_entry_absent_from_bundledb(self, tmp_path):
+        """showcase-data.json holds far more sites than bundledb; all of them need assets."""
+        dirs = _reconcile_dirs(tmp_path)
+        (dirs["favicon_src"] / "only-showcase.png").write_bytes(b"favicon")
+        (dirs["screenshot_src"] / "only-showcase-large.jpg").write_bytes(b"screenshot")
+
+        showcase = [
+            {"title": "Showcase Only", "link": "https://only.com",
+             "favicon": "/img/favicons/only-showcase.png",
+             "screenshotpath": "/screenshots/only-showcase-large.jpg"},
+        ]
+        result, dirs = _run_reconcile(tmp_path, [], showcase, dirs)
+
+        assert result["success"] is True
+        assert "favicon: only-showcase.png" in result["copied"]
+        assert "screenshot: only-showcase-large.jpg" in result["copied"]
+
+    def test_refreshes_destination_with_different_size(self, tmp_path):
+        """A destination file whose size differs from the source is stale and gets refreshed."""
+        dirs = _reconcile_dirs(tmp_path)
+        dirs["favicon_dest"].mkdir()
+        (dirs["favicon_src"] / "stale.png").write_bytes(b"the correct new favicon bytes")
+        (dirs["favicon_dest"] / "stale.png").write_bytes(b"old")
+
+        bundledb = [
+            {"Issue": 100, "Type": "blog post", "Title": "Post", "Link": "https://a.com",
+             "favicon": "/img/favicons/stale.png"},
+        ]
+        result, dirs = _run_reconcile(tmp_path, bundledb, [], dirs)
+
+        assert result["success"] is True
+        assert "favicon: stale.png" in result["refreshed"]
+        assert (dirs["favicon_dest"] / "stale.png").read_bytes() == b"the correct new favicon bytes"
+
+    def test_refreshes_destination_older_than_source(self, tmp_path):
+        """Same size but an older mtime means the source was replaced in place."""
+        dirs = _reconcile_dirs(tmp_path)
+        dirs["favicon_dest"].mkdir()
+        src = dirs["favicon_src"] / "same-size.png"
+        dest = dirs["favicon_dest"] / "same-size.png"
+        src.write_bytes(b"newnewnew")
+        dest.write_bytes(b"oldoldold")
+        os.utime(dest, (1_000_000, 1_000_000))
+
+        bundledb = [
+            {"Issue": 100, "Type": "blog post", "Title": "Post", "Link": "https://a.com",
+             "favicon": "/img/favicons/same-size.png"},
+        ]
+        result, dirs = _run_reconcile(tmp_path, bundledb, [], dirs)
+
+        assert result["success"] is True
+        assert "favicon: same-size.png" in result["refreshed"]
+        assert dest.read_bytes() == b"newnewnew"
+
+    def test_leaves_independently_written_destination_alone(self, tmp_path):
+        """A destination newer than its source was written directly, not copied.
+
+        capture-screenshot.js writes content/screenshots and 11tybundledb in the
+        same run rather than copying between them, so ~1,300 byte-identical
+        screenshots have destination mtimes newer than their sources. Those are
+        not stale and must not be recopied on every build.
+        """
+        dirs = _reconcile_dirs(tmp_path)
+        dirs["screenshot_dest"].mkdir()
+        src = dirs["screenshot_src"] / "captured-large.jpg"
+        dest = dirs["screenshot_dest"] / "captured-large.jpg"
+        src.write_bytes(b"identical jpeg bytes")
+        dest.write_bytes(b"identical jpeg bytes")
+        os.utime(src, (1_000_000, 1_000_000))
+
+        showcase = [
+            {"title": "Captured", "link": "https://captured.com",
+             "screenshotpath": "/screenshots/captured-large.jpg"},
+        ]
+        result, _ = _run_reconcile(tmp_path, [], showcase, dirs)
+
+        assert result["success"] is True
+        assert result["refreshed"] == []
+        assert result["copied"] == []
+
+    def test_leaves_matching_destination_alone(self, tmp_path):
+        """A destination that matches the source in size and mtime is not touched."""
+        import shutil as _shutil
+
+        dirs = _reconcile_dirs(tmp_path)
+        dirs["favicon_dest"].mkdir()
+        src = dirs["favicon_src"] / "fresh.png"
+        src.write_bytes(b"favicon bytes")
+        _shutil.copy2(src, dirs["favicon_dest"] / "fresh.png")
+
+        bundledb = [
+            {"Issue": 100, "Type": "blog post", "Title": "Post", "Link": "https://a.com",
+             "favicon": "/img/favicons/fresh.png"},
+        ]
+        result, dirs = _run_reconcile(tmp_path, bundledb, [], dirs)
+
+        assert result["success"] is True
+        assert result["copied"] == []
+        assert result["refreshed"] == []
+
+    def test_missing_source_for_old_entry_warns_without_failing(self, tmp_path):
+        """Historical rot is reported, not a wall that blocks every build."""
+        bundledb = [
+            {"Issue": 100, "Type": "blog post", "Title": "Latest", "Link": "https://latest.com"},
+            {"Issue": 99, "Type": "blog post", "Title": "Prior", "Link": "https://prior.com"},
+            {"Issue": 1, "Type": "blog post", "Title": "Ancient", "Link": "https://ancient.com",
+             "favicon": "/img/favicons/gone.png"},
+        ]
+        result, _ = _run_reconcile(tmp_path, bundledb, [])
+
+        assert result["success"] is True
+        assert result["missing"] == []
+        assert len(result["warnings"]) == 1
+        assert "gone.png" in result["warnings"][0]
+
+    def test_missing_source_for_recent_entry_still_fails(self, tmp_path):
+        """Stop-the-line is preserved for entries in the recent-issue window."""
+        bundledb = [
+            {"Issue": 100, "Type": "blog post", "Title": "Recent", "Link": "https://recent.com",
+             "favicon": "/img/favicons/gone.png"},
+        ]
+        result, _ = _run_reconcile(tmp_path, bundledb, [])
+
+        assert result["success"] is False
+        assert len(result["missing"]) == 1
+        assert "gone.png" in result["message"]
+
+    def test_skips_skipped_showcase_entries(self, tmp_path):
+        """showcase entries with skip: true never render, so their assets are not required."""
+        showcase = [
+            {"title": "Skipped", "link": "https://skipped.com", "skip": True,
+             "favicon": "/img/favicons/skipped.png"},
+        ]
+        result, _ = _run_reconcile(tmp_path, [], showcase)
+
+        assert result["success"] is True
+        assert result["copied"] == []
+        assert result["warnings"] == []
+
+    def test_skips_skipped_old_bundledb_entries(self, tmp_path):
+        """Skip: true entries from old issues are excluded too."""
+        bundledb = [
+            {"Issue": 100, "Type": "blog post", "Title": "Latest", "Link": "https://latest.com"},
+            {"Issue": 99, "Type": "blog post", "Title": "Prior", "Link": "https://prior.com"},
+            {"Issue": 1, "Type": "blog post", "Title": "Skipped", "Link": "https://a.com",
+             "Skip": True, "favicon": "/img/favicons/skipped.png"},
+        ]
+        result, _ = _run_reconcile(tmp_path, bundledb, [])
+
+        assert result["success"] is True
+        assert result["warnings"] == []
+
+    def test_deduplicates_shared_asset_references(self, tmp_path):
+        """Many entries share one favicon; it is copied once, not once per entry."""
+        dirs = _reconcile_dirs(tmp_path)
+        (dirs["favicon_src"] / "shared.png").write_bytes(b"favicon")
+
+        bundledb = [
+            {"Issue": 10, "Type": "blog post", "Title": "One", "Link": "https://a.com/1",
+             "favicon": "/img/favicons/shared.png"},
+            {"Issue": 11, "Type": "blog post", "Title": "Two", "Link": "https://a.com/2",
+             "favicon": "/img/favicons/shared.png"},
+            {"Issue": 12, "Type": "blog post", "Title": "Three", "Link": "https://a.com/3",
+             "favicon": "/img/favicons/shared.png"},
+        ]
+        result, _ = _run_reconcile(tmp_path, bundledb, [], dirs)
+
+        assert result["success"] is True
+        assert result["copied"] == ["favicon: shared.png"]

@@ -1561,6 +1561,8 @@ def editor_prebuild_sync():
         "success": True,
         "git_message": git_result["message"],
         "files_copied": file_result.get("copied", []),
+        "files_refreshed": file_result.get("refreshed", []),
+        "files_warnings": file_result.get("warnings", []),
         "files_message": file_result["message"],
     })
 

@@ -440,6 +440,24 @@
 
   // --- Run Latest / Deploy shared flows ---
 
+  // The asset reconcile walks the whole DB, so these lists can be long on a
+  // catch-up run; the full counts stay in files_message.
+  function assetList(label, items, limit) {
+    if (!items || items.length === 0) return "";
+    const extra = items.length > limit ? ` ...and ${items.length - limit} more` : "";
+    return `\n${label}: ${items.slice(0, limit).join(", ")}${extra}`;
+  }
+
+  function syncSummary(syncData) {
+    return (
+      "Git: " + syncData.git_message +
+      "\nFiles: " + syncData.files_message +
+      assetList("Copied", syncData.files_copied, 20) +
+      assetList("Refreshed", syncData.files_refreshed, 20) +
+      assetList("Warnings", syncData.files_warnings, 10)
+    );
+  }
+
   function runLatestFlow() {
     devServerRunning = false;
     deployModalTitle.textContent = "Running pre-build sync...";
@@ -462,10 +480,7 @@
           return Promise.reject(new Error("prebuild-sync-failed"));
         }
         // Show sync results
-        deployModalOutput.textContent = "Git: " + syncData.git_message + "\nFiles: " + syncData.files_message;
-        if (syncData.files_copied && syncData.files_copied.length > 0) {
-          deployModalOutput.textContent += "\nCopied: " + syncData.files_copied.join(", ");
-        }
+        deployModalOutput.textContent = syncSummary(syncData);
 
         deployModalTitle.textContent = "Running end-session scripts...";
         return fetch("/editor/end-session", { method: "POST" });
@@ -558,10 +573,7 @@
           return Promise.reject(new Error("prebuild-sync-failed"));
         }
         // Show sync results
-        deployModalOutput.textContent = "Git: " + syncData.git_message + "\nFiles: " + syncData.files_message;
-        if (syncData.files_copied && syncData.files_copied.length > 0) {
-          deployModalOutput.textContent += "\nCopied: " + syncData.files_copied.join(", ");
-        }
+        deployModalOutput.textContent = syncSummary(syncData);
 
         deployModalTitle.textContent = "Running end-session scripts...";
         return fetch("/editor/end-session", { method: "POST" });

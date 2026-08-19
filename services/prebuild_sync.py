@@ -18,6 +18,12 @@ SCREENSHOT_SOURCE_DIR = os.path.join(BUNDLEDB_DIR, "screenshots")
 ELEVENTY_DIR = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundle.dev"
 FAVICON_DEST_DIR = os.path.join(ELEVENTY_DIR, "_site", "img", "favicons")
 SCREENSHOT_DEST_DIR = os.path.join(ELEVENTY_DIR, "content", "screenshots")
+OG_IMAGE_SOURCE_DIR = os.path.join(BUNDLEDB_DIR, "og-images")
+OG_IMAGE_DEST_DIR = os.path.join(ELEVENTY_DIR, "content", "og-images")
+
+# Destination mtimes come from shutil.copy2, so they should match the source
+# exactly; allow a second of slack for filesystem timestamp resolution.
+MTIME_TOLERANCE_SECONDS = 1
 
 
 def _run_git(args, cwd=BUNDLEDB_DIR, timeout=30):
@@ -163,126 +169,204 @@ def load_recent_issue_entries(bundledb_path=None, showcase_path=None):
             sc = showcase_by_link.get(_normalize_link(e.get("Link", "")))
             if sc:
                 e["screenshotpath"] = sc.get("screenshotpath", "")
+                e["ogImagePath"] = sc.get("ogImagePath", "")
 
         entries.append(e)
 
     return entries, target_issues
 
 
-def _get_favicon_filename(favicon_path):
-    """Extract filename from favicon path (e.g., /img/favicons/foo.png -> foo.png).
+def _asset_filename(asset_path):
+    """Extract the filename from an asset path (e.g. /img/favicons/foo.png -> foo.png).
 
-    Returns None for SVG icon references (e.g., #icon-globe) which don't need copying.
+    Returns None when there is no file to copy: an empty value, or an SVG icon
+    reference such as #icon-globe.
     """
-    if not favicon_path:
+    if not asset_path or asset_path.startswith("#"):
         return None
-    # Skip SVG icon references (e.g., #icon-globe)
-    if favicon_path.startswith("#"):
-        return None
-    return os.path.basename(favicon_path)
+    return os.path.basename(asset_path)
 
 
-def _get_screenshot_filename(screenshot_path):
-    """Extract filename from screenshot path (e.g., /screenshots/foo.jpg -> foo.jpg)."""
-    if not screenshot_path:
-        return None
-    return os.path.basename(screenshot_path)
+def collect_asset_refs(bundledb_path=None, showcase_path=None):
+    """
+    Collect every asset reference in the full DB, de-duped by (kind, filename).
+
+    bundledb.json supplies favicon refs for all types plus screenshot refs for
+    starters, which carry their own screenshotpath. showcase-data.json supplies
+    favicon, screenshot, and og-image refs for the full site list, which is far
+    larger than bundledb's site entries. Entries flagged Skip/skip never render,
+    so their assets are not required.
+
+    Returns a dict of (kind, filename) -> title of the first entry referencing it.
+    """
+    refs = {}
+
+    def add(kind, asset_path, title):
+        filename = _asset_filename(asset_path)
+        if filename:
+            refs.setdefault((kind, filename), title or "Unknown")
+
+    for entry in _load_bundledb(bundledb_path):
+        if entry.get("Skip"):
+            continue
+        title = entry.get("Title")
+        add("favicon", entry.get("favicon"), title)
+        add("screenshot", entry.get("screenshotpath"), title)
+
+    for site in _load_showcase(showcase_path):
+        if site.get("skip"):
+            continue
+        title = site.get("title")
+        add("favicon", site.get("favicon"), title)
+        add("screenshot", site.get("screenshotpath"), title)
+        add("og-image", site.get("ogImagePath"), title)
+
+    return refs
+
+
+def _recent_asset_refs(bundledb_path=None, showcase_path=None):
+    """
+    The (kind, filename) refs belonging to the recent-issue window.
+
+    A missing source file for one of these blocks the build; anything older is
+    reported as a warning so historical rot cannot hold every build hostage.
+
+    Returns (refs_set, issue_numbers).
+    """
+    entries, issue_numbers = load_recent_issue_entries(bundledb_path, showcase_path)
+
+    recent = set()
+    for entry in entries:
+        for kind, asset_path in (
+            ("favicon", entry.get("favicon")),
+            ("screenshot", entry.get("screenshotpath")),
+            ("og-image", entry.get("ogImagePath")),
+        ):
+            filename = _asset_filename(asset_path)
+            if filename:
+                recent.add((kind, filename))
+
+    return recent, issue_numbers
+
+
+def _copy_state(src, dest):
+    """
+    Decide what the destination needs.
+
+    Returns "copied" when dest is absent, "refreshed" when it is present but
+    stale, or None when it already matches the source.
+
+    Staleness is an rsync-style quick check on size, then mtime. The mtime
+    comparison is deliberately one-directional: only a source NEWER than the
+    destination means the source was replaced after the copy. A destination
+    newer than its source is not stale -- capture-screenshot.js writes
+    content/screenshots and 11tybundledb in the same run rather than copying
+    between them, leaving ~1,300 byte-identical screenshots whose destinations
+    are newer. Comparing mtimes symmetrically would recopy all of them on every
+    build, forever.
+    """
+    try:
+        dest_stat = os.stat(dest)
+    except FileNotFoundError:
+        return "copied"
+
+    src_stat = os.stat(src)
+    if dest_stat.st_size != src_stat.st_size:
+        return "refreshed"
+    if src_stat.st_mtime - dest_stat.st_mtime > MTIME_TOLERANCE_SECONDS:
+        return "refreshed"
+    return None
 
 
 def check_and_copy_assets(bundledb_path=None, showcase_path=None,
                           favicon_src=None, favicon_dest=None,
-                          screenshot_src=None, screenshot_dest=None):
+                          screenshot_src=None, screenshot_dest=None,
+                          og_src=None, og_dest=None):
     """
-    Check that favicon/screenshot files exist for latest issue entries.
-    Copy missing files from 11tybundledb to 11tybundle.dev directories.
+    Reconcile every favicon, screenshot, and og-image referenced by the DB
+    against the 11tybundle.dev directories, copying what is missing or stale.
+
+    The destination directories are all gitignored local copies, so they drift
+    silently; only 11tybundledb is the git-backed source of truth. Reconciling
+    the full DB rather than the recent issue is a few thousand stat calls.
 
     Returns dict with:
-    - 'success' (bool)
+    - 'success' (bool) - False only when a recent-issue asset has no source file
     - 'message' (str)
-    - 'copied' (list of copied file paths)
-    - 'missing' (list of missing source files, if any)
-
-    Entry type requirements:
-    - blog post: favicon only
-    - site: favicon + screenshot
-    - starter: favicon + screenshot
-    - release: favicon only
+    - 'copied' (list) - assets that were absent from the destination
+    - 'refreshed' (list) - assets that were present but stale
+    - 'missing' (list) - recent-issue refs with no source file (blocking)
+    - 'warnings' (list) - older refs with no source file (non-blocking)
     """
-    favicon_src_dir = favicon_src or FAVICON_SOURCE_DIR
-    favicon_dest_dir = favicon_dest or FAVICON_DEST_DIR
-    screenshot_src_dir = screenshot_src or SCREENSHOT_SOURCE_DIR
-    screenshot_dest_dir = screenshot_dest or SCREENSHOT_DEST_DIR
+    dirs = {
+        "favicon": (favicon_src or FAVICON_SOURCE_DIR,
+                    favicon_dest or FAVICON_DEST_DIR),
+        "screenshot": (screenshot_src or SCREENSHOT_SOURCE_DIR,
+                       screenshot_dest or SCREENSHOT_DEST_DIR),
+        "og-image": (og_src or OG_IMAGE_SOURCE_DIR,
+                     og_dest or OG_IMAGE_DEST_DIR),
+    }
 
-    entries, issue_numbers = load_recent_issue_entries(bundledb_path, showcase_path)
+    refs = collect_asset_refs(bundledb_path, showcase_path)
+    recent_refs, issue_numbers = _recent_asset_refs(bundledb_path, showcase_path)
 
-    if not entries:
-        return {
-            "success": True,
-            "message": "No entries found for recent issues",
-            "copied": [],
-            "missing": [],
-        }
+    for _, dest_dir in dirs.values():
+        os.makedirs(dest_dir, exist_ok=True)
 
     copied = []
+    refreshed = []
     missing = []
+    warnings = []
 
-    # Ensure destination directories exist
-    os.makedirs(favicon_dest_dir, exist_ok=True)
-    os.makedirs(screenshot_dest_dir, exist_ok=True)
+    for (kind, filename), title in sorted(refs.items()):
+        src_dir, dest_dir = dirs[kind]
+        src = os.path.join(src_dir, filename)
+        dest = os.path.join(dest_dir, filename)
 
-    for entry in entries:
-        entry_type = entry.get("Type", "")
-        title = entry.get("Title", "Unknown")
+        if not os.path.exists(src):
+            note = f"{kind} '{filename}' for '{title}' (source not found)"
+            if (kind, filename) in recent_refs:
+                missing.append(note)
+            else:
+                warnings.append(note)
+            continue
 
-        # Check favicon (all types need favicon)
-        favicon_path = entry.get("favicon", "")
-        if favicon_path:
-            filename = _get_favicon_filename(favicon_path)
-            if filename:
-                src = os.path.join(favicon_src_dir, filename)
-                dest = os.path.join(favicon_dest_dir, filename)
+        state = _copy_state(src, dest)
+        if state is None:
+            continue
 
-                if not os.path.exists(dest):
-                    if os.path.exists(src):
-                        shutil.copy2(src, dest)
-                        copied.append(f"favicon: {filename}")
-                    else:
-                        missing.append(f"favicon '{filename}' for '{title}' (source not found)")
-
-        # Check screenshot (sites and starters only)
-        if entry_type in ("site", "starter"):
-            screenshot_path = entry.get("screenshotpath", "")
-            if screenshot_path:
-                filename = _get_screenshot_filename(screenshot_path)
-                if filename:
-                    src = os.path.join(screenshot_src_dir, filename)
-                    dest = os.path.join(screenshot_dest_dir, filename)
-
-                    if not os.path.exists(dest):
-                        if os.path.exists(src):
-                            shutil.copy2(src, dest)
-                            copied.append(f"screenshot: {filename}")
-                        else:
-                            missing.append(f"screenshot '{filename}' for '{title}' (source not found)")
+        shutil.copy2(src, dest)
+        (copied if state == "copied" else refreshed).append(f"{kind}: {filename}")
 
     if missing:
         return {
             "success": False,
             "message": f"Missing source files: {'; '.join(missing)}",
             "copied": copied,
+            "refreshed": refreshed,
             "missing": missing,
+            "warnings": warnings,
         }
 
-    issues_str = " and #".join(str(i) for i in issue_numbers)
-    message = f"Checked {len(entries)} entries for issues #{issues_str}"
+    message = f"Reconciled {len(refs)} asset refs across the full DB"
+    if issue_numbers:
+        issues_str = " and #".join(str(i) for i in issue_numbers)
+        message += f" (issues #{issues_str} blocking)"
+
+    counts = []
     if copied:
-        message += f"; copied {len(copied)} files"
-    else:
-        message += "; all assets already in place"
+        counts.append(f"copied {len(copied)}")
+    if refreshed:
+        counts.append(f"refreshed {len(refreshed)}")
+    if warnings:
+        counts.append(f"{len(warnings)} warnings")
+    message += "; " + (", ".join(counts) if counts else "all assets already in place")
 
     return {
         "success": True,
         "message": message,
         "copied": copied,
+        "refreshed": refreshed,
         "missing": [],
+        "warnings": warnings,
     }

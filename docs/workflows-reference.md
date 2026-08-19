@@ -10,6 +10,41 @@ Detailed reference for build/deploy workflows, post-build verification, database
 - All workflow results display in a modal overlay (`deploy-modal` in `editor.html`, styled via `.deploy-modal-overlay`/`.deploy-modal` in `style.css`).
 - JS logic is shared via `runLatestFlow()` and `runDeployFlow()` functions in `editor.js`.
 
+### Pre-Build Sync (both flows)
+
+`POST /editor/prebuild-sync` runs first in both Run Latest and Deploy. Two steps, in
+`services/prebuild_sync.py`:
+
+1. `sync_bundledb_repo()` — `add` -> `commit` -> `pull --rebase origin main` -> `push` in
+   `11tybundledb`, aborting the rebase on conflict.
+2. `check_and_copy_assets()` — reconciles every favicon, screenshot, and og-image
+   referenced anywhere in `bundledb.json` + `showcase-data.json` (~4,850 refs, ~100ms)
+   against the `11tybundle.dev` directories, copying what is missing or stale.
+
+The destinations are all gitignored local copies — `_site/img/favicons`,
+`content/screenshots`, `content/og-images` — so they drift silently; only `11tybundledb`
+is the git-backed source of truth. `collect_asset_refs()` walks both DB files
+independently rather than merging one into the other: bundledb carries favicons for all
+types plus the 39 starters' own `screenshotpath`, while showcase-data carries favicon,
+screenshot, and og-image for a site list far larger than bundledb's `site` entries.
+Entries flagged `Skip`/`skip` are excluded.
+
+**Missing source files** block the build only when the reference belongs to the recent
+issue window (`load_recent_issue_entries()`, latest two issues). Older references are
+reported in `warnings` and the build proceeds, so historical rot cannot hold every build
+hostage.
+
+**Staleness** (`_copy_state()`) is an rsync-style check on size, then mtime — but the
+mtime comparison is one-directional. Only a source *newer* than the destination counts as
+stale. `capture-screenshot.js` writes `content/screenshots` and `11tybundledb` in the same
+run rather than copying between them, so ~1,300 byte-identical screenshots have
+destinations newer than their sources; a symmetric comparison would recopy all of them on
+every build.
+
+Note that `shutil.copy2` preserves mtime, so a file's timestamp in the destination
+reflects when the asset was *created*, not when it was copied — do not use those mtimes
+to reason about deploy order.
+
 ### Run Latest Flow (4 endpoints)
 
 - `POST /editor/end-session` runs three tasks in parallel via `ThreadPoolExecutor`: `generate_issue_records()` (Python, `services/issue_records.py`), `generate_latest_data()` (Python, `services/latest_data.py`), and `generate_insights()` (Python, `services/insights.py`).
