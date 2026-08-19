@@ -218,10 +218,6 @@ fetch time) while screenshots and og-images wait for a build to passthrough-copy
 
 ## Also noticed, not investigated
 
-- **`_site` is 29,900 files / 1.7 GB** and Eleventy never prunes it (noted at
-  `app.py:1312`). Cloudflare's static-asset limit is 20,000 files per deployment, yet
-  deploys are succeeding — unexplained, and worth understanding before it becomes a
-  failure. 36 favicons in `_site` are referenced by nothing.
 - **`docs/commit-push-on-deploy.md` is stale.** It describes deploy as *not* committing
   or pushing and asks for the feature. That was implemented, and the function it describes
   no longer exists — deploy now calls `sync_bundledb_repo()`. Fold it into this doc or
