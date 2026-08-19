@@ -1642,8 +1642,33 @@ def editor_kill_server():
     return jsonify({"success": True, "killed": killed})
 
 
+def _bundledb_ahead_count():
+    """Commits on HEAD that have not reached the upstream branch.
+
+    Returns 0 when the branch is in sync, and also when there is no upstream to
+    compare against -- without one there is nothing meaningful to push, and the
+    caller should fall back to pushing only what it just committed.
+    """
+    ahead = subprocess.run(
+        ["git", "rev-list", "--count", "@{u}..HEAD"],
+        cwd=BUNDLEDB_DIR,
+        capture_output=True,
+        text=True,
+    )
+    if ahead.returncode != 0:
+        return 0
+    try:
+        return int(ahead.stdout.strip())
+    except ValueError:
+        return 0
+
+
 def _commit_and_push_bundledb(commit_message="New entries saved"):
     """Commit and push all changes in the 11tybundledb repo.
+
+    Acts on two independent signals: a dirty working tree, and commits that
+    exist locally but not on origin. Checking only the working tree meant a
+    commit made by hand stayed local while the deploy reported success.
 
     Returns dict with 'success' (bool) and 'message' (str).
     """
@@ -1654,30 +1679,39 @@ def _commit_and_push_bundledb(commit_message="New entries saved"):
             capture_output=True,
             text=True,
         )
-        if not status.stdout.strip():
-            return {"success": True, "message": "No DB changes to commit."}
+        dirty = bool(status.stdout.strip())
+        ahead = _bundledb_ahead_count()
 
-        subprocess.run(["git", "add", "-A"], cwd=BUNDLEDB_DIR, check=True)
-        commit = subprocess.run(
-            ["git", "commit", "-m", commit_message],
-            cwd=BUNDLEDB_DIR,
-            capture_output=True,
-            text=True,
-        )
-        if commit.returncode == 0:
-            push = subprocess.run(
-                ["git", "push"],
+        if not dirty and not ahead:
+            return {"success": True, "message": "No DB changes to commit or push."}
+
+        if dirty:
+            subprocess.run(["git", "add", "-A"], cwd=BUNDLEDB_DIR, check=True)
+            commit = subprocess.run(
+                ["git", "commit", "-m", commit_message],
                 cwd=BUNDLEDB_DIR,
                 capture_output=True,
                 text=True,
-                timeout=30,
             )
-            if push.returncode == 0:
-                return {"success": True, "message": "DB files committed and pushed."}
-            else:
-                return {"success": False, "message": f"git push failed: {push.stderr.strip()}"}
-        else:
-            return {"success": False, "message": f"git commit failed: {commit.stderr.strip()}"}
+            if commit.returncode != 0:
+                return {"success": False, "message": f"git commit failed: {commit.stderr.strip()}"}
+
+        push = subprocess.run(
+            ["git", "push"],
+            cwd=BUNDLEDB_DIR,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        if push.returncode != 0:
+            return {"success": False, "message": f"git push failed: {push.stderr.strip()}"}
+
+        if dirty:
+            return {"success": True, "message": "DB files committed and pushed."}
+        return {
+            "success": True,
+            "message": f"Pushed {ahead} previously committed change(s).",
+        }
     except Exception as e:
         return {"success": False, "message": str(e)}
 

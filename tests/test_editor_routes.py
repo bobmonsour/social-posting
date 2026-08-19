@@ -1,8 +1,10 @@
 import json
 import os
+import subprocess
 
 import pytest
 
+import app as app_module
 from services import showcase_output
 
 
@@ -753,3 +755,115 @@ def test_summarize_skips_empty_links(client):
     assert "" not in data["summaries"]
     assert data["summaries"]["https://a.com"] == "Summary."
     mock_sum.assert_called_once_with("https://a.com")
+
+
+# --- _commit_and_push_bundledb() ---
+
+def _completed(cmd, returncode=0, stdout="", stderr=""):
+    return subprocess.CompletedProcess(cmd, returncode, stdout=stdout, stderr=stderr)
+
+
+def _fake_git(calls, status="", ahead="0", ahead_rc=0, commit_rc=0, push_rc=0):
+    """Stand in for subprocess.run, dispatching on the git subcommand."""
+    def run(cmd, **kwargs):
+        calls.append(cmd[1])
+        sub = cmd[1]
+        if sub == "status":
+            return _completed(cmd, 0, stdout=status)
+        if sub == "rev-list":
+            return _completed(cmd, ahead_rc, stdout=ahead,
+                              stderr="fatal: no upstream configured")
+        if sub == "add":
+            return _completed(cmd, 0)
+        if sub == "commit":
+            return _completed(cmd, commit_rc, stderr="nothing to commit")
+        if sub == "push":
+            return _completed(cmd, push_rc, stderr="rejected: non-fast-forward")
+        raise AssertionError(f"unexpected git command: {cmd}")
+    return run
+
+
+def test_commit_and_push_does_nothing_when_clean_and_in_sync(monkeypatch):
+    calls = []
+    monkeypatch.setattr(app_module.subprocess, "run", _fake_git(calls))
+
+    result = app_module._commit_and_push_bundledb()
+
+    assert result["success"] is True
+    assert "push" not in calls
+    assert "commit" not in calls
+
+
+def test_commit_and_push_pushes_unpushed_commits_when_tree_is_clean(monkeypatch):
+    """A local commit that never reached origin must still be pushed.
+
+    The early return on a clean tree fired before the push, so a deploy reported
+    success while the commit stayed local.
+    """
+    calls = []
+    monkeypatch.setattr(app_module.subprocess, "run", _fake_git(calls, status="", ahead="2"))
+
+    result = app_module._commit_and_push_bundledb()
+
+    assert result["success"] is True
+    assert "push" in calls
+    assert "commit" not in calls
+    assert "2" in result["message"]
+
+
+def test_commit_and_push_commits_and_pushes_a_dirty_tree(monkeypatch):
+    calls = []
+    monkeypatch.setattr(app_module.subprocess, "run",
+                        _fake_git(calls, status=" M bundledb.json"))
+
+    result = app_module._commit_and_push_bundledb()
+
+    assert result["success"] is True
+    assert calls.count("push") == 1
+    assert "add" in calls and "commit" in calls
+
+
+def test_commit_and_push_pushes_once_when_dirty_and_ahead(monkeypatch):
+    calls = []
+    monkeypatch.setattr(app_module.subprocess, "run",
+                        _fake_git(calls, status=" M bundledb.json", ahead="3"))
+
+    result = app_module._commit_and_push_bundledb()
+
+    assert result["success"] is True
+    assert calls.count("push") == 1
+
+
+def test_commit_and_push_reports_push_failure(monkeypatch):
+    calls = []
+    monkeypatch.setattr(app_module.subprocess, "run",
+                        _fake_git(calls, status="", ahead="1", push_rc=1))
+
+    result = app_module._commit_and_push_bundledb()
+
+    assert result["success"] is False
+    assert "push failed" in result["message"]
+
+
+def test_commit_and_push_reports_commit_failure(monkeypatch):
+    calls = []
+    monkeypatch.setattr(app_module.subprocess, "run",
+                        _fake_git(calls, status=" M bundledb.json", commit_rc=1))
+
+    result = app_module._commit_and_push_bundledb()
+
+    assert result["success"] is False
+    assert "commit failed" in result["message"]
+    assert "push" not in calls
+
+
+def test_commit_and_push_tolerates_a_branch_with_no_upstream(monkeypatch):
+    """rev-list against @{u} fails without an upstream; fall back to old behavior."""
+    calls = []
+    monkeypatch.setattr(app_module.subprocess, "run",
+                        _fake_git(calls, status="", ahead="", ahead_rc=128))
+
+    result = app_module._commit_and_push_bundledb()
+
+    assert result["success"] is True
+    assert "push" not in calls

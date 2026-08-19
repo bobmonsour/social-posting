@@ -57,7 +57,13 @@ to reason about deploy order.
 - First calls `POST /editor/end-session` to run the same three parallel tasks as Run Latest (issue records, insights, latest data). Modal shows script results before proceeding.
 - Then calls `POST /editor/deploy` which runs `npm run deploy` in `ELEVENTY_PROJECT_DIR` via `subprocess.run()` with 120s timeout, captures full stdout+stderr.
 - On successful deploy, auto-commits and pushes `11tybundledb` changes via `_commit_and_push_bundledb()`. Git failures don't affect deploy success status.
-- Response includes `git_result` with `success` and `message`. "Nothing to commit" is treated as success.
+- Response includes `git_result` with `success` and `message`. Git failures don't affect deploy success status.
+- `_commit_and_push_bundledb()` acts on two independent signals: a dirty working tree, and
+  commits that exist locally but not on origin (`git rev-list --count @{u}..HEAD`). It
+  commits when the tree is dirty and pushes when either is true, so a commit made by hand
+  outside the app still reaches origin on the next deploy. Only a clean tree that is also
+  in sync is a no-op. A branch with no upstream reports 0 ahead and falls back to pushing
+  only what was just committed.
 - Modal shows end-session results, then deploy output plus git result (success message or failure note), then "View 11tybundle.dev" button which opens `https://11tybundle.dev`.
 
 ## Post-Build Verification

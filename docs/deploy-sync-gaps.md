@@ -5,8 +5,8 @@ seven broken favicons on 11tybundle.dev. **The favicons are already fixed and de
 — nothing is broken right now.** What remains is the three underlying gaps that let
 them break silently, all of which live in this repo.
 
-**Gap 1 is resolved** (see below). Gaps 2 and 3 have not been designed or approved yet —
-treat their "Direction" notes as starting points, not decisions.
+**Gaps 1 and 2 are resolved** (see below). Gap 3 has not been designed or approved yet —
+treat its "Direction" note as a starting point, not a decision.
 
 ## What happened
 
@@ -81,7 +81,7 @@ Missing source files block the build only for the recent-issue window; older one
 as non-blocking `warnings`. Current state: 4,845 refs, 0 missing, 0 warnings, 3 pending
 refreshes, ~100ms for the whole sweep.
 
-## Gap 2 — deploy does not push already-committed work
+## Gap 2 — deploy does not push already-committed work — RESOLVED
 
 `app.py:1643` — `_commit_and_push_bundledb()`
 
@@ -98,8 +98,25 @@ Observed directly: a commit was made by hand, a deploy ran, the deploy reported 
 and the commit stayed local. `docs/workflows-reference.md:25` encodes the same
 assumption — "Nothing to commit is treated as success".
 
-**Direction**: also check for unpushed commits, e.g. `git rev-list --count @{u}..HEAD`,
-and push when either the tree is dirty or the branch is ahead.
+### What was built
+
+`_commit_and_push_bundledb()` now acts on two independent signals — a dirty working tree
+and a branch ahead of its upstream (`_bundledb_ahead_count()`, `git rev-list --count
+@{u}..HEAD`). It commits when the tree is dirty and pushes when either is true. Only a
+clean tree that is also in sync returns early, now saying "No DB changes to commit or
+push."; a clean-but-ahead branch reports "Pushed N previously committed change(s)." A
+branch with no upstream reports 0 ahead and falls back to the old behavior rather than
+erroring.
+
+The function had no tests at all. It has seven now, in `tests/test_editor_routes.py`,
+stubbing `subprocess.run` by git subcommand. Five of them passed against the old code —
+the two that did not are this gap: a clean-but-ahead tree was never pushed, and a push
+failure in that state was never reported.
+
+`docs/workflows-reference.md` said "Nothing to commit is treated as success", which
+encoded the bug; it now describes the two-signal rule.
+
+Not addressed here: Gap 3. This function still pushes without rebasing.
 
 ## Gap 3 — deploy pushes without rebasing
 
