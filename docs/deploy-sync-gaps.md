@@ -218,10 +218,6 @@ fetch time) while screenshots and og-images wait for a build to passthrough-copy
 
 ## Also noticed, not investigated
 
-- **`docs/commit-push-on-deploy.md` is stale.** It describes deploy as *not* committing
-  or pushing and asks for the feature. That was implemented, and the function it describes
-  no longer exists — deploy now calls `sync_bundledb_repo()`. Fold it into this doc or
-  delete it. Still not done.
 - **SVG favicons are fragile as `<img src>`.** cassie.ink's is `fill="currentColor"`
   (renders flat black, no color context); `f26rm-ryancordell-org-favicon.svg` draws an
   emoji as `<text>` with `font-family="AppleColorEmoji"`, so it only renders in color on
