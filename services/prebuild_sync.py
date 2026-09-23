@@ -153,14 +153,16 @@ def _load_showcase(path=None):
         return json.load(f)
 
 
-def load_recent_issue_entries(bundledb_path=None, showcase_path=None):
+def load_recent_issue_entries(bundledb_path=None, showcase_path=None, from_issue=None):
     """
     Load ALL entries from the latest issue AND the prior issue, INCLUDING starters.
 
     This ensures assets from both recent issues are checked/copied before build.
+    If ``from_issue`` is given, load every issue >= ``from_issue`` instead, so
+    issues queued ahead don't push the one being built out of the window.
 
     Returns (entries_list, issue_numbers_list) where issue_numbers_list contains
-    the issue numbers that were checked (up to 2, in descending order).
+    the issue numbers that were checked (in descending order).
     Sites get screenshotpath merged from showcase-data.
     """
     bundledb = _load_bundledb(bundledb_path)
@@ -177,9 +179,12 @@ def load_recent_issue_entries(bundledb_path=None, showcase_path=None):
     if not issue_set:
         return [], []
 
-    # Get the two most recent issues
     sorted_issues = sorted(issue_set, reverse=True)
-    target_issues = sorted_issues[:2]  # Latest and prior (if exists)
+    if from_issue is None:
+        # Get the two most recent issues
+        target_issues = sorted_issues[:2]  # Latest and prior (if exists)
+    else:
+        target_issues = [i for i in sorted_issues if i >= from_issue]
     target_set = set(target_issues)
 
     entries = []
@@ -250,7 +255,7 @@ def collect_asset_refs(bundledb_path=None, showcase_path=None):
     return refs
 
 
-def _recent_asset_refs(bundledb_path=None, showcase_path=None):
+def _recent_asset_refs(bundledb_path=None, showcase_path=None, from_issue=None):
     """
     The (kind, filename) refs belonging to the recent-issue window.
 
@@ -259,7 +264,7 @@ def _recent_asset_refs(bundledb_path=None, showcase_path=None):
 
     Returns (refs_set, issue_numbers).
     """
-    entries, issue_numbers = load_recent_issue_entries(bundledb_path, showcase_path)
+    entries, issue_numbers = load_recent_issue_entries(bundledb_path, showcase_path, from_issue)
 
     recent = set()
     for entry in entries:
@@ -307,7 +312,7 @@ def _copy_state(src, dest):
 def check_and_copy_assets(bundledb_path=None, showcase_path=None,
                           favicon_src=None, favicon_dest=None,
                           screenshot_src=None, screenshot_dest=None,
-                          og_src=None, og_dest=None):
+                          og_src=None, og_dest=None, from_issue=None):
     """
     Reconcile every favicon, screenshot, and og-image referenced by the DB
     against the 11tybundle.dev directories, copying what is missing or stale.
@@ -334,7 +339,7 @@ def check_and_copy_assets(bundledb_path=None, showcase_path=None,
     }
 
     refs = collect_asset_refs(bundledb_path, showcase_path)
-    recent_refs, issue_numbers = _recent_asset_refs(bundledb_path, showcase_path)
+    recent_refs, issue_numbers = _recent_asset_refs(bundledb_path, showcase_path, from_issue)
 
     for _, dest_dir in dirs.values():
         os.makedirs(dest_dir, exist_ok=True)

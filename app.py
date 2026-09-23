@@ -19,7 +19,7 @@ from services.media import process_uploads, cleanup_uploads, compress_for_bluesk
 from services.link_card import fetch_og_metadata
 from services.social_links import extract_social_links
 from services.bwe_list import get_bwe_lists, mark_bwe_posted, update_bwe_after_post, delete_bwe_posted, delete_bwe_to_post, add_bwe_to_post
-from services.issue_counts import get_latest_issue_counts
+from services.issue_counts import get_latest_issue_counts, get_last_published_issue
 from services.insights import generate_insights
 from services.issue_records import generate_issue_records
 from services.latest_data import generate_latest_data
@@ -1510,8 +1510,10 @@ def editor_end_session():
         try:
             bundledb_out = os.path.join(bundledb_dir, "bundledb-latest-issue.json")
             showcase_out = os.path.join(bundledb_dir, "showcase-data-latest-issue.json")
-            result = generate_latest_data(bundledb_path, showcase_path, bundledb_out, showcase_out)
-            return {"success": True, "stdout": f"Latest issue #{result['latest_issue']}: {result['bundledb_count']} bundle entries, {result['showcase_count']} showcase entries", "stderr": ""}
+            result = generate_latest_data(bundledb_path, showcase_path, bundledb_out, showcase_out,
+                                          from_issue=get_last_published_issue() or None)
+            issues_label = ", #".join(str(i) for i in result["issues"])
+            return {"success": True, "stdout": f"Latest issue #{issues_label}: {result['bundledb_count']} bundle entries, {result['showcase_count']} showcase entries", "stderr": ""}
         except Exception as e:
             return {"success": False, "error": str(e)}
 
@@ -1553,7 +1555,7 @@ def editor_prebuild_sync():
         return jsonify({"success": False, "error": git_result["message"], "stage": "git"})
 
     # Step 2: File check/copy
-    file_result = check_and_copy_assets()
+    file_result = check_and_copy_assets(from_issue=get_last_published_issue() or None)
     if not file_result["success"]:
         return jsonify({"success": False, "error": file_result["message"], "stage": "files"})
 
@@ -1648,7 +1650,7 @@ def editor_verify_site():
     from services import prebuild_sync, verify_site
 
     try:
-        report, success = verify_site.verify_latest_issue()
+        report, success = verify_site.verify_latest_issue(get_last_published_issue() or None)
         git_result = None
         if success:
             git_result = prebuild_sync.sync_bundledb_repo("New entries saved after local build")

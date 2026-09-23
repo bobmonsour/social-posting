@@ -59,8 +59,13 @@ def load_entries_by_date(target_date):
     ]
 
 
-def load_entries_by_latest_issue():
-    """Load entries with the highest issue number in bundledb."""
+def load_entries_by_latest_issue(from_issue=None):
+    """Load entries with the highest issue number in bundledb.
+
+    If ``from_issue`` is given, load entries from every issue >= ``from_issue``
+    instead, so issues queued ahead don't displace the one being built.
+    Returns (entries, label) where label is e.g. "94" or "94–96".
+    """
     bundledb = _load_bundledb()
     issues = []
     for e in bundledb:
@@ -71,16 +76,18 @@ def load_entries_by_latest_issue():
             except (ValueError, TypeError):
                 pass
     if not issues:
-        return [], 0
+        return [], "0"
     max_issue = max(issues)
+    min_issue = max_issue if from_issue is None else from_issue
     db_entries = [
         e
         for e in bundledb
-        if _issue_as_int(e.get("Issue")) == max_issue
+        if (_issue_as_int(e.get("Issue")) or 0) >= min_issue
         and e.get("Type") != "starter"
         and not e.get("Skip")
     ]
-    return db_entries, max_issue
+    label = str(max_issue) if min_issue >= max_issue else f"{min_issue}–{max_issue}"
+    return db_entries, label
 
 
 def _find_section(soup, heading_text):
@@ -485,10 +492,10 @@ def verify_by_date(target_date):
     return _run_verification(entries, label=target_date)
 
 
-def verify_latest_issue():
+def verify_latest_issue(from_issue=None):
     """Run verification for entries with the latest issue number. Returns (report_str, success_bool)."""
-    entries, issue_num = load_entries_by_latest_issue()
-    return _run_verification(entries, label=f"Issue #{issue_num}")
+    entries, issue_label = load_entries_by_latest_issue(from_issue)
+    return _run_verification(entries, label=f"Issue #{issue_label}")
 
 
 # Default entry point — uses latest issue

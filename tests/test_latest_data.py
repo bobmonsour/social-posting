@@ -194,3 +194,54 @@ class TestLatestDataMatchJS:
             json.loads(open(prod_showcase).read()),
             tmp_path,
         )
+
+
+class TestLatestDataFromIssue:
+    """from_issue keeps the issue being built even when later issues are queued."""
+
+    def test_includes_every_issue_from_from_issue(self, tmp_path):
+        bundledb = [
+            {"Issue": 93, "Type": "blog post", "Title": "Published", "Date": "2026-05-01"},
+            {"Issue": 94, "Type": "blog post", "Title": "Current", "Date": "2026-08-01"},
+            {"Issue": 95, "Type": "site", "Title": "Queued", "Date": "2026-07-01"},
+            {"Issue": 96, "Type": "site", "Title": "Queued later", "Date": "2026-09-01"},
+        ]
+        showcase = [
+            {"title": "Before", "date": "2026-06-01", "link": "https://before.dev"},
+            {"title": "Queued", "date": "2026-07-01", "link": "https://queued.dev"},
+        ]
+        bundle_file = tmp_path / "bundledb.json"
+        showcase_file = tmp_path / "showcase-data.json"
+        bundle_file.write_text(json.dumps(bundledb))
+        showcase_file.write_text(json.dumps(showcase))
+        bundle_out = tmp_path / "out.json"
+        showcase_out = tmp_path / "showcase-out.json"
+
+        result = generate_latest_data(
+            str(bundle_file), str(showcase_file),
+            str(bundle_out), str(showcase_out), from_issue=94,
+        )
+
+        titles = [e["Title"] for e in json.loads(bundle_out.read_text())]
+        assert titles == ["Current", "Queued", "Queued later"]
+        assert result["issues"] == [94, 95, 96]
+        # Earliest date across all included issues drives the showcase filter
+        showcase_titles = [e["title"] for e in json.loads(showcase_out.read_text())]
+        assert showcase_titles == ["Queued"]
+
+    def test_without_from_issue_uses_max_issue(self, tmp_path):
+        bundledb = [
+            {"Issue": 94, "Type": "blog post", "Title": "Current", "Date": "2026-08-01"},
+            {"Issue": 96, "Type": "site", "Title": "Queued later", "Date": "2026-09-01"},
+        ]
+        bundle_file = tmp_path / "bundledb.json"
+        showcase_file = tmp_path / "showcase-data.json"
+        bundle_file.write_text(json.dumps(bundledb))
+        showcase_file.write_text("[]")
+
+        result = generate_latest_data(
+            str(bundle_file), str(showcase_file),
+            str(tmp_path / "out.json"), str(tmp_path / "s.json"),
+        )
+
+        assert result["issues"] == [96]

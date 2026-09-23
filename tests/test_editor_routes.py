@@ -811,7 +811,7 @@ def test_deploy_succeeds_even_when_the_git_sync_fails(client, monkeypatch):
 
 
 def test_verify_site_syncs_the_db_repo_with_its_own_commit_message(client, monkeypatch):
-    monkeypatch.setattr(verify_site, "verify_latest_issue", lambda: ("all good", True))
+    monkeypatch.setattr(verify_site, "verify_latest_issue", lambda *a, **k: ("all good", True))
     seen = _capture_sync(monkeypatch)
 
     data = client.post("/editor/verify-site").get_json()
@@ -821,7 +821,7 @@ def test_verify_site_syncs_the_db_repo_with_its_own_commit_message(client, monke
 
 
 def test_verify_site_skips_the_git_sync_when_verification_fails(client, monkeypatch):
-    monkeypatch.setattr(verify_site, "verify_latest_issue", lambda: ("missing favicon", False))
+    monkeypatch.setattr(verify_site, "verify_latest_issue", lambda *a, **k: ("missing favicon", False))
     seen = _capture_sync(monkeypatch)
 
     data = client.post("/editor/verify-site").get_json()

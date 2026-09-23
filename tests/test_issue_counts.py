@@ -1,7 +1,7 @@
 import json
 import os
 
-from services.issue_counts import get_latest_issue_counts
+from services.issue_counts import get_last_published_issue, get_latest_issue_counts
 
 
 def _setup_blog(tmp_path, issues):
@@ -99,3 +99,12 @@ def test_non_matching_files_ignored(tmp_path, monkeypatch):
 
     result = get_latest_issue_counts(blog_path=str(blog_path))
     assert result["issue_number"] == 87
+
+
+def test_last_published_issue(tmp_path):
+    blog_path = _setup_blog(tmp_path / "blog", [48, 93, 92])
+    assert get_last_published_issue(blog_path=blog_path) == 93
+
+
+def test_last_published_issue_missing_dir(tmp_path):
+    assert get_last_published_issue(blog_path=str(tmp_path / "nonexistent")) == 0

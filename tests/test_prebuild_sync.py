@@ -309,6 +309,27 @@ class TestLoadRecentIssueEntries:
         assert issue_numbers == []
 
 
+    def test_from_issue_includes_every_issue_from_that_point(self, tmp_path):
+        """With issues queued ahead, from_issue keeps the current issue in the window."""
+        bundledb = [
+            {"Issue": 92, "Type": "blog post", "Title": "Older", "Link": "https://o.com"},
+            {"Issue": 93, "Type": "blog post", "Title": "Published", "Link": "https://p.com"},
+            {"Issue": 94, "Type": "blog post", "Title": "Current", "Link": "https://c.com"},
+            {"Issue": 95, "Type": "site", "Title": "Queued", "Link": "https://q.com"},
+            {"Issue": 96, "Type": "site", "Title": "Queued later", "Link": "https://l.com"},
+        ]
+        bundledb_path = tmp_path / "bundledb.json"
+        showcase_path = tmp_path / "showcase-data.json"
+        bundledb_path.write_text(json.dumps(bundledb))
+        showcase_path.write_text("[]")
+
+        entries, issue_numbers = prebuild_sync.load_recent_issue_entries(
+            str(bundledb_path), str(showcase_path), from_issue=93
+        )
+
+        assert issue_numbers == [96, 95, 94, 93]
+        assert {e["Title"] for e in entries} == {"Published", "Current", "Queued", "Queued later"}
+
 class TestCheckAndCopyAssets:
     """Tests for check_and_copy_assets()."""
 

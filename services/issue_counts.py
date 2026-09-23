@@ -6,12 +6,15 @@ BUNDLEDB_PATH = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundledb/bundledb.
 BLOG_BASE_PATH = "/Users/Bob/Dropbox/Docs/Sites/11tybundle/11tybundle.dev/content/blog"
 
 
-def get_latest_issue_counts(blog_path=None):
-    """Derive the next issue number from published blog posts, count items for it."""
+def get_last_published_issue(blog_path=None):
+    """Return the highest issue number with a blog post file, or 0 if none.
+
+    A blog post file exists once Generate Bundle Issue has run for that issue,
+    so this may be an issue that has been generated but not yet deployed.
+    """
     if blog_path is None:
         blog_path = BLOG_BASE_PATH
 
-    # Scan blog directories for highest published issue number
     max_published = 0
     try:
         for year_dir in os.listdir(blog_path):
@@ -25,7 +28,12 @@ def get_latest_issue_counts(blog_path=None):
                             max_published = n
     except OSError:
         pass
+    return max_published
 
+
+def get_latest_issue_counts(blog_path=None):
+    """Derive the next issue number from published blog posts, count items for it."""
+    max_published = get_last_published_issue(blog_path)
     if max_published == 0:
         return None
 

@@ -26,17 +26,21 @@ def _parse_date_naive(date_str):
 
 
 def generate_latest_data(bundledb_path, showcase_path,
-                         bundledb_output_path, showcase_output_path):
+                         bundledb_output_path, showcase_output_path,
+                         from_issue=None):
     """Filter bundledb and showcase data to the latest issue and write output files.
 
     Steps (mirroring the JS version):
     1. Find the maximum issue number across all bundledb entries.
-    2. Filter bundledb entries matching that issue number.
+    2. Filter bundledb entries matching that issue number. If ``from_issue``
+       is given, instead keep entries whose issue is >= ``from_issue``, so
+       that issues queued ahead of the one being previewed don't displace it.
     3. Find the earliest date among those entries.
     4. Filter showcase entries whose date >= that earliest date.
     5. Write both filtered lists to their output paths.
 
-    Returns a dict with keys: latest_issue, bundledb_count, showcase_count.
+    Returns a dict with keys: latest_issue, issues, bundledb_count,
+    showcase_count.
     """
     with open(bundledb_path, "r", encoding="utf-8") as f:
         bundle_data = json.load(f)
@@ -56,17 +60,24 @@ def generate_latest_data(bundledb_path, showcase_path,
     if max_issue == 0:
         raise ValueError("No valid issue numbers found in bundledb.json")
 
-    # Filter entries for latest issue
+    # Filter entries for latest issue (or every issue from from_issue onward)
     latest_entries = []
     for entry in bundle_data:
         try:
-            if int(entry.get("Issue", 0)) == max_issue:
-                latest_entries.append(entry)
+            issue_num = int(entry.get("Issue", 0))
         except (TypeError, ValueError):
-            pass
+            continue
+        if from_issue is None:
+            if issue_num == max_issue:
+                latest_entries.append(entry)
+        elif issue_num >= from_issue:
+            latest_entries.append(entry)
 
     if not latest_entries:
-        raise ValueError(f"No entries found for issue #{max_issue}")
+        wanted = f"#{max_issue}" if from_issue is None else f"#{from_issue} or later"
+        raise ValueError(f"No entries found for issue {wanted}")
+
+    issues = sorted({int(e["Issue"]) for e in latest_entries})
 
     # Write bundledb-latest-issue.json
     os.makedirs(os.path.dirname(bundledb_output_path) or ".", exist_ok=True)
@@ -108,6 +119,7 @@ def generate_latest_data(bundledb_path, showcase_path,
 
     return {
         "latest_issue": max_issue,
+        "issues": issues,
         "bundledb_count": len(latest_entries),
         "showcase_count": len(filtered_showcase),
     }
