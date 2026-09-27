@@ -67,8 +67,15 @@
                         return;
                     }
                     sveltiacmsSites = result.data.sites || [];
+                    var staleSkipped = result.data.stale_skipped || 0;
+                    if (staleSkipped > 0) updateNextSiteButton(result.data.queue_remaining || 0);
                     if (sveltiacmsSites.length === 0) {
-                        showInlineMessage('No new Eleventy sites found', false);
+                        var msg = 'No new Eleventy sites found';
+                        if (staleSkipped > 0) {
+                            msg += '; removed ' + staleSkipped + ' already-added site' +
+                                (staleSkipped === 1 ? '' : 's') + ' from the queue';
+                        }
+                        showInlineMessage(msg, false);
                         return;
                     }
                     renderSiteList();
@@ -83,6 +90,16 @@
                     btnCheck.textContent = 'Check SveltiaCMS';
                 });
         });
+    }
+
+    function updateNextSiteButton(remaining) {
+        var btnNext = document.getElementById('btn-sveltiacms-next');
+        if (!btnNext) return;
+        if (remaining > 0) {
+            btnNext.textContent = 'Add Next Site (' + remaining + ')';
+        } else {
+            btnNext.remove();
+        }
     }
 
     function showInlineMessage(msg, isError) {

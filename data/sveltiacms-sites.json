@@ -50,5 +50,11 @@
   {
     "url": "https://katifshiloh.com/",
     "skip": true
+  },
+  {
+    "description": "Guide for financial institutions to understand barriers and create more inclusive financial offerings.",
+    "name": "Guidebook for Financial Inclusion",
+    "url": "https://guidebook.financial-inclusion.ca/",
+    "skip": true
   }
 ]

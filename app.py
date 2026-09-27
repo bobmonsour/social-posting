@@ -1832,7 +1832,7 @@ def db_mgmt_commits():
 
 @app.route("/db-mgmt/sveltiacms-check", methods=["POST"])
 def db_mgmt_sveltiacms_check():
-    """Fetch SveltiaCMS showcase, filter for Eleventy sites not already in showcase."""
+    """Fetch SveltiaCMS showcase, filter for Eleventy sites not already in bundledb or showcase."""
     import requests as req
 
     try:
@@ -1925,7 +1925,7 @@ def db_mgmt_sveltiacms_check():
         # Step 3: Filter for Eleventy sites
         eleventy_sites = [s for s in sites if s.get("framework") == "eleventy"]
 
-        # Step 4: Build normalized URL set from existing showcase-data.json
+        # Step 4: Build normalized URL set from existing bundledb.json and showcase-data.json
         def _normalize_url(raw):
             """Lowercase, strip trailing slash, normalize to https://, strip www."""
             u = (raw or "").strip().lower().rstrip("/")
@@ -1945,18 +1945,38 @@ def db_mgmt_sveltiacms_check():
                     existing_urls.add(url)
         except Exception:
             pass
-
-        # Also filter out sites already in sveltiacms-sites.json queue
-        queued_urls = set()
         try:
-            with open(_get_path("SVELTIACMS_SITES_PATH"), "r") as f:
-                queued = json.load(f)
-            for entry in queued:
-                url = _normalize_url(entry.get("url"))
+            with open(_get_path("BUNDLEDB_PATH"), "r") as f:
+                bundledb_data = json.load(f)
+            for entry in bundledb_data:
+                url = _normalize_url(entry.get("Link"))
                 if url:
-                    queued_urls.add(url)
+                    existing_urls.add(url)
+        except Exception:
+            pass
+
+        # Also filter out sites already in sveltiacms-sites.json queue, and
+        # mark queued sites that have since been added to either DB as skipped
+        queued_urls = set()
+        stale_skipped = 0
+        queue_path = _get_path("SVELTIACMS_SITES_PATH")
+        queued = []
+        try:
+            with open(queue_path, "r") as f:
+                queued = json.load(f)
         except (FileNotFoundError, json.JSONDecodeError):
             pass
+        for entry in queued:
+            url = _normalize_url(entry.get("url"))
+            if url:
+                queued_urls.add(url)
+                if not entry.get("skip") and url in existing_urls:
+                    entry["skip"] = True
+                    stale_skipped += 1
+        if stale_skipped:
+            with open(queue_path, "w") as f:
+                json.dump(queued, f, indent=2)
+        queue_remaining = sum(1 for s in queued if not s.get("skip"))
 
         # Step 5: Filter out already-known sites
         new_sites = []
@@ -1969,7 +1989,11 @@ def db_mgmt_sveltiacms_check():
                     "description": site.get("description", ""),
                 })
 
-        return jsonify({"sites": new_sites})
+        return jsonify({
+            "sites": new_sites,
+            "stale_skipped": stale_skipped,
+            "queue_remaining": queue_remaining,
+        })
 
     except req.RequestException as e:
         return jsonify({"error": f"Network error fetching SveltiaCMS showcase: {e}"}), 502

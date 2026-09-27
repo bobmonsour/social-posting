@@ -144,3 +144,46 @@ def test_sveltiacms_check_reads_hash_map_from_metadata_chunk(client, app, tmp_pa
     data = resp.get_json()
     names = [s["name"] for s in data["sites"]]
     assert names == ["Eleventy Site"]
+
+
+@responses.activate
+def test_sveltiacms_check_filters_sites_already_in_bundledb(client, app, tmp_path):
+    """A site in bundledb.json but not showcase-data.json is not proposed as new."""
+    app.config["SVELTIACMS_SITES_PATH"] = str(tmp_path / "sveltiacms-sites.json")
+    with open(app.config["BUNDLEDB_PATH"], "w") as f:
+        json.dump([{"Type": "site", "Title": "Eleventy Site",
+                    "Link": "http://www.elev.example"}], f)
+    with open(app.config["SHOWCASE_PATH"], "w") as f:
+        json.dump([], f)
+    _register(SHOWCASE_SITES_CHUNK_DOUBLE_QUOTED)
+
+    resp = client.post("/db-mgmt/sveltiacms-check")
+    assert resp.status_code == 200, resp.get_data(as_text=True)
+    assert resp.get_json()["sites"] == []
+
+
+@responses.activate
+def test_sveltiacms_check_skips_queued_sites_already_in_db(client, app, tmp_path):
+    """Queued sites that have since landed in either DB are marked skip."""
+    queue_path = tmp_path / "sveltiacms-sites.json"
+    app.config["SVELTIACMS_SITES_PATH"] = str(queue_path)
+    queue_path.write_text(json.dumps([
+        {"name": "In Bundledb", "url": "https://www.in-bundledb.example/"},
+        {"name": "In Showcase", "url": "https://in-showcase.example"},
+        {"name": "Still New", "url": "https://still-new.example/"},
+    ]))
+    with open(app.config["BUNDLEDB_PATH"], "w") as f:
+        json.dump([{"Type": "site", "Link": "https://in-bundledb.example/"}], f)
+    with open(app.config["SHOWCASE_PATH"], "w") as f:
+        json.dump([{"link": "http://in-showcase.example/"}], f)
+    _register(SHOWCASE_SITES_CHUNK_DOUBLE_QUOTED)
+
+    resp = client.post("/db-mgmt/sveltiacms-check")
+    assert resp.status_code == 200, resp.get_data(as_text=True)
+    data = resp.get_json()
+    assert data["stale_skipped"] == 2
+    assert data["queue_remaining"] == 1
+
+    queue = json.loads(queue_path.read_text())
+    skips = {e["name"]: bool(e.get("skip")) for e in queue}
+    assert skips == {"In Bundledb": True, "In Showcase": True, "Still New": False}

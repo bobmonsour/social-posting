@@ -12,7 +12,7 @@
     <div style="display: flex; gap: 0.5rem; align-items: center;">
         <button type="button" id="btn-sveltiacms-check" class="btn-nav">Check SveltiaCMS</button>
         {% if sveltiacms_count > 0 %}
-        <a href="/?sveltiacms=1" class="btn-nav">Add Next Site ({{ sveltiacms_count }})</a>
+        <a href="/?sveltiacms=1" id="btn-sveltiacms-next" class="btn-nav">Add Next Site ({{ sveltiacms_count }})</a>
         {% endif %}
     </div>
 </div>
